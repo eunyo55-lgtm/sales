@@ -8,7 +8,6 @@ import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, Package }
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-
     useEffect(() => {
         loadData();
         const interval = setInterval(loadData, 60000); // 1 min refresh
@@ -18,7 +17,10 @@ export default function Dashboard() {
     const loadData = async () => {
         try {
             const result = await api.getDashboardAnalytics();
+            console.log("Dashboard Data:", result);
             setData(result);
+
+
         } catch (error) {
             console.error("Failed to load dashboard data", error);
         } finally {
@@ -114,7 +116,7 @@ export default function Dashboard() {
     );
 
     return (
-        <div className="space-y-6 pb-10">
+        <div className="space-y-6 pb-10 relative">
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
@@ -139,7 +141,6 @@ export default function Dashboard() {
                     colorClass="bg-yellow-50 text-yellow-600"
                 />
             </div>
-
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Daily Trend */}

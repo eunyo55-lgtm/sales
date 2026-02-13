@@ -8,6 +8,7 @@ interface GroupedProduct {
   season: string;
   imageUrl?: string;
   totalSales: number;
+  sales7Days: number;
   currentStock: number; // Coupang Stock
   hqStock: number;      // HQ Stock
   dailySales: Record<string, number>;
@@ -22,11 +23,8 @@ export default function ProductStatus() {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'totalSales', direction: 'desc' });
   const [selectedSeason, setSelectedSeason] = useState('all');
 
-  // Column Widths State (Removed)
-
   const [visibleCount, setVisibleCount] = useState(50);
 
-  // Persistence Effects - Keep sort only
   useEffect(() => {
     localStorage.setItem('productStatus_sortHelper', JSON.stringify(sortConfig));
   }, [sortConfig]);
@@ -50,7 +48,6 @@ export default function ProductStatus() {
     }
   };
 
-  // Group products by name
   const groupedProducts: GroupedProduct[] = useMemo(() => {
     const groups = new Map<string, GroupedProduct>();
 
@@ -58,10 +55,10 @@ export default function ProductStatus() {
       const existing = groups.get(p.name);
       if (existing) {
         existing.totalSales += p.totalSales;
-        existing.currentStock += p.coupangStock; // coupangStock alias
+        existing.sales7Days += p.sales7Days;
+        existing.currentStock += p.coupangStock;
         existing.hqStock += p.hqStock;
 
-        // Aggregate daily sales
         Object.entries(p.dailySales).forEach(([date, qty]) => {
           existing.dailySales[date] = (existing.dailySales[date] || 0) + qty;
         });
@@ -73,6 +70,7 @@ export default function ProductStatus() {
           season: p.season,
           imageUrl: p.imageUrl,
           totalSales: p.totalSales,
+          sales7Days: p.sales7Days,
           currentStock: p.coupangStock,
           hqStock: p.hqStock,
           dailySales: { ...p.dailySales },
@@ -94,7 +92,6 @@ export default function ProductStatus() {
     return Array.from(seasons).sort();
   }, [groupedProducts]);
 
-  // Extract all unique dates from products for dynamic columns, sorted
   const uniqueDates = useMemo(() => {
     const dates = new Set<string>();
     products.forEach(p => Object.keys(p.dailySales).forEach(d => dates.add(d)));
@@ -111,14 +108,12 @@ export default function ProductStatus() {
     if (!sortConfig) return 0;
     const key = sortConfig.key;
 
-    // Check if sorting by dynamic date
     if (uniqueDates.includes(key)) {
       const aVal = a.dailySales[key] || 0;
       const bVal = b.dailySales[key] || 0;
       return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
     }
 
-    // Standard columns
     const aValue = a[key as keyof GroupedProduct];
     const bValue = b[key as keyof GroupedProduct];
 
@@ -147,14 +142,12 @@ export default function ProductStatus() {
     setExpandedGroups(newExpanded);
   };
 
-  // Helper for Date Header (M/D)
   const formatDateHeader = (dateStr: string) => {
     const parts = dateStr.split('-');
     if (parts.length === 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
     return dateStr;
   };
 
-  // Calculate Totals
   const totalStats = useMemo(() => {
     const stats = {
       hqStock: 0,
@@ -173,23 +166,20 @@ export default function ProductStatus() {
     return stats;
   }, [filteredGroups]);
 
-  // Constants for Sticky Columns
-  const W_TOGGLE = 'w-10 min-w-[2.5rem]';
-  const W_IMAGE = 'w-12 min-w-[3rem]';
+  const W_TOGGLE = "w-10 min-w-[2.5rem]";
+  const W_IMAGE = "w-12 min-w-[3rem]";
   const W_SEASON = 'w-24 min-w-[6rem]';
-  const W_NAME = 'w-64 min-w-[16rem]'; // Extended for readability
+  const W_NAME = "w-64 min-w-[16rem]";
 
-  // Left Offsets (Tailwind arbitrary values)
-  const L_TOGGLE = 'left-0';
-  const L_IMAGE = 'left-[2.5rem]';
+  const L_TOGGLE = "left-0";
+  const L_IMAGE = "left-[2.5rem]";
   const L_SEASON = 'left-[5.5rem]';
   const L_NAME = 'left-[11.5rem]';
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-100px)]">
-      {/* Top Bar */}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col relative">
       <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-none">
         <h3 className="font-semibold text-gray-800">
           상품별 판매 현황
@@ -221,10 +211,9 @@ export default function ProductStatus() {
         </div>
       </div>
 
-      {/* Table Container - Auto Layout with Sticky Columns */}
-      <div className="overflow-auto flex-1 relative">
-        <table className="min-w-full text-sm text-left border-collapse table-auto">
-          <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100 sticky top-0 z-30 shadow-sm">
+      <div className="overflow-x-auto flex-1 relative">
+        <table className="min-w-full text-sm text-left border-separate border-spacing-0 table-auto">
+          <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100 sticky top-[60px] z-30 shadow-sm">
             <tr className="h-[50px]">
               <th className={`px-2 py-3 bg-gray-50 sticky z-30 ${W_TOGGLE} ${L_TOGGLE}`}></th>
               <th className={`px-2 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-30 ${W_IMAGE} ${L_IMAGE}`} onClick={() => handleSort('imageUrl')}>이미지</th>
@@ -240,7 +229,6 @@ export default function ProductStatus() {
                 </th>
               ))}
             </tr>
-            {/* Total Row */}
             <tr className="bg-gray-100 font-bold border-b border-gray-200">
               <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></th>
               <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_IMAGE} ${L_IMAGE}`}></th>
@@ -260,12 +248,10 @@ export default function ProductStatus() {
           <tbody className="divide-y divide-gray-100">
             {filteredGroups.slice(0, visibleCount).map((group) => {
               const isExpanded = expandedGroups.has(group.name);
-              // Dynamic BG for sticky columns based on state
-              const stickyBg = isExpanded ? 'bg-[#ecf3ff]' : 'bg-white hover:bg-gray-50'; // Match row hover/active
+              const stickyBg = isExpanded ? 'bg-[#ecf3ff]' : 'bg-white hover:bg-gray-50';
 
               return (
                 <React.Fragment key={group.name}>
-                  {/* Group Row */}
                   <tr className={`hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 group ${isExpanded ? 'bg-blue-50/30' : ''}`} onClick={() => toggleGroup(group.name)}>
                     <td className={`px-2 py-2 text-center sticky z-20 ${W_TOGGLE} ${L_TOGGLE} ${stickyBg} border-b border-gray-100`}>
                       {isExpanded ? <ChevronDown size={14} className="text-gray-500 mx-auto" /> : <ChevronRight size={14} className="text-gray-400 mx-auto" />}
@@ -288,10 +274,8 @@ export default function ProductStatus() {
                       </td>
                     ))}
                   </tr>
-                  {/* Child Rows */}
                   {isExpanded && group.children.map(child => (
                     <tr key={child.barcode} className="bg-gray-50 border-b border-gray-100 text-xs">
-                      {/* Separate sticky cells for child row to maintain layout */}
                       <td className={`px-2 py-1 sticky z-20 bg-gray-50 border-b border-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></td>
                       <td className={`px-2 py-1 sticky z-20 bg-gray-50 border-b border-gray-100 ${W_IMAGE} ${L_IMAGE}`}></td>
                       <td className={`px-4 py-1 text-gray-400 text-center sticky z-20 bg-gray-50 border-b border-gray-100 ${W_SEASON} ${L_SEASON}`}>-</td>

@@ -248,7 +248,11 @@ ${sampleText}
      * - Rankings: Yesterday, Weekly, Yearly Top 10
      */
     async getDashboardAnalytics() {
-        if (this._dashboardCache) return this._dashboardCache; // Return cached data
+        if (this._dashboardCache) {
+            console.log("[Cache] Dashboard HIT");
+            return this._dashboardCache;
+        }
+        console.time("getDashboardAnalytics");
 
         // 1. Get Latest Date (Anchor)
         const { data: latestData, error: latestError } = await supabase
@@ -281,50 +285,50 @@ ${sampleText}
         const diffToFri = (dayOfWeek + 2) % 7;
         const startOfWeekStr = shiftDate(anchorDateStr, -diffToFri);
 
-        // Fetch Start Date for Trends (Min(StartOfYear, 90DaysAgo from Anchor))
-        // const ninetyDaysAgoStr = shiftDate(anchorDateStr, -90);
-        // const fetchStartStr = ninetyDaysAgoStr < startOfYear ? ninetyDaysAgoStr : startOfYear;
+        // Helper to fetch all rows in PARALLEL batches
+        const fetchAllParallel = async <T>(table: string, select: string, order?: string) => {
+            // 1. Get Count first
+            const { count, error: countError } = await supabase
+                .from(table)
+                .select('*', { count: 'exact', head: true });
 
-        // 2. Fetch Sales Data (with Pagination)
-        const sales: { date: string, quantity: number, barcode: string }[] = [];
-        let from = 0;
-        const step = 1000; // Match Supabase default limit
+            if (countError) throw countError;
+            if (!count) return [];
 
-        while (true) {
-            const { data, error } = await supabase
-                .from('daily_sales')
-                .select('date, quantity, barcode')
-                .order('date', { ascending: true })
-                .range(from, from + step - 1);
+            const total = count;
+            const BATCH_SIZE = 1000;
+            const CONCURRENT_LIMIT = 5;
+            const allData: T[] = [];
 
-            if (error) throw error;
-            if (!data || data.length === 0) break;
+            const ranges: { from: number, to: number }[] = [];
+            for (let i = 0; i < total; i += BATCH_SIZE) {
+                ranges.push({ from: i, to: Math.min(i + BATCH_SIZE - 1, total - 1) });
+            }
 
-            sales.push(...data);
+            for (let i = 0; i < ranges.length; i += CONCURRENT_LIMIT) {
+                const chunkRanges = ranges.slice(i, i + CONCURRENT_LIMIT);
+                const promises = chunkRanges.map(r => {
+                    let q = supabase.from(table).select(select).range(r.from, r.to);
+                    if (order) q = q.order(order);
+                    return q;
+                });
 
-            if (data.length < step) break;
-            from += step;
-        }
+                const results = await Promise.all(promises);
+                results.forEach(res => {
+                    if (res.error) throw res.error;
+                    if (res.data) allData.push(...(res.data as T[]));
+                });
+            }
+            return allData;
+        };
+
+        // 2. Fetch Sales Data (Parallel)
+        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string }>('daily_sales', 'date, quantity, barcode', 'date');
 
         // 3. Fetch Product Metadata (for Rankings)
         // 3. Fetch Product Metadata (for Rankings) - PAGINATED
-        const products_all: { barcode: string, name: string, image_url: string, current_stock?: number, hq_stock?: number }[] = [];
-        let pFrom = 0;
-        const pStep = 1000;
-        while (true) {
-            const { data, error } = await supabase
-                .from('products')
-                .select('barcode, name, image_url, current_stock, hq_stock')
-                .order('barcode')
-                .range(pFrom, pFrom + pStep - 1);
-
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            products_all.push(...data);
-            // If less than step, we're done
-            if (data.length < pStep) break;
-            pFrom += pStep;
-        }
+        // 3. Fetch Product Metadata (for Rankings) - PAGINATED
+        const products_all = await fetchAllParallel<{ barcode: string, name: string, image_url: string, current_stock?: number, hq_stock?: number }>('products', 'barcode, name, image_url, current_stock, hq_stock', 'barcode');
         const productMap = new Map(products_all.map(p => [p.barcode, p]));
 
         // 4. Aggregation
@@ -426,6 +430,89 @@ ${sampleText}
 
         const rankInventory = getTop10(inventoryMap);
 
+        // 7. Stockout Risk Alert (Opportunity Loss)
+        // Logic: products with currentStock > 0 AND avgDailySales > 0 AND (currentStock / avgDailySales) <= 3
+        const riskItems: any[] = [];
+
+        // Calculate daily sales per product (last 7 days from ANCHOR DATE)
+        // Critical: Must use anchorDateStr (latest data date) not Today, otherwise old data shows 0 sales.
+        const productSalesStats = new Map<string, number>(); // Name -> Total Sales (7d)
+
+        const anchorDateObj = new Date(anchorDateStr);
+        const startOfRiskPeriod = new Date(anchorDateObj);
+        startOfRiskPeriod.setDate(startOfRiskPeriod.getDate() - 7);
+        const startOfRiskStr = startOfRiskPeriod.toISOString().split('T')[0];
+
+        console.log(`[Risk Alert] Calculating risk for period: ${startOfRiskStr} ~ ${anchorDateStr}`);
+
+        // Fetch ALL sales for the period (Handle Supabase 1000 row limit)
+        const recentSales: { barcode: string, quantity: number }[] = [];
+        let rFrom = 0;
+        const rStep = 1000;
+
+        while (true) {
+            const { data, error } = await supabase
+                .from('daily_sales')
+                .select('barcode, quantity')
+                .gte('date', startOfRiskStr)
+                .lte('date', anchorDateStr)
+                .range(rFrom, rFrom + rStep - 1);
+
+            if (error) {
+                console.error("Error fetching recent sales:", error);
+                break;
+            }
+            if (!data || data.length === 0) break;
+
+            recentSales.push(...data);
+            if (data.length < rStep) break;
+            rFrom += rStep;
+        }
+
+        if (recentSales.length > 0) {
+            // We need a map of Barcode -> Name because inventoryMap is by Name.
+            // But we don't have a direct Barcode->Name map readily available in this scope efficiently without reiterating products.
+            // Let's build it quickly.
+            const barcodeToName = new Map<string, string>();
+            products_all.forEach(p => barcodeToName.set(p.barcode, p.name));
+
+            recentSales.forEach(s => {
+                const pName = barcodeToName.get(s.barcode);
+                if (pName) {
+                    productSalesStats.set(pName, (productSalesStats.get(pName) || 0) + s.quantity);
+                }
+            });
+        }
+
+        inventoryMap.forEach((stock, name) => {
+            if (stock <= 0) return; // Already OOS is not "Risk", it's "Problem". We focus on "Imminent".
+
+            const sales7d = productSalesStats.get(name) || 0;
+            if (sales7d === 0) return; // No sales, no risk
+
+            const avgDaily = sales7d / 7;
+            const daysLeft = stock / avgDaily;
+
+            if (daysLeft <= 3) {
+                // Deduplicate
+                const existingIndex = riskItems.findIndex(r => r.name === name);
+                if (existingIndex === -1) {
+                    riskItems.push({
+                        name: name,
+                        imageUrl: nameMetadata.get(name)?.image,
+                        currentStock: stock,
+                        avgDailySales: Math.round(avgDaily * 10) / 10,
+                        daysLeft: Math.round(daysLeft * 10) / 10
+                    });
+                }
+            }
+        });
+
+        console.log(`[Risk Alert] Final Risk Items: ${riskItems.length}`, riskItems.slice(0, 3));
+
+        // Sort by impact (Avg Daily Sales DESC)
+        riskItems.sort((a, b) => b.avgDailySales - a.avgDailySales);
+
         const result = {
             anchorDate: anchorDateStr,
             metrics: {
@@ -444,10 +531,12 @@ ${sampleText}
                 monthly: getTop10(rankMonthly),
                 yearly: getTop10(rankYearly),
                 inventory: rankInventory
-            }
+            },
+            riskItems: riskItems
         };
 
         this._dashboardCache = result; // Cache the result
+        console.timeEnd("getDashboardAnalytics");
         return result;
     },
 
@@ -456,50 +545,60 @@ ${sampleText}
      * Used for 'Product Status' and 'Inventory Status' tabs
      */
     async getProductStats(): Promise<ProductStats[]> {
-        if (this._productStatsCache) return this._productStatsCache; // Return cached data
+        if (this._productStatsCache) {
+            console.log("[Cache] ProductStats HIT");
+            return this._productStatsCache;
+        }
+        console.time("getProductStats");
 
-        // Helper to fetch all rows
-        const fetchAll = async <T>(table: string, select: string, order?: string) => {
-            let allData: T[] = [];
-            let from = 0;
-            const step = 1000;
-            while (true) {
-                let query = supabase.from(table).select(select).range(from, from + step - 1);
-                if (order) query = query.order(order);
+        // Helper to fetch all rows in PARALLEL batches
+        const fetchAllParallel = async <T>(table: string, select: string, order?: string) => {
+            // 1. Get Count first
+            const { count, error: countError } = await supabase
+                .from(table)
+                .select('*', { count: 'exact', head: true });
 
-                const { data, error } = await query;
-                if (error) throw error;
-                if (!data || data.length === 0) break;
-                allData.push(...(data as T[]));
-                if (data.length < step) break;
-                from += step;
+            if (countError) throw countError;
+            if (!count) return [];
+
+            const total = count;
+            const BATCH_SIZE = 1000;
+            const CONCURRENT_LIMIT = 5; // Simpler parallel limit
+            const allData: T[] = [];
+
+            // Generate ranges
+            const ranges: { from: number, to: number }[] = [];
+            for (let i = 0; i < total; i += BATCH_SIZE) {
+                ranges.push({ from: i, to: Math.min(i + BATCH_SIZE - 1, total - 1) });
+            }
+
+            // Fetch in chunks
+            for (let i = 0; i < ranges.length; i += CONCURRENT_LIMIT) {
+                const chunkRanges = ranges.slice(i, i + CONCURRENT_LIMIT);
+                const promises = chunkRanges.map(r => {
+                    let q = supabase.from(table).select(select).range(r.from, r.to);
+                    if (order) q = q.order(order);
+                    return q;
+                });
+
+                const results = await Promise.all(promises);
+                results.forEach(res => {
+                    if (res.error) throw res.error;
+                    if (res.data) allData.push(...(res.data as T[]));
+                });
             }
             return allData;
         };
 
-        // 1. Fetch valid products (Added safety_stock)
-        const products = await fetchAll<any>('products', 'barcode, name, season, image_url, current_stock, hq_stock, safety_stock', 'barcode');
+        // 1. Fetch valid products
+        const products = await fetchAllParallel<any>('products', 'barcode, name, season, image_url, current_stock, hq_stock, safety_stock', 'barcode');
         if (!products) return [];
 
         // 2. Fetch Sales Data (ALL History)
-        const sales: { date: string, quantity: number, barcode: string }[] = [];
-        let from = 0;
-        const step = 1000; // Match Supabase default limit
+        // Note: For daily_sales, getting exact count might be slow if huge, but faster than serial fetch.
+        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string }>('daily_sales', 'barcode, quantity, date', 'date');
 
-        while (true) {
-            const { data, error } = await supabase
-                .from('daily_sales')
-                .select('barcode, quantity, date')
-                .order('date', { ascending: true })
-                .range(from, from + step - 1);
-
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            sales.push(...data);
-            if (data.length < step) break;
-            from += step;
-        }
-
+        // ... existing aggregation logic ...
         // 3. Aggregate Sales (Anchor to Latest Date)
         const salesMap = new Map<string, { total: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number> }>();
 
@@ -565,6 +664,7 @@ ${sampleText}
         });
 
         this._productStatsCache = result; // Cache the result
+        console.timeEnd("getProductStats");
         return result;
     },
     /**

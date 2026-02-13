@@ -73,7 +73,7 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+        <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50">
           <h2 className="text-lg font-semibold text-gray-800">
             {activeTab === 'dashboard' && '대시보드 Overview'}
             {activeTab === 'products' && '상품 판매 현황'}
