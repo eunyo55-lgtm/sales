@@ -4,6 +4,7 @@ import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, Package } from 'lucide-react';
+import { isRedDay } from '../lib/dateUtils';
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
@@ -104,6 +105,11 @@ export default function Dashboard() {
                                 </td>
                                 <td className="px-3 py-3 text-right font-bold text-gray-900">
                                     {item.quantity.toLocaleString()}
+                                    {item.trend !== undefined && item.trend !== null && (
+                                        <div className={`text-xs ${item.trend > 0 ? 'text-red-500' : item.trend < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                                            {item.trend > 0 ? '▲' : item.trend < 0 ? '▼' : '-'} {Math.abs(item.trend).toLocaleString()}
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         )) : (
@@ -152,7 +158,17 @@ export default function Dashboard() {
                     <ResponsiveContainer width="100%" height="90%">
                         <LineChart data={trends.daily} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                             <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => v} />
+                            <XAxis
+                                dataKey="date"
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                tick={({ x, y, payload }) => (
+                                    <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
+                                        {payload.value}
+                                    </text>
+                                )}
+                            />
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                             <Legend />
@@ -170,7 +186,18 @@ export default function Dashboard() {
                     <ResponsiveContainer width="100%" height="90%">
                         <BarChart data={trends.weekly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                             <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                            <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                            <CartesianGrid stroke="#f0f0f0" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                tick={({ x, y, payload }) => (
+                                    <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
+                                        {payload.value}
+                                    </text>
+                                )}
+                            />
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f3f4f6' }} />
                             <Legend />

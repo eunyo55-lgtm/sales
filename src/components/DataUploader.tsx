@@ -52,6 +52,36 @@ export function DataUploader() {
         }
     };
 
+    const handleIncomingUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setStatus({ type: null, message: '' });
+        setProgress(0);
+
+        try {
+            // 1. Parse
+            // We need parseIncomingStock from parsers
+            // (Assuming it is exported)
+            const { parseIncomingStock } = await import('../lib/parsers');
+            const data = await parseIncomingStock(file);
+
+            setStatus({ type: 'success', message: `${data.length}개 입고 데이터 파싱 완료. 서버 업로드 중...` });
+
+            // 2. Upload
+            await api.uploadIncomingStock(data, (p) => setProgress(p));
+
+            setStatus({ type: 'success', message: `✅ 입고 예정(공급 중) 데이터 ${data.length}건 업데이트 완료!` });
+        } catch (error: any) {
+            console.error(error);
+            setStatus({ type: 'error', message: `오류 발생: ${error.message || '파일 처리 실패'}` });
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
     return (
         <div className="flex items-center space-x-3">
             <button
@@ -116,6 +146,25 @@ export function DataUploader() {
                 >
                     <Upload size={16} />
                     <span>쿠팡 판매데이터 등록</span>
+                </label>
+            </div>
+
+            {/* New: Incoming Stock Upload */}
+            <div className="relative">
+                <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleIncomingUpload}
+                    className="hidden"
+                    id="upload-incoming"
+                    disabled={isUploading}
+                />
+                <label
+                    htmlFor="upload-incoming"
+                    className={`flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <FileUp size={16} />
+                    <span>공급 중 수량 등록</span>
                 </label>
             </div>
         </div>

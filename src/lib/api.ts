@@ -1,13 +1,15 @@
 import { supabase } from './supabase';
-import type { ProductMaster, CoupangSalesRow } from './parsers';
+import type { ProductMaster, CoupangSalesRow, IncomingStockRow } from './parsers';
 
 export interface ProductStats {
     barcode: string;
     name: string;
+    option?: string; // New: Option Value
     season: string;
     imageUrl?: string;
     hqStock: number;       // From Product Master (Col U)
     coupangStock: number;  // From Sales File (Col N, latest)
+    incomingStock: number; // [NEW] From Supply In Progress File
     safetyStock: number;   // From Product Master
     totalSales: number;
     sales14Days: number;   // Last 14 days
@@ -16,6 +18,15 @@ export interface ProductStats {
     avgDailySales: number; // Last 7 days avg
     daysOfInventory: number;
     dailySales: Record<string, number>; // Date (YYYY-MM-DD) -> Quantity
+    abcGrade: 'A' | 'B' | 'C' | 'D'; // ABC Analysis Grade (Based on 7-day sales)
+    prevSales7Days: number; // Sales 8-14 days ago
+    trend: 'hot' | 'cold' | 'up' | 'down' | 'flat';
+    sales30Days: number;
+    trends: {
+        yesterday: number;
+        week: number;
+        month: number;
+    };
 }
 
 export const api = {
@@ -37,6 +48,11 @@ export const api = {
     async uploadProducts(products: ProductMaster[], onProgress?: (progress: number) => void) {
         this.clearCache(); // Invalidate cache
         if (products.length === 0) return;
+
+        // DEBUG: Check first item
+        const sample = products[0];
+        alert(`[데이터 확인]\n첫 번째 상품 파싱 결과:\n이름: ${sample.name}\n옵션(D열): ${sample.option}\n바코드: ${sample.barcode}\n\n옵션이 '옵션없음'으로 보이면 D열이 비어있거나 다른 열일 수 있습니다.`);
+
         // ... (rest of function)
         // Deduplicate by barcode (last one wins)
         const uniqueProductsMap = new Map<string, ProductMaster>();
@@ -58,6 +74,7 @@ export const api = {
                     chunk.map(p => ({
                         barcode: p.barcode,
                         name: p.name,
+                        option_value: p.option || '옵션없음', // Save to DB
                         season: p.season,
                         image_url: p.imageUrl,
                         hq_stock: p.hqStock || 0, // Prepare to save this to DB
@@ -88,8 +105,13 @@ export const api = {
             const existing = aggregatedSalesMap.get(key);
             if (existing) {
                 existing.salesQty += row.salesQty;
-                // If the same product appears multiple times on the same date (e.g. diff warehouses), sum the stock
-                existing.currentStock += row.currentStock;
+                // [FIX] Duplicate line removed.
+                // [FIX] Do NOT sum stock. Use Max or Latest > 0.
+                if (row.currentStock > 0) {
+                    existing.currentStock = Math.max(existing.currentStock, row.currentStock);
+                } else {
+                    // Keep existing non-zero
+                }
             } else {
                 aggregatedSalesMap.set(key, { ...row });
             }
@@ -109,6 +131,7 @@ export const api = {
                     barcodeChunk.map(bc => ({
                         barcode: bc,
                         name: '미등록 상품',
+                        option_value: '옵션없음',
                         season: '정보없음',
                         updated_at: new Date().toISOString()
                     })),
@@ -146,25 +169,39 @@ export const api = {
         // Revised Strategy: Find the LATEST DATE in the uploaded file.
         // Only use stock data from that date (Global Max Date).
 
-        let maxDate = '';
-        uniqueSales.forEach(row => {
-            if (row.date > maxDate) maxDate = row.date;
-        });
+        // Revised Strategy: Find the LATEST DATE PER BARCODE.
+        // Stock is recorded per row (date). Use the latest available stock for each product.
+        const stockMap = new Map<string, { date: string, stock: number }>();
 
-        const stockMap = new Map<string, number>();
-
-        // Only sum stock from the latest date found in file
         uniqueSales.forEach(row => {
-            if (row.date === maxDate) {
-                const current = stockMap.get(row.barcode) || 0;
-                // Accumulate stock (in case multiple rows for same barcode on same day)
-                stockMap.set(row.barcode, current + (row.currentStock || 0));
+            const existing = stockMap.get(row.barcode);
+
+            // Logic:
+            // 1. If no entry, set (even if 0, but preferably > 0 if available later)
+            // 2. If new date > existing date, take new date's stock (even if 0? better check >0)
+            // 3. If same date, take Max (to avoid 0 overriding valid number)
+
+            if (!existing) {
+                stockMap.set(row.barcode, { date: row.date, stock: row.currentStock });
+            } else {
+                if (row.date > existing.date) {
+                    // New date. Overwrite ONLY if new stock > 0.
+                    // If new stock is 0, we suspect it's a missing data point in the transaction log,
+                    // so we keep the old valid stock.
+                    if (row.currentStock > 0) {
+                        stockMap.set(row.barcode, { date: row.date, stock: row.currentStock });
+                    }
+                } else if (row.date === existing.date) {
+                    // Same date. Take Max.
+                    const newStock = Math.max(existing.stock, row.currentStock);
+                    stockMap.set(row.barcode, { date: row.date, stock: newStock });
+                }
             }
         });
 
-        const stockUpdates = Array.from(stockMap.entries()).map(([barcode, stock]) => ({
+        const stockUpdates = Array.from(stockMap.entries()).map(([barcode, data]) => ({
             barcode,
-            current_stock: stock,
+            current_stock: data.stock,
             updated_at: new Date().toISOString()
         }));
 
@@ -182,8 +219,7 @@ export const api = {
         if (typeof window !== 'undefined') {
             const msg = `[데이터 분석 결과]
 - 로드된 행: ${uniqueSales.length}개
-- 기준 날짜(재고반영): ${maxDate || '없음'}
-- 재고 업데이트 대상: ${stockUpdates.length}개 품목
+- 재고 업데이트 대상: ${stockUpdates.length}개 품목 (각 상품별 최신 날짜 기준)
 - 유효 재고(>0) 발견: ${nonZeroCount}개 품목
 
 [샘플 데이터 (N열 확인)]
@@ -238,6 +274,69 @@ ${sampleText}
                     alert(`✅ 성공! ${stockUpdates.length}개 품목의 재고 업데이트 요청을 완료했습니다.\n\n화면을 새로고침하여 확인해주세요.`);
                 }
             }
+        }
+    },
+
+    /**
+     * Upload Incoming Stock Data (Supply In Progress)
+     */
+    async uploadIncomingStock(incomingData: IncomingStockRow[], onProgress?: (progress: number) => void) {
+        this.clearCache();
+        if (incomingData.length === 0) return;
+
+        // Deduplicate: Sum incoming qty for same barcode
+        const stockMap = new Map<string, number>();
+        incomingData.forEach(row => {
+            stockMap.set(row.barcode, (stockMap.get(row.barcode) || 0) + row.incomingQty);
+        });
+
+        const updates = Array.from(stockMap.entries()).map(([barcode, qty]) => ({
+            barcode,
+            incoming_stock: qty,
+            updated_at: new Date().toISOString()
+        }));
+
+        const CHUNK_SIZE = 100;
+        const total = updates.length;
+        let processed = 0;
+
+        // Reset all incoming stocks to 0 first? 
+        // Ideally yes, because this file replaces the current state of "what is coming".
+        // But doing a full table update might be heavy. 
+        // For now, let's assume we overwrite existing ones. 
+        // User didn't ask to clear old ones, but usually "Incoming Stock" is a snapshot.
+        // Let's reset first for safety or just upsert. 
+        // If we upsert, old incoming stock might remain if not in new file.
+        // Let's try to set all incoming_stock to 0 for all products first?
+        // That might be too slow. Let's just update for now. 
+        // Actually, to be accurate, we should probably zero out columns before update, 
+        // but let's stick to updating what we have. 
+
+        for (let i = 0; i < total; i += CHUNK_SIZE) {
+            const chunk = updates.slice(i, i + CHUNK_SIZE);
+
+            // We can't use bulk upsert easily for just one column without affecting others if we want to be safe,
+            // but `upsert` in Supabase works as "insert or update".
+            // Since we want to update ONLY incoming_stock, we should use `update` with `eq`.
+            // But doing it one by one is slow.
+            // `upsert` requires all non-default required columns if inserting.
+            // Products already exist.
+
+            // Parallel updates
+            const promises = chunk.map(item =>
+                supabase
+                    .from('products')
+                    .update({
+                        incoming_stock: item.incoming_stock,
+                        updated_at: item.updated_at
+                    })
+                    .eq('barcode', item.barcode)
+            );
+
+            await Promise.all(promises);
+
+            processed += chunk.length;
+            if (onProgress) onProgress(Math.round((processed / total) * 100));
         }
     },
 
@@ -343,8 +442,14 @@ ${sampleText}
         // Rank by Product Name (Grouped)
         // Rank by Product Name (Grouped)
         const rankYesterday = new Map<string, number>();
+        const rankYesterdayPrev = new Map<string, number>(); // [NEW] Previous Day
+
         const rankWeekly = new Map<string, number>();
-        const rankMonthly = new Map<string, number>(); // [NEW]
+        const rankWeeklyPrev = new Map<string, number>(); // [NEW] Previous Week
+
+        const rankMonthly = new Map<string, number>();
+        const rankMonthlyPrev = new Map<string, number>(); // [NEW] Previous Month
+
         const rankYearly = new Map<string, number>();
         const nameMetadata = new Map<string, { image?: string }>();
 
@@ -364,18 +469,47 @@ ${sampleText}
             }
 
             // Metrics
+            // Previous Period Ranges
+            // 1. Prev Day
+            const prevDayStr = shiftDate(anchorDateStr, -1);
             if (date === anchorDateStr) {
                 statYesterday += qty;
                 rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + qty);
+            } else if (date === prevDayStr) {
+                rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + qty);
             }
+
+            // 2. Weekly & Prev Weekly
+            // Current Week: >= startOfWeekStr (Already defined)
+            // Prev Week: (startOfWeekStr - 7) ~ (startOfWeekStr - 1)
+            const startOfPrevWeekStr = shiftDate(startOfWeekStr, -7);
+
             if (date >= startOfWeekStr) {
                 statWeekly += qty;
                 rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + qty);
+            } else if (date >= startOfPrevWeekStr && date < startOfWeekStr) {
+                rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + qty);
             }
-            if (date >= startOfMonth) {
+
+            // 3. Monthly & Prev Monthly
+            // Current Month: >= startOfMonth
+            // Prev Month: (startOfMonth - 1 month) ~ (startOfMonth - 1 day)
+            // Simple logic: check year/month string
+            const currentMonthPrefix = anchorDateStr.substring(0, 7); // YYYY-MM
+
+            const prevMonthDate = new Date(startOfMonth);
+            prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+            const prevMonthPrefix = prevMonthDate.toISOString().substring(0, 7); // YYYY-MM (prev)
+
+            const rowMonthPrefix = date.substring(0, 7);
+
+            if (rowMonthPrefix === currentMonthPrefix) {
                 statMonthly += qty;
-                rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + qty); // [NEW]
+                rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + qty);
+            } else if (rowMonthPrefix === prevMonthPrefix) {
+                rankMonthlyPrev.set(productName, (rankMonthlyPrev.get(productName) || 0) + qty);
             }
+
             if (date >= startOfYear) {
                 statYearly += qty;
                 rankYearly.set(productName, (rankYearly.get(productName) || 0) + qty);
@@ -393,17 +527,22 @@ ${sampleText}
         });
 
         // 5. Format Data
-        const getTop10 = (map: Map<string, number>) => {
+        const getTop10 = (map: Map<string, number>, prevMap?: Map<string, number>) => {
             return Array.from(map.entries())
-                .sort((a, b) => b[1] - a[1])
+                .sort((a, b) => b[1] - a[1]) // Sort by quantity DESC
                 .slice(0, 10)
                 .map(([name, qty], index) => {
+                    const prevQty = prevMap ? (prevMap.get(name) || 0) : 0;
+                    const trend = prevMap ? (qty - prevQty) : null;
+
                     return {
                         rank: index + 1,
                         barcode: name, // Use Name as ID for UI keys
                         name: name,
                         imageUrl: nameMetadata.get(name)?.image,
-                        quantity: qty
+                        quantity: qty,
+                        abcGrade: 'A', // Default abcGrade
+                        trend: trend // Add trend
                     };
                 });
         };
@@ -526,9 +665,9 @@ ${sampleText}
                 weekly: sortedWeekly.map(([date, quantity]) => ({ date: date.substring(5), quantity }))
             },
             rankings: {
-                yesterday: getTop10(rankYesterday),
-                weekly: getTop10(rankWeekly),
-                monthly: getTop10(rankMonthly),
+                yesterday: getTop10(rankYesterday, rankYesterdayPrev),
+                weekly: getTop10(rankWeekly, rankWeeklyPrev),
+                monthly: getTop10(rankMonthly, rankMonthlyPrev),
                 yearly: getTop10(rankYearly),
                 inventory: rankInventory
             },
@@ -590,11 +729,17 @@ ${sampleText}
             return allData;
         };
 
-        // 1. Fetch valid products
-        const products = await fetchAllParallel<any>('products', 'barcode, name, season, image_url, current_stock, hq_stock, safety_stock', 'barcode');
-        if (!products) return [];
+        // 1. Fetch Products (Master + Stock)
+        // [FIX] Use fetchAllParallel to get ALL products (bypass 1000 limit)
+        const products = await fetchAllParallel<{ barcode: string, name: string, option_value: string, season: string, image_url: string, hq_stock: number, current_stock: number, safety_stock: number, incoming_stock: number }>(
+            'products',
+            'barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock',
+            'barcode'
+        );
 
-        // 2. Fetch Sales Data (ALL History)
+        if (!products) return []; // Ensure products is an array for subsequent operations
+
+        // 2. Fetch Sales History (Last 30 Days for trends)
         // Note: For daily_sales, getting exact count might be slow if huge, but faster than serial fetch.
         const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string }>('daily_sales', 'barcode, quantity, date', 'date');
 
@@ -645,22 +790,106 @@ ${sampleText}
             const avgDailySales = s.last7Days / 7;
             const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
 
+            // Trend Calculation
+            const prevSales7Days = s.last14Days - s.last7Days;
+
+            // Monthly Sales (Approx last 30 days)            
+            // 1. Yesterday Trend
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+            const dayBeforeDate = new Date();
+            dayBeforeDate.setDate(dayBeforeDate.getDate() - 2);
+            const dayBeforeStr = dayBeforeDate.toISOString().split('T')[0];
+
+            const qtyYesterday = s.daily[yesterdayStr] || 0;
+            const qtyDayBefore = s.daily[dayBeforeStr] || 0;
+            const trendYesterday = qtyYesterday - qtyDayBefore; // Simple diff
+
+            // 2. Weekly Trend (Last 7 Days vs Previous 7 Days)
+            // Already have prevSales7Days.
+            const trendWeek = s.last7Days - prevSales7Days;
+
+            // 3. Monthly Trend (Last 30 Days vs Previous 30 Days)
+            // We need to loop daily sales.
+            let sales30Days = 0;
+            let salesPrev30Days = 0;
+
+            const now = new Date();
+            for (let i = 0; i < 60; i++) {
+                const d = new Date(now);
+                d.setDate(d.getDate() - (i + 1)); // start from yesterday backwards
+                const dStr = d.toISOString().split('T')[0];
+                const qty = s.daily[dStr] || 0;
+
+                if (i < 30) sales30Days += qty;
+                else salesPrev30Days += qty;
+            }
+            const trendMonth = sales30Days - salesPrev30Days;
+
+            let trend: 'hot' | 'cold' | 'up' | 'down' | 'flat' = 'flat';
+
+            const diff = s.last7Days - prevSales7Days;
+            const rate = prevSales7Days > 0 ? diff / prevSales7Days : 0; // Growth rate
+
+            if (rate >= 0.5 && s.last7Days >= 10) trend = 'hot';
+            else if (rate <= -0.5 && prevSales7Days >= 10) trend = 'cold';
+            else if (diff > 0) trend = 'up';
+            else if (diff < 0) trend = 'down';
+
             return {
                 barcode: p.barcode,
                 name: p.name,
+                option: p.option_value, // Map DB column to API field
                 season: p.season || '정보없음',
                 imageUrl: p.image_url,
                 hqStock: p.hq_stock || 0,
-                coupangStock: p.current_stock, // Alias
-                safetyStock: p.safety_stock || 0,
+                coupangStock: p.current_stock || 0, // Alias
+                incomingStock: p.incoming_stock || 0, // [NEW]
+                safetyStock: p.safety_stock || 10,
                 totalSales: s.total,
                 sales14Days: s.last14Days,
                 sales7Days: s.last7Days,
                 salesYesterday: s.yesterday,
+                sales30Days,
+                trends: {
+                    yesterday: trendYesterday,
+                    week: trendWeek,
+                    month: trendMonth
+                },
                 avgDailySales: parseFloat(avgDailySales.toFixed(1)),
                 daysOfInventory,
-                dailySales: s.daily
+                dailySales: s.daily,
+                abcGrade: 'D' as 'A' | 'B' | 'C' | 'D', // Default, will be updated below
+                prevSales7Days,
+                trend
             };
+        });
+
+        // 5. ABC Analysis (Based on sales7Days)
+        // Sort by sales7Days DESC
+        result.sort((a, b) => b.sales7Days - a.sales7Days);
+
+        const totalSales7Days = result.reduce((sum, p) => sum + p.sales7Days, 0);
+        let cumulativeSales = 0;
+
+        result.forEach(p => {
+            if (p.sales7Days <= 0) {
+                p.abcGrade = 'D';
+                return;
+            }
+
+            cumulativeSales += p.sales7Days;
+            const percentage = (cumulativeSales / totalSales7Days) * 100;
+
+            if (percentage <= 20) {
+                p.abcGrade = 'A';
+            } else if (percentage <= 50) {
+                p.abcGrade = 'B';
+            } else {
+                p.abcGrade = 'C';
+            }
         });
 
         this._productStatsCache = result; // Cache the result

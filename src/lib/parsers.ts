@@ -9,6 +9,7 @@ export interface ProductMaster {
     imageUrl?: string;
     // optionCode might be needed later, keeping it optional or removing if unused
     optionCode?: string;
+    option?: string; // New: Option Value from Column D
     hqStock?: number;
 }
 
@@ -19,12 +20,18 @@ export interface CoupangSalesRow {
     currentStock: number;
 }
 
+export interface IncomingStockRow {
+    barcode: string;
+    incomingQty: number;
+}
+
 // --- Parsers ---
 
 /**
  * Parses EasyAdmin Product Master File
  * Mapping:
  * - C: Name
+ * - D: Option (New)
  * - E: Season (default '정보없음')
  * - K: Barcode (Key)
  * - Q: Image URL
@@ -54,6 +61,7 @@ export const parseProductMaster = async (file: File): Promise<ProductMaster[]> =
                     return {
                         barcode: row['K'] ? String(row['K']).replace(/\s+/g, '') : '',
                         name: row['C'] || 'Unknown Product',
+                        option: row['D'] ? String(row['D']).trim() : '옵션없음', // Parse Column D
                         season: row['E'] ? String(row['E']).trim() : '정보없음',
                         imageUrl: row['Q'] || '',
                         hqStock: safeParseInt(row['U']),
@@ -105,39 +113,63 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
                     return isNaN(num) ? 0 : Math.round(num); // Force integer to fix DB error
                 };
 
-                const rawRows = jsonData.slice(1).map((row: any) => {
-                    let rawDate = row['A'];
-                    let formattedDate = '';
-
-                    // Date Parsing Logic (Strict YYYYMMDD or YYYY-MM-DD)
-                    // Removed Excel Serial Date support as it conflicts with 5-digit numbers (e.g., prices like 46220 -> July 2026)
-                    const strDate = String(rawDate).replace(/[^0-9/-]/g, '').trim();
-
-                    // 1. YYYYMMDD (8 digits)
-                    if (/^\d{8}$/.test(strDate)) {
-                        const year = parseInt(strDate.substring(0, 4));
-                        // Sanity check year to avoid garbage
-                        if (year >= 2020 && year <= 2030) {
-                            formattedDate = `${strDate.substring(0, 4)}-${strDate.substring(4, 6)}-${strDate.substring(6, 8)}`;
-                        }
-                    }
-                    // 2. YYYY-MM-DD or YYYY/MM/DD
-                    else if (strDate.includes('-') || strDate.includes('/')) {
-                        const tryDate = new Date(strDate);
-                        if (!isNaN(tryDate.getTime()) && tryDate.getFullYear() >= 2020) {
-                            formattedDate = tryDate.toISOString().split('T')[0];
-                        }
+                const salesRows: CoupangSalesRow[] = jsonData.slice(1).map((row: any) => {
+                    // A: Date (e.g. 20260101)
+                    let dateStr = row['A'] ? String(row['A']).trim() : '';
+                    if (dateStr.length === 8) {
+                        // YYYYMMDD -> YYYY-MM-DD
+                        dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
                     }
 
-                    return {
-                        date: formattedDate, // Can be empty string if failed
-                        barcode: row['I'] ? String(row['I']).replace(/\s+/g, '') : '',
-                        salesQty: safeParseInt(row['M']),
-                        currentStock: safeParseInt(row['N']),
-                    };
+                    // I: Barcode
+                    const barcode = row['I'] ? String(row['I']).replace(/\s+/g, '') : '';
+
+                    // M: Sales Qty
+                    const salesQty = row['M'] ? Number(row['M']) : 0;
+
+                    // N: Current Stock
+                    const currentStock = row['N'] ? Number(row['N']) : 0;
+
+                    return { date: dateStr, barcode, salesQty, currentStock };
                 }).filter(r => r.barcode && r.date);
 
-                resolve(rawRows);
+                resolve(salesRows);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsArrayBuffer(file);
+    });
+};
+
+/**
+ * Parses Incoming Stock File (Supply In Progress)
+ * Mapping:
+ * - F: SKU Barcode (Key)
+ * - K: Confirmed Quantity (Value)
+ */
+export const parseIncomingStock = async (file: File): Promise<IncomingStockRow[]> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                // Header 'A' means 0-indexed
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 'A' });
+
+                const incomingRows: IncomingStockRow[] = jsonData.slice(1).map((row: any) => {
+                    return {
+                        barcode: row['F'] ? String(row['F']).replace(/\s+/g, '') : '',
+                        incomingQty: row['K'] ? Number(row['K']) : 0
+                    };
+                }).filter(r => r.barcode && r.incomingQty > 0);
+
+                resolve(incomingRows);
             } catch (error) {
                 reject(error);
             }
