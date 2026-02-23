@@ -104,14 +104,6 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
                     return;
                 }
 
-                // Helper for safe number parsing (removes commas, handles empty strings)
-                const safeParseInt = (val: any) => {
-                    if (val === undefined || val === null) return 0;
-                    const str = String(val).replace(/,/g, '').trim();
-                    if (str === '') return 0;
-                    const num = Number(str);
-                    return isNaN(num) ? 0 : Math.round(num); // Force integer to fix DB error
-                };
 
                 const salesRows: CoupangSalesRow[] = jsonData.slice(1).map((row: any) => {
                     // A: Date (e.g. 20260101)
