@@ -56,10 +56,10 @@ export default function Insights() {
     const deadStockGroups = useMemo(() => {
         const groups = new Map<string, DeadStockGroup>();
 
-        // Criteria for Dead Stock: C or D grade (low sales) but has stock. OR 0 sales in 30 days.
+        // Criteria for Dead Stock: C or D grade (low sales) but has Coupang stock. OR 0 sales in 30 days.
         const deadItems = products.filter(p => {
-            const totalStock = (p.hqStock || 0) + p.coupangStock;
-            if (totalStock <= 0) return false; // Ignore if no stock
+            const currentCoupangStock = p.coupangStock;
+            if (currentCoupangStock <= 0) return false; // Ignore if no Coupang stock
             if (p.abcGrade === 'D' || p.abcGrade === 'C' || p.sales30Days <= 3) return true;
             return false;
         });
@@ -77,7 +77,7 @@ export default function Insights() {
                 });
             }
             const group = groups.get(p.name)!;
-            group.totalStock += (p.hqStock || 0) + p.coupangStock;
+            group.totalStock += p.coupangStock;
             group.sales30Days += (p.sales30Days || 0);
             group.sales7Days += (p.sales7Days || 0);
             group.children.push(p);
@@ -167,7 +167,7 @@ export default function Insights() {
                             <tr>
                                 <th className="px-5 py-3 w-8"></th>
                                 <th className="px-5 py-3 font-medium">상품명 / 시즌</th>
-                                <th className="px-5 py-3 font-medium text-right">총 재고 (본사+쿠팡)</th>
+                                <th className="px-5 py-3 font-medium text-right">쿠팡 재고</th>
                                 <th className="px-5 py-3 font-medium text-right">최근 30일 판매량</th>
                                 <th className="px-5 py-3 font-medium text-center">추천 액션</th>
                             </tr>
@@ -245,10 +245,7 @@ export default function Insights() {
                                                 </td>
                                                 <td className="px-5 py-3 text-right">
                                                     <div className="text-sm font-mono text-gray-600">
-                                                        {(child.hqStock || 0) + child.coupangStock}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-400">
-                                                        (본사: {child.hqStock || 0}, 쿠팡: {child.coupangStock})
+                                                        {child.coupangStock.toLocaleString()}
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-sm text-gray-500 font-mono">
@@ -256,8 +253,8 @@ export default function Insights() {
                                                 </td>
                                                 <td className="px-5 py-3 text-center">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${child.abcGrade === 'D' ? 'bg-red-50 text-red-600' :
-                                                            child.abcGrade === 'C' ? 'bg-orange-50 text-orange-600' :
-                                                                'bg-gray-100 text-gray-500'
+                                                        child.abcGrade === 'C' ? 'bg-orange-50 text-orange-600' :
+                                                            'bg-gray-100 text-gray-500'
                                                         }`}>
                                                         {child.abcGrade}등급
                                                     </span>
