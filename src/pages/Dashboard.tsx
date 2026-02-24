@@ -3,11 +3,13 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, Package } from 'lucide-react';
+import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, Package, MessageSquareWarning } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
+    const [urgentItems, setUrgentItems] = useState<any[]>([]);
+    const [sendingAlert, setSendingAlert] = useState(false);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
         loadData();
@@ -21,6 +23,11 @@ export default function Dashboard() {
             console.log("Dashboard Data:", result);
             setData(result);
 
+            // Get urgent items for the alert banner
+            const stats = await api.getProductStats();
+            // A grade, inventory <= 5 days, and must have some stock
+            const urgent = stats.filter(p => p.coupangStock > 0 && p.daysOfInventory !== null && p.daysOfInventory <= 5 && p.abcGrade === 'A');
+            setUrgentItems(urgent.slice(0, 10)); // Top 10 to not overflow text
 
         } catch (error) {
             console.error("Failed to load dashboard data", error);
@@ -48,6 +55,19 @@ export default function Dashboard() {
     }
 
     const { metrics, trends, rankings, anchorDate } = data;
+
+    const handleSendAlert = async () => {
+        if (urgentItems.length === 0) return;
+        setSendingAlert(true);
+        try {
+            await api.sendGoogleChatAlert(urgentItems);
+            alert("✅ 구글 챗으로 품절 임박 알림을 전송했습니다.");
+        } catch (error: any) {
+            alert(`전송 실패: ${error.message}`);
+        } finally {
+            setSendingAlert(false);
+        }
+    };
 
     const StatCard = ({ title, value, sub, icon: Icon, colorClass }: any) => (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
@@ -123,6 +143,31 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 pb-10 relative">
+            {/* Urgent Notification Banner */}
+            {urgentItems.length > 0 && (
+                <div className="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between">
+                    <div className="flex items-start md:items-center space-x-3 mb-4 md:mb-0">
+                        <div className="p-2 bg-red-100 text-red-600 rounded-full flex-shrink-0 animate-pulse">
+                            <MessageSquareWarning size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-red-800 font-bold text-lg">🚨 긴급 발주 및 이관 요망</h3>
+                            <p className="text-red-600 text-sm">
+                                현재 <b>A 등급</b> 핵심 상품 중 소진 예상일이 <b>5일 이하</b>인 품절 위기 상품이 <b>{urgentItems.length}개</b> 있습니다.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleSendAlert}
+                        disabled={sendingAlert}
+                        className={`flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors ${sendingAlert ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {sendingAlert ? <Loader2 size={16} className="animate-spin" /> : <MessageSquareWarning size={16} />}
+                        <span>담당자 챗 알림 보내기</span>
+                    </button>
+                </div>
+            )}
+
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard

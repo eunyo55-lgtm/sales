@@ -1006,5 +1006,39 @@ ${sampleText}
         if (updateError) throw updateError;
 
         return true;
+    },
+
+    /**
+     * Send Out of Stock alert to Google Chat
+     */
+    async sendGoogleChatAlert(items: any[]) {
+        const webhookUrl = import.meta.env.VITE_GOOGLE_CHAT_WEBHOOK_URL;
+        if (!webhookUrl) throw new Error("Google Chat Webhook URL이 .env에 설정되지 않았습니다.");
+
+        if (items.length === 0) return true;
+
+        const dateStr = new Date().toLocaleDateString('ko-KR');
+
+        const header = `🚨 *[긴급발주 요망]* ${dateStr} 기준 품절 임박 상품 (${items.length}개)\n---\n`;
+        const body = items.map((item, index) =>
+            `${index + 1}. *${item.name}*\n` +
+            `   - 재고: ${item.coupangStock}개 (소진 예상: 약 ${item.daysOfInventory}일)\n` +
+            `   - 주간매출: ${item.sales7Days}건 (등급: ${item.abcGrade})\n`
+        ).join('\n');
+
+        const message = {
+            text: header + body + `\n---\n※ 빠른 시일 내에 물류센터(FC)로 재고 이관 혹은 제조/매입 발주를 권장합니다.`
+        };
+
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(message)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Google Chat 알림 전송 실패: ${response.statusText}`);
+        }
+        return true;
     }
 };
