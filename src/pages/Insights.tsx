@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api, type ProductStats } from '../lib/api';
-import { Lightbulb, AlertCircle, Search, ChevronRight, ChevronDown, Megaphone, Tag } from 'lucide-react';
+import { Lightbulb, AlertCircle, Search, ChevronRight, ChevronDown, ArrowUpDown } from 'lucide-react';
 
 interface DeadStockGroup {
     name: string;
@@ -18,6 +18,15 @@ export default function Insights() {
     const [search, setSearch] = useState('');
     const [selectedSeason, setSelectedSeason] = useState<string>('ALL');
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'desc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+            direction = 'asc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     useEffect(() => {
         loadData();
@@ -89,9 +98,17 @@ export default function Insights() {
                 if (search && !g.name.toLowerCase().includes(search.toLowerCase())) return false;
                 return true;
             })
-            // Sort by highest stock first
-            .sort((a, b) => b.totalStock - a.totalStock);
-    }, [products, selectedSeason, search]);
+            .sort((a, b) => {
+                if (sortConfig) {
+                    const dir = sortConfig.direction === 'asc' ? 1 : -1;
+                    if (sortConfig.key === 'name') return dir * a.name.localeCompare(b.name);
+                    if (sortConfig.key === 'totalStock') return dir * (a.totalStock - b.totalStock);
+                    if (sortConfig.key === 'sales30Days') return dir * (a.sales30Days - b.sales30Days);
+                }
+                // default sort
+                return b.totalStock - a.totalStock;
+            });
+    }, [products, selectedSeason, search, sortConfig]);
 
     if (loading) return <div className="flex justify-center items-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>;
 
@@ -166,10 +183,9 @@ export default function Insights() {
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
                             <tr>
                                 <th className="px-5 py-3 w-8"></th>
-                                <th className="px-5 py-3 font-medium">상품명 / 시즌</th>
-                                <th className="px-5 py-3 font-medium text-right">쿠팡 재고</th>
-                                <th className="px-5 py-3 font-medium text-right">최근 30일 판매량</th>
-                                <th className="px-5 py-3 font-medium text-center">추천 액션</th>
+                                <th className="px-5 py-3 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>상품명 / 시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('totalStock')}>쿠팡 재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sales30Days')}>최근 30일 판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -214,22 +230,6 @@ export default function Insights() {
                                                     <div className="text-[10px] text-red-500 mt-1">※ 최근 7일 판매 0건</div>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex justify-center space-x-2">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); alert(`${group.name}에 대한 기획전 제안서를 준비합니다. (기능 준비중)`); }}
-                                                        className="flex items-center px-3 py-1.5 bg-pink-50 text-pink-600 border border-pink-200 hover:bg-pink-100 hover:border-pink-300 rounded-md transition-colors text-xs font-medium"
-                                                    >
-                                                        <Tag size={13} className="mr-1" /> 행사 제안
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); alert(`${group.name}에 대한 광고 예산을 편성합니다. (기능 준비중)`); }}
-                                                        className="flex items-center px-3 py-1.5 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 rounded-md transition-colors text-xs font-medium"
-                                                    >
-                                                        <Megaphone size={13} className="mr-1" /> 광고 전개
-                                                    </button>
-                                                </div>
-                                            </td>
                                         </tr>
 
                                         {/* Child Options rows */}
@@ -250,14 +250,6 @@ export default function Insights() {
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-sm text-gray-500 font-mono">
                                                     {child.sales30Days || 0}
-                                                </td>
-                                                <td className="px-5 py-3 text-center">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${child.abcGrade === 'D' ? 'bg-red-50 text-red-600' :
-                                                        child.abcGrade === 'C' ? 'bg-orange-50 text-orange-600' :
-                                                            'bg-gray-100 text-gray-500'
-                                                        }`}>
-                                                        {child.abcGrade}등급
-                                                    </span>
                                                 </td>
                                             </tr>
                                         ))}
