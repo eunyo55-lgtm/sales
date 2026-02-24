@@ -236,17 +236,17 @@ export default function ProductStatus() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [products]);
 
-  const top10SalesTrendData = useMemo(() => {
-    const top10 = [...groupedProducts].sort((a, b) => b.sales7Days - a.sales7Days).slice(0, 5); // Show top 5 for cleaner line chart
+  const top10SalesTrendDataList = useMemo(() => {
+    const top10 = [...groupedProducts].sort((a, b) => b.sales7Days - a.sales7Days).slice(0, 10);
     const recentDates = uniqueDates.slice(-14);
-    const data = recentDates.map(date => {
-      const row: any = { date: date.substring(5) }; // MM-DD
-      top10.forEach(item => {
-        row[item.name] = item.dailySales[date] || 0;
-      });
-      return row;
+
+    return top10.map(item => {
+      const data = recentDates.map(date => ({
+        date: date.substring(5), // MM-DD
+        sales: item.dailySales[date] || 0
+      }));
+      return { name: item.name, data };
     });
-    return { data, lines: top10.map(i => i.name) };
   }, [groupedProducts, uniqueDates]);
 
   const top10StockData = useMemo(() => {
@@ -280,11 +280,12 @@ export default function ProductStatus() {
           <h3 className="font-bold text-gray-800 mb-2">시즌별 최근 7일 판매량</h3>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">
                   {seasonSales.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(val: any) => val.toLocaleString() + '개'} />
+                <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value, entry: any) => `${value} (${(entry.payload.percent * 100).toFixed(0)}%)`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -310,20 +311,21 @@ export default function ProductStatus() {
       {/* Top 10 Trend Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-none">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[300px] flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2">상위 5개 상품 판매 추이 (최근 14일)</h3>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={top10SalesTrendData.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip labelStyle={{ color: 'black' }} itemStyle={{ fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {top10SalesTrendData.lines.map((line, idx) => (
-                  <Line key={line} type="monotone" dataKey={line} stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={{ r: 2 }} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+          <h3 className="font-bold text-gray-800 mb-2">상위 10개 상품 판매 추이 (최근 14일)</h3>
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
+            {top10SalesTrendDataList.map((item, idx) => (
+              <div key={item.name} className="h-[120px] bg-gray-50 p-2 rounded-lg border border-gray-100 flex flex-col">
+                <span className="text-xs font-bold text-gray-700 truncate px-2">{idx + 1}. {item.name}</span>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={item.data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="date" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
+                    <Tooltip labelStyle={{ color: 'black', fontSize: 10 }} itemStyle={{ fontSize: 11 }} />
+                    <Line type="monotone" dataKey="sales" name="판매" stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={{ r: 1 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
           </div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[300px] flex flex-col">
