@@ -1019,12 +1019,28 @@ ${sampleText}
 
         const dateStr = new Date().toLocaleDateString('ko-KR');
 
-        const header = `🚨 *[긴급발주 요망]* ${dateStr} 기준 품절 임박 상품 (${items.length}개)\n---\n`;
-        const body = items.map((item, index) =>
-            `${index + 1}. *${item.name}*\n` +
-            `   - 재고: ${item.coupangStock}개 (소진 예상: 약 ${item.daysOfInventory}일)\n` +
-            `   - 주간매출: ${item.sales7Days}건 (등급: ${item.abcGrade})\n`
-        ).join('\n');
+        // Group items by name
+        const groups = new Map<string, any[]>();
+        items.forEach(item => {
+            if (!groups.has(item.name)) groups.set(item.name, []);
+            groups.get(item.name)!.push(item);
+        });
+
+        const header = `🚨 *[긴급발주 요망]* ${dateStr} 기준 품절 임박 상품 (${groups.size}종)\n---\n`;
+
+        let body = '';
+        let index = 1;
+
+        for (const [name, groupItems] of groups.entries()) {
+            const grade = groupItems[0].abcGrade;
+            // List options
+            const optionsText = groupItems.map(i =>
+                `   - ${i.option || i.season || i.barcode}: 쿠팡재고 ${i.coupangStock}개 (소진예상 약 ${i.daysOfInventory}일)`
+            ).join('\n');
+
+            body += `${index}. *${name}* (등급: ${grade})\n${optionsText}\n`;
+            index++;
+        }
 
         const message = {
             text: header + body + `\n---\n※ 빠른 시일 내에 물류센터(FC)로 재고 이관 혹은 제조/매입 발주를 권장합니다.`
