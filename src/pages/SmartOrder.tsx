@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api, type ProductStats } from '../lib/api';
-import { Truck, AlertTriangle, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Truck, AlertTriangle, Search, ChevronRight, ChevronDown, MessageSquareWarning, Loader2 } from 'lucide-react';
 
 interface RecommendedProduct extends ProductStats {
     requiredStock: number;
@@ -37,6 +37,7 @@ export default function SmartOrder() {
     // UI State
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [sortConfig, setSortConfig] = useState<{ key: keyof GroupedSmartOrder, direction: 'asc' | 'desc' } | null>(null);
+    const [sendingAlert, setSendingAlert] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -78,6 +79,19 @@ export default function SmartOrder() {
             direction = 'asc';
         }
         setSortConfig({ key, direction });
+    };
+
+    const handleSendAlert = async (urgentItems: any[]) => {
+        if (urgentItems.length === 0) return;
+        setSendingAlert(true);
+        try {
+            await api.sendGoogleChatAlert(urgentItems);
+            alert("✅ 구글 챗으로 품절 임박 알림을 전송했습니다.");
+        } catch (error: any) {
+            alert(`전송 실패: ${error.message}`);
+        } finally {
+            setSendingAlert(false);
+        }
     };
 
     const groupedOrders = useMemo(() => {
@@ -173,6 +187,10 @@ export default function SmartOrder() {
 
     }, [products, leadTime, safetyBuffer, selectedGrade, search, sortConfig]);
 
+    const urgentItems = useMemo(() => {
+        return products.filter(p => p.coupangStock > 0 && p.daysOfInventory !== null && p.daysOfInventory <= 5 && p.abcGrade === 'A').slice(0, 10);
+    }, [products]);
+
     if (loading) return <div className="flex justify-center items-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
 
     if (error) return (
@@ -211,6 +229,31 @@ export default function SmartOrder() {
 
     return (
         <div className="space-y-6 h-full flex flex-col">
+            {/* Urgent Notification Banner */}
+            {urgentItems.length > 0 && (
+                <div className="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between flex-none">
+                    <div className="flex items-start md:items-center space-x-3 mb-4 md:mb-0">
+                        <div className="p-2 bg-red-100 text-red-600 rounded-full flex-shrink-0 animate-pulse">
+                            <MessageSquareWarning size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-red-800 font-bold text-lg">🚨 긴급 발주 및 이관 요망</h3>
+                            <p className="text-red-600 text-sm">
+                                현재 <b>A 등급</b> 핵심 상품 중 소진 예상일이 <b>5일 이하</b>인 품절 위기 상품이 <b>{urgentItems.length}개</b> 있습니다.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => handleSendAlert(urgentItems)}
+                        disabled={sendingAlert}
+                        className={`flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors ${sendingAlert ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {sendingAlert ? <Loader2 size={16} className="animate-spin" /> : <MessageSquareWarning size={16} />}
+                        <span>담당자 챗 알림 보내기</span>
+                    </button>
+                </div>
+            )}
+
             {/* Control Panel */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex-none">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -447,9 +490,11 @@ export default function SmartOrder() {
                                                     </td>
                                                     <td className="px-6 py-3 text-right text-sm text-gray-500 font-mono">
                                                         {child.coupangStock.toLocaleString()}
-                                                        {child.incomingStock > 0 && (
-                                                            <span className="text-green-600 text-xs ml-1">(+{child.incomingStock})</span>
-                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-right text-sm text-gray-500 font-mono">
+                                                        {child.incomingStock > 0 ? (
+                                                            <span className="text-green-600">(+{child.incomingStock})</span>
+                                                        ) : '-'}
                                                     </td>
                                                     <td className="px-6 py-3 text-right text-sm text-gray-500 font-mono">
                                                         {child.avgDailySales.toFixed(1)}
