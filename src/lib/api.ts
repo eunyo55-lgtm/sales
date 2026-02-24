@@ -9,9 +9,13 @@ export interface ProductStats {
     imageUrl?: string;
     hqStock: number;       // From Product Master (Col U)
     coupangStock: number;  // From Sales File (Col N, latest)
+    fcStock: number;       // [NEW]
+    vfStock: number;       // [NEW]
     incomingStock: number; // [NEW] From Supply In Progress File
     safetyStock: number;   // From Product Master
     totalSales: number;
+    fcSales: number;       // [NEW]
+    vfSales: number;       // [NEW]
     sales14Days: number;   // Last 14 days
     sales7Days: number;    // Last 7 days
     salesYesterday: number;// Latest date sales
@@ -99,21 +103,30 @@ export const api = {
 
         // ... (rest of implementation remains same until next function)
         // Deduplicate sales data
-        const aggregatedSalesMap = new Map<string, CoupangSalesRow>();
+        // Deduplicate sales data
+        // We now need to track fcQty and vfQty separately
+        const aggregatedSalesMap = new Map<string, CoupangSalesRow & { fcQty: number, vfQty: number }>();
         salesData.forEach(row => {
             const key = `${row.date}_${row.barcode}`;
             const existing = aggregatedSalesMap.get(key);
+
+            const isFC = row.center === 'FC';
+            const isVF = row.center === 'VF164';
+
             if (existing) {
                 existing.salesQty += row.salesQty;
-                // [FIX] Duplicate line removed.
-                // [FIX] Do NOT sum stock. Use Max or Latest > 0.
+                if (isFC) existing.fcQty += row.salesQty;
+                if (isVF) existing.vfQty += row.salesQty;
+
                 if (row.currentStock > 0) {
                     existing.currentStock = Math.max(existing.currentStock, row.currentStock);
-                } else {
-                    // Keep existing non-zero
                 }
             } else {
-                aggregatedSalesMap.set(key, { ...row });
+                aggregatedSalesMap.set(key, {
+                    ...row,
+                    fcQty: isFC ? row.salesQty : 0,
+                    vfQty: isVF ? row.salesQty : 0
+                });
             }
         });
 
@@ -147,15 +160,32 @@ export const api = {
 
         for (let i = 0; i < total; i += CHUNK_SIZE) {
             const chunk = uniqueSales.slice(i, i + CHUNK_SIZE);
+            const chunkDates = Array.from(new Set(chunk.map(c => c.date)));
+            const chunkBarcodes = Array.from(new Set(chunk.map(c => c.barcode)));
+
+            // Pre-fetch existing daily_sales to prevent wiping FC/VF quantities when uploading one-by-one
+            const { data: existingSales } = await supabase
+                .from('daily_sales')
+                .select('date, barcode, fc_quantity, vf_quantity')
+                .in('date', chunkDates)
+                .in('barcode', chunkBarcodes);
+
+            const existingSalesMap = new Map();
+            existingSales?.forEach(s => existingSalesMap.set(`${s.date}_${s.barcode}`, s));
 
             const { error } = await supabase
                 .from('daily_sales')
                 .upsert(
-                    chunk.map(s => ({
-                        date: s.date,
-                        barcode: s.barcode,
-                        quantity: s.salesQty,
-                    })),
+                    chunk.map(s => {
+                        const existing = existingSalesMap.get(`${s.date}_${s.barcode}`);
+                        return {
+                            date: s.date,
+                            barcode: s.barcode,
+                            quantity: s.salesQty,
+                            fc_quantity: s.fcQty > 0 || !existing ? s.fcQty : existing.fc_quantity,
+                            vf_quantity: s.vfQty > 0 || !existing ? s.vfQty : existing.vf_quantity,
+                        };
+                    }),
                     { onConflict: 'date, barcode' }
                 );
 
@@ -166,44 +196,62 @@ export const api = {
         }
 
         // Update Product Stock Logic (Coupang Stock)
-        // Revised Strategy: Find the LATEST DATE in the uploaded file.
-        // Only use stock data from that date (Global Max Date).
+        // A열 가장 최신 날짜 기준 N열의 현재재고 값을 SUM으로 가져옵니다 (FC/VF164 구분).
 
-        // Revised Strategy: Find the LATEST DATE PER BARCODE.
-        // Stock is recorded per row (date). Use the latest available stock for each product.
-        const stockMap = new Map<string, { date: string, stock: number }>();
-
-        uniqueSales.forEach(row => {
-            const existing = stockMap.get(row.barcode);
-
-            // Logic:
-            // 1. If no entry, set (even if 0, but preferably > 0 if available later)
-            // 2. If new date > existing date, take new date's stock (even if 0? better check >0)
-            // 3. If same date, take Max (to avoid 0 overriding valid number)
-
-            if (!existing) {
-                stockMap.set(row.barcode, { date: row.date, stock: row.currentStock });
-            } else {
-                if (row.date > existing.date) {
-                    // New date. Overwrite ONLY if new stock > 0.
-                    // If new stock is 0, we suspect it's a missing data point in the transaction log,
-                    // so we keep the old valid stock.
-                    if (row.currentStock > 0) {
-                        stockMap.set(row.barcode, { date: row.date, stock: row.currentStock });
-                    }
-                } else if (row.date === existing.date) {
-                    // Same date. Take Max.
-                    const newStock = Math.max(existing.stock, row.currentStock);
-                    stockMap.set(row.barcode, { date: row.date, stock: newStock });
-                }
+        // 1. Find the latest date overall per barcode per center
+        const latestDateMap = new Map<string, { fcDate: string, vfDate: string }>();
+        salesData.forEach(row => {
+            const current = latestDateMap.get(row.barcode) || { fcDate: '', vfDate: '' };
+            if (row.center === 'FC') {
+                if (row.date > current.fcDate) current.fcDate = row.date;
+            } else if (row.center === 'VF164') {
+                if (row.date > current.vfDate) current.vfDate = row.date;
             }
+            latestDateMap.set(row.barcode, current);
         });
 
-        const stockUpdates = Array.from(stockMap.entries()).map(([barcode, data]) => ({
-            barcode,
-            current_stock: data.stock,
-            updated_at: new Date().toISOString()
-        }));
+        // 2. Sum the stock for the latest date per center
+        const stockMap = new Map<string, { fcStock: number, vfStock: number, hasFC: boolean, hasVF: boolean }>();
+        salesData.forEach(row => {
+            const latest = latestDateMap.get(row.barcode)!;
+            const existing = stockMap.get(row.barcode) || { fcStock: 0, vfStock: 0, hasFC: false, hasVF: false };
+
+            if (row.center === 'FC' && row.date === latest.fcDate) {
+                existing.fcStock += row.currentStock;
+                existing.hasFC = true;
+            } else if (row.center === 'VF164' && row.date === latest.vfDate) {
+                existing.vfStock += row.currentStock;
+                existing.hasVF = true;
+            }
+            stockMap.set(row.barcode, existing);
+        });
+
+        // Pre-fetch existing products to avoid overwriting VF/FC stock when missing from the uploaded file
+        const existingProductsMap = new Map<string, { fc_stock: number, vf_stock: number }>();
+        const FETCH_BATCH_SIZE = 500;
+        const updatedBarcodes = Array.from(stockMap.keys());
+        for (let i = 0; i < updatedBarcodes.length; i += FETCH_BATCH_SIZE) {
+            const chunk = updatedBarcodes.slice(i, i + FETCH_BATCH_SIZE);
+            const { data } = await supabase.from('products').select('barcode, fc_stock, vf_stock').in('barcode', chunk);
+            if (data) {
+                data.forEach(p => existingProductsMap.set(p.barcode, p));
+            }
+        }
+
+        const stockUpdates = Array.from(stockMap.entries()).map(([barcode, data]) => {
+            const existingProd = existingProductsMap.get(barcode);
+
+            const fcTotalStock = data.hasFC ? data.fcStock : (existingProd?.fc_stock || 0);
+            const vfTotalStock = data.hasVF ? data.vfStock : (existingProd?.vf_stock || 0);
+
+            return {
+                barcode,
+                current_stock: fcTotalStock + vfTotalStock,
+                fc_stock: fcTotalStock,
+                vf_stock: vfTotalStock,
+                updated_at: new Date().toISOString()
+            };
+        });
 
         // Sample Check for Debugging
         let sampleText = "데이터 없음";
@@ -211,21 +259,22 @@ export const api = {
 
         if (stockUpdates.length > 0) {
             const firstItems = stockUpdates.slice(0, 5);
-            sampleText = firstItems.map(s => `[${s.barcode}] 재고: ${s.current_stock}`).join('\n');
+            sampleText = firstItems.map(s => `[${s.barcode}] 총재고: ${s.current_stock} (FC:${s.fc_stock}, VF:${s.vf_stock})`).join('\n');
             nonZeroCount = stockUpdates.filter(s => s.current_stock > 0).length;
         }
 
         // DEBUG ALERT to confirm logic
         if (typeof window !== 'undefined') {
-            const msg = `[데이터 분석 결과]
-- 로드된 행: ${uniqueSales.length}개
-- 재고 업데이트 대상: ${stockUpdates.length}개 품목 (각 상품별 최신 날짜 기준)
-- 유효 재고(>0) 발견: ${nonZeroCount}개 품목
+            const msg = `[데이터 처리 완료 안내]
+- 판매 데이터 ${uniqueSales.length}행 파싱 완료
+- 업데이트 대상 품목수: ${stockUpdates.length}개 
+- 재고 보유(>0) 상태: ${nonZeroCount}개 품목
 
-[샘플 데이터 (N열 확인)]
+(참고: 쿠팡 엑셀 상의 날짜별 합계 재고를 기준으로 가져옵니다. 엑셀의 재고가 0인 상태가 최근 날짜라면 앱에서도 똑같이 0으로 반영됩니다.)
+
+[샘플 데이터 확인]
 ${sampleText}
 
-* 중요: 유효 재고가 0개라면, 엑셀의 N열(현재고)이 비어있거나 0인 상태입니다.
 * 확인을 누르면 저장을 시작합니다.`;
             alert(msg);
         }
@@ -248,6 +297,8 @@ ${sampleText}
                         .from('products')
                         .update({
                             current_stock: item.current_stock,
+                            fc_stock: item.fc_stock,
+                            vf_stock: item.vf_stock,
                             updated_at: item.updated_at
                         })
                         .eq('barcode', item.barcode)
@@ -422,7 +473,7 @@ ${sampleText}
         };
 
         // 2. Fetch Sales Data (Parallel)
-        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string }>('daily_sales', 'date, quantity, barcode', 'date');
+        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string, fc_quantity: number, vf_quantity: number }>('daily_sales', 'date, quantity, barcode, fc_quantity, vf_quantity', 'date');
 
         // 3. Fetch Product Metadata (for Rankings)
         // 3. Fetch Product Metadata (for Rankings) - PAGINATED
@@ -432,7 +483,11 @@ ${sampleText}
 
         // 4. Aggregation
         let statYesterday = 0; // Latest Date Sales
+        let fcYesterday = 0;
+        let vfYesterday = 0;
         let statWeekly = 0;
+        let fcWeekly = 0;
+        let vfWeekly = 0;
         let statMonthly = 0;
         let statYearly = 0;
 
@@ -474,6 +529,8 @@ ${sampleText}
             const prevDayStr = shiftDate(anchorDateStr, -1);
             if (date === anchorDateStr) {
                 statYesterday += qty;
+                fcYesterday += (s.fc_quantity || 0);
+                vfYesterday += (s.vf_quantity || 0);
                 rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + qty);
             } else if (date === prevDayStr) {
                 rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + qty);
@@ -486,6 +543,8 @@ ${sampleText}
 
             if (date >= startOfWeekStr) {
                 statWeekly += qty;
+                fcWeekly += (s.fc_quantity || 0);
+                vfWeekly += (s.vf_quantity || 0);
                 rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + qty);
             } else if (date >= startOfPrevWeekStr && date < startOfWeekStr) {
                 rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + qty);
@@ -656,7 +715,11 @@ ${sampleText}
             anchorDate: anchorDateStr,
             metrics: {
                 yesterday: statYesterday,
+                fcYesterday: fcYesterday,
+                vfYesterday: vfYesterday,
                 weekly: statWeekly,
+                fcWeekly: fcWeekly,
+                vfWeekly: vfWeekly,
                 monthly: statMonthly,
                 yearly: statYearly
             },
@@ -731,9 +794,9 @@ ${sampleText}
 
         // 1. Fetch Products (Master + Stock)
         // [FIX] Use fetchAllParallel to get ALL products (bypass 1000 limit)
-        const products = await fetchAllParallel<{ barcode: string, name: string, option_value: string, season: string, image_url: string, hq_stock: number, current_stock: number, safety_stock: number, incoming_stock: number }>(
+        const products = await fetchAllParallel<{ barcode: string, name: string, option_value: string, season: string, image_url: string, hq_stock: number, current_stock: number, safety_stock: number, incoming_stock: number, fc_stock: number, vf_stock: number }>(
             'products',
-            'barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock',
+            'barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock, fc_stock, vf_stock',
             'barcode'
         );
 
@@ -741,11 +804,11 @@ ${sampleText}
 
         // 2. Fetch Sales History (Last 30 Days for trends)
         // Note: For daily_sales, getting exact count might be slow if huge, but faster than serial fetch.
-        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string }>('daily_sales', 'barcode, quantity, date', 'date');
+        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string, fc_quantity: number, vf_quantity: number }>('daily_sales', 'barcode, quantity, date, fc_quantity, vf_quantity', 'date');
 
         // ... existing aggregation logic ...
         // 3. Aggregate Sales (Anchor to Latest Date)
-        const salesMap = new Map<string, { total: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number> }>();
+        const salesMap = new Map<string, { total: number, fcTotal: number, vfTotal: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number> }>();
 
         // Find latest date from sales data itself to be accurate without extra query if possible?
         let maxDateStr = '';
@@ -770,8 +833,10 @@ ${sampleText}
         const date14DaysAgo = toLocalISO(d14);
 
         sales?.forEach(s => {
-            const entry = salesMap.get(s.barcode) || { total: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
+            const entry = salesMap.get(s.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
             entry.total += s.quantity;
+            entry.fcTotal += (s.fc_quantity || 0);
+            entry.vfTotal += (s.vf_quantity || 0);
 
             // Ranges
             if (s.date >= date14DaysAgo) entry.last14Days += s.quantity;
@@ -786,7 +851,7 @@ ${sampleText}
 
         // 4. Merge
         const result = products.map(p => {
-            const s = salesMap.get(p.barcode) || { total: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
+            const s = salesMap.get(p.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
             const avgDailySales = s.last7Days / 7;
             const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
 
@@ -846,9 +911,13 @@ ${sampleText}
                 imageUrl: p.image_url,
                 hqStock: p.hq_stock || 0,
                 coupangStock: p.current_stock || 0, // Alias
+                fcStock: p.fc_stock || 0, // [NEW]
+                vfStock: p.vf_stock || 0, // [NEW]
                 incomingStock: p.incoming_stock || 0, // [NEW]
                 safetyStock: p.safety_stock || 10,
                 totalSales: s.total,
+                fcSales: s.fcTotal, // [NEW]
+                vfSales: s.vfTotal, // [NEW]
                 sales14Days: s.last14Days,
                 sales7Days: s.last7Days,
                 salesYesterday: s.yesterday,
@@ -914,7 +983,7 @@ ${sampleText}
         // 2. Reset Stock to 0
         const { error: updateError } = await supabase
             .from('products')
-            .update({ current_stock: 0, hq_stock: 0 })
+            .update({ current_stock: 0, hq_stock: 0, fc_stock: 0, vf_stock: 0 })
             .neq('barcode', 'RESET_ALL');
 
         if (updateError) throw updateError;

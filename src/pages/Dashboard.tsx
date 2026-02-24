@@ -128,14 +128,14 @@ export default function Dashboard() {
                 <StatCard
                     title="최신 일자 판매량"
                     value={metrics.yesterday}
-                    sub={anchorDate ? `${anchorDate} 기준` : "데이터 없음"}
+                    sub={anchorDate ? `${anchorDate} 기준 (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
                     icon={TrendingUp}
                     colorClass="bg-blue-50 text-blue-600"
                 />
                 <StatCard
                     title="주간 판매량 (금~목)"
                     value={metrics.weekly}
-                    sub="최신 일자 포함 주차"
+                    sub={`FC: ${metrics.fcWeekly?.toLocaleString() || 0} / VF: ${metrics.vfWeekly?.toLocaleString() || 0}`}
                     icon={Calendar}
                     colorClass="bg-green-50 text-green-600"
                 />

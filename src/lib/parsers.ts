@@ -18,6 +18,8 @@ export interface CoupangSalesRow {
     barcode: string;
     salesQty: number;
     currentStock: number;
+    center: string; // 'FC' or 'VF164'
+    centerRaw: string; // [NEW] Exact center string (e.g. '이천1센터')
 }
 
 export interface IncomingStockRow {
@@ -82,6 +84,7 @@ export const parseProductMaster = async (file: File): Promise<ProductMaster[]> =
  * Parses Coupang Sales Data File
  * Mapping:
  * - A: Date (e.g. 20260101) -> Convert to YYYY-MM-DD
+ * - G: Center (FC or VF164)
  * - I: Barcode
  * - M: Sales Qty (Sum needed)
  * - N: Current Stock (Use latest date's value)
@@ -104,6 +107,12 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
                     return;
                 }
 
+                const safeParseInt = (val: any) => {
+                    if (val === undefined || val === null) return 0;
+                    const str = String(val).replace(/,/g, '').trim();
+                    const num = Number(str);
+                    return isNaN(num) ? 0 : Math.round(num);
+                };
 
                 const salesRows: CoupangSalesRow[] = jsonData.slice(1).map((row: any) => {
                     // A: Date (e.g. 20260101)
@@ -113,16 +122,24 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
                         dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
                     }
 
+                    // F: Center (FC or VF164)
+                    const centerRaw = row['F'] ? String(row['F']).trim().toUpperCase() : '';
+                    // If it contains VF or VENDOR, it's VendorFlex. otherwise treat as FC.
+                    let center = 'FC';
+                    if (centerRaw === 'VF164' || centerRaw.includes('VF') || centerRaw.includes('VENDOR')) {
+                        center = 'VF164';
+                    }
+
                     // I: Barcode
                     const barcode = row['I'] ? String(row['I']).replace(/\s+/g, '') : '';
 
                     // M: Sales Qty
-                    const salesQty = row['M'] ? Number(row['M']) : 0;
+                    const salesQty = safeParseInt(row['M']);
 
                     // N: Current Stock
-                    const currentStock = row['N'] ? Number(row['N']) : 0;
+                    const currentStock = safeParseInt(row['N']);
 
-                    return { date: dateStr, barcode, salesQty, currentStock };
+                    return { date: dateStr, barcode, salesQty, currentStock, center, centerRaw };
                 }).filter(r => r.barcode && r.date);
 
                 resolve(salesRows);

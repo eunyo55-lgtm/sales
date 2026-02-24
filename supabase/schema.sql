@@ -8,6 +8,8 @@ create table if not exists products (
   option_code text,
   image_url text,
   current_stock integer default 0,
+  fc_stock integer default 0,
+  vf_stock integer default 0,
   hq_stock integer default 0,
   safety_stock integer default 10,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -19,6 +21,8 @@ create table if not exists daily_sales (
   date date not null,
   barcode text references products(barcode),
   quantity integer default 0,
+  fc_quantity integer default 0,
+  vf_quantity integer default 0,
   revenue integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique(date, barcode)

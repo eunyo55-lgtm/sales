@@ -9,6 +9,8 @@ interface InventoryGroup {
   imageUrl?: string;
   hqStock: number;
   coupangStock: number;
+  fcStock: number; // [NEW] FC Stock
+  vfStock: number; // [NEW] VF164 Stock
   sales14Days: number;
   sales7Days: number;
   prevSales7Days: number; // sales 8-14 days ago
@@ -85,6 +87,8 @@ export default function InventoryStatus() {
           imageUrl: p.imageUrl,
           hqStock: 0,
           coupangStock: 0,
+          fcStock: 0,
+          vfStock: 0,
           sales14Days: 0,
           sales7Days: 0,
           prevSales7Days: 0,
@@ -97,6 +101,8 @@ export default function InventoryStatus() {
       const g = groups.get(p.name)!;
       g.hqStock += p.hqStock;
       g.coupangStock += p.coupangStock;
+      g.fcStock += (p.fcStock || 0);
+      g.vfStock += (p.vfStock || 0);
       g.sales14Days += p.sales14Days;
       g.sales7Days += p.sales7Days;
       g.prevSales7Days += prevSales7Days;
@@ -189,6 +195,24 @@ export default function InventoryStatus() {
     });
   };
 
+  const totalStats = useMemo(() => {
+    const stats = {
+      hqStock: 0,
+      coupangStock: 0,
+      fcStock: 0,
+      vfStock: 0,
+      sales7Days: 0,
+    };
+    filteredGroups.forEach(g => {
+      stats.hqStock += g.hqStock;
+      stats.coupangStock += g.coupangStock;
+      stats.fcStock += (g.fcStock || 0);
+      stats.vfStock += (g.vfStock || 0);
+      stats.sales7Days += g.sales7Days;
+    });
+    return stats;
+  }, [filteredGroups]);
+
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
 
   // Sticky Helpers
@@ -254,7 +278,17 @@ export default function InventoryStatus() {
                 </th>
                 <th className="px-4 py-3 text-right bg-green-50 cursor-pointer hover:bg-green-100 whitespace-nowrap">
                   <div className="flex items-center justify-end">
-                    <span onClick={() => handleSort('coupangStock')}>쿠팡재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
+                    <span onClick={() => handleSort('coupangStock')}>쿠팡재고(합계) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-right text-xs bg-green-50/50 cursor-pointer hover:bg-green-100/50 whitespace-nowrap">
+                  <div className="flex items-center justify-end">
+                    <span onClick={() => handleSort('fcStock')}>FC재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-right text-xs bg-green-50/50 cursor-pointer hover:bg-green-100/50 whitespace-nowrap">
+                  <div className="flex items-center justify-end">
+                    <span onClick={() => handleSort('vfStock')}>VF164재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
 
@@ -276,6 +310,20 @@ export default function InventoryStatus() {
                     <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('minDaysOfInventory', '소진 예상'); }} />
                   </div>
                 </th>
+              </tr>
+              <tr className="bg-gray-100 font-bold border-b border-gray-200">
+                <th className={`px-2 py-2 sticky z-20 bg-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></th>
+                <th className={`px-2 py-2 sticky z-20 bg-gray-100 ${W_IMG} ${L_IMG}`}></th>
+                <th className={`px-4 py-2 sticky z-20 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
+
+                <th className="px-4 py-2 text-right bg-blue-100/50">{totalStats.hqStock.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-green-100">{totalStats.coupangStock.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-green-100/50">{totalStats.fcStock.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-green-100/50">{totalStats.vfStock.toLocaleString()}</th>
+
+                <th className="px-4 py-2 text-right bg-gray-100">{totalStats.sales7Days.toLocaleString()}</th>
+                <th className="px-4 py-2 bg-gray-100"></th>
+                <th className="px-4 py-2 bg-gray-100"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -321,6 +369,8 @@ export default function InventoryStatus() {
 
                       <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50/50 whitespace-nowrap">{g.hqStock.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50/50 font-bold whitespace-nowrap">{g.coupangStock.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs bg-green-50/30 whitespace-nowrap">{g.fcStock.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs bg-green-50/30 whitespace-nowrap">{g.vfStock.toLocaleString()}</td>
 
                       <td className="px-4 py-2 text-right font-bold text-gray-800 whitespace-nowrap">{g.sales7Days.toLocaleString()}</td>
 
@@ -354,6 +404,8 @@ export default function InventoryStatus() {
 
                           <td className="px-4 py-1.5 text-right text-gray-500 whitespace-nowrap">{child.hqStock.toLocaleString()}</td>
                           <td className="px-4 py-1.5 text-right text-gray-500 whitespace-nowrap">{child.coupangStock.toLocaleString()}</td>
+                          <td className="px-4 py-1.5 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.fcStock?.toLocaleString() || '0'}</td>
+                          <td className="px-4 py-1.5 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.vfStock?.toLocaleString() || '0'}</td>
 
                           <td className="px-4 py-1.5 text-right text-gray-600 whitespace-nowrap">{child.sales7Days.toLocaleString()}</td>
 

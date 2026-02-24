@@ -117,6 +117,7 @@ export function DataUploader() {
                 <input
                     type="file"
                     accept=".xlsx, .xls, .csv"
+                    multiple
                     onChange={(e) => handleFileUpload(e, 'master')}
                     className="hidden"
                     id="upload-master"
@@ -135,6 +136,7 @@ export function DataUploader() {
                 <input
                     type="file"
                     accept=".xlsx, .xls, .csv"
+                    multiple
                     onChange={(e) => handleFileUpload(e, 'sales')}
                     className="hidden"
                     id="upload-sales"
@@ -154,6 +156,7 @@ export function DataUploader() {
                 <input
                     type="file"
                     accept=".xlsx, .xls, .csv"
+                    multiple
                     onChange={handleIncomingUpload}
                     className="hidden"
                     id="upload-incoming"
