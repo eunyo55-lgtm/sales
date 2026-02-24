@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import type { ProductStats } from '../lib/api';
 import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, Copy } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
 interface InventoryGroup {
@@ -177,6 +178,32 @@ export default function InventoryStatus() {
     setTimeout(() => setToast({ show: false, message: '' }), 2000);
   };
 
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
+
+  const seasonStock = useMemo(() => {
+    const map = new Map<string, number>();
+    products.forEach(p => {
+      const s = p.season || '기타';
+      map.set(s, (map.get(s) || 0) + (p.hqStock || 0) + p.coupangStock);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [products]);
+
+  const categoryStock = useMemo(() => {
+    const map = new Map<string, number>();
+    const extractCategory = (name: string) => {
+      if (name.includes('-')) return name.split('-')[0].trim();
+      if (name.includes('_')) return name.split('_')[0].trim();
+      if (name.includes(' ')) return name.split(' ')[0].trim();
+      return '기타';
+    };
+    products.forEach(p => {
+      const c = extractCategory(p.name);
+      map.set(c, (map.get(c) || 0) + (p.hqStock || 0) + p.coupangStock);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [products]);
+
   const handleCopyColumn = (key: string, label: string) => {
     const values = filteredGroups.map(g => {
       // @ts-ignore
@@ -255,6 +282,39 @@ export default function InventoryStatus() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-b border-gray-100 flex-none bg-gray-50/30">
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[300px]">
+            <h3 className="font-bold text-gray-800 mb-2">시즌별 재고 현황</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={seasonStock} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {seasonStock.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => value.toLocaleString() + '개'} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[300px]">
+            <h3 className="font-bold text-gray-800 mb-2">카테고리별 재고 현황 (상위 10개)</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryStock} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: any) => value.toLocaleString() + '개'} />
+                  <Bar dataKey="value" fill="#82ca9d" radius={[0, 4, 4, 0]}>
+                    {categoryStock.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[(index + 1) % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 

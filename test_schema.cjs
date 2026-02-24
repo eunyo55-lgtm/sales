@@ -1,14 +1,14 @@
-require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-async function run() {
-    const { data } = await supabase.from('products').select('*').limit(1);
-    if (data && data.length > 0) {
-        console.log("COLUMNS: ", Object.keys(data[0]));
-    } else {
-        console.log("No data");
+const supabase = createClient('https://vzyfygmzqqiwgrcuydti.supabase.co', 'sb_publishable_gGEtueZfB9Knlci_vOSQcg_1sE7WXqh');
+
+async function test() {
+    try {
+        const { data, error } = await supabase.from('daily_sales').select('*').gt('quantity', 0).order('date', { ascending: false }).limit(5);
+        if (error) console.error("Error:", error);
+        console.log("Data:", data);
+    } catch (e) {
+        console.error("Exception:", e);
     }
-    process.exit(0);
 }
-run();
+test().then(() => process.exit(0));
