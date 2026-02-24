@@ -338,8 +338,6 @@ export default function ProductStatus() {
 
               <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
               <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>쿠팡재고(합계) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-              <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs bg-green-50/50 select-none whitespace-nowrap" onClick={() => handleSort('fcStock')}>FC재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-              <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs bg-green-50/50 select-none whitespace-nowrap" onClick={() => handleSort('vfStock')}>VF164재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
               <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right font-bold select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>누적판매(합계) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
               <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>FC판매 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
               <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>VF판매 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
@@ -358,8 +356,6 @@ export default function ProductStatus() {
 
               <th className="px-4 py-2 text-right bg-blue-100">{totalStats.hqStock.toLocaleString()}</th>
               <th className="px-4 py-2 text-right bg-green-100">{totalStats.currentStock.toLocaleString()}</th>
-              <th className="px-4 py-2 text-right text-xs bg-green-100/50">{totalStats.fcStock.toLocaleString()}</th>
-              <th className="px-4 py-2 text-right text-xs bg-green-100/50">{totalStats.vfStock.toLocaleString()}</th>
               <th className="px-4 py-2 text-right bg-gray-100">{totalStats.totalSales.toLocaleString()}</th>
               <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{totalStats.fcSales.toLocaleString()}</th>
               <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{totalStats.vfSales.toLocaleString()}</th>
@@ -400,8 +396,6 @@ export default function ProductStatus() {
 
                     <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50 whitespace-nowrap">{group.hqStock.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50 whitespace-nowrap">{group.currentStock.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs bg-green-50/50 whitespace-nowrap">{group.fcStock.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs bg-green-50/50 whitespace-nowrap">{group.vfStock.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono whitespace-nowrap">{group.totalSales.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{group.fcSales.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{group.vfSales.toLocaleString()}</td>
@@ -434,8 +428,6 @@ export default function ProductStatus() {
 
                       <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{child.hqStock.toLocaleString()}</td>
                       <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{child.coupangStock.toLocaleString()}</td>
-                      <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.fcStock.toLocaleString()}</td>
-                      <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.vfStock.toLocaleString()}</td>
                       <td className="px-4 py-1 text-right text-gray-600 font-medium whitespace-nowrap">{child.totalSales.toLocaleString()}</td>
                       <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.fcSales.toLocaleString()}</td>
                       <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.vfSales.toLocaleString()}</td>

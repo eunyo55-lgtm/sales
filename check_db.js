@@ -10,14 +10,14 @@ async function checkDb() {
     console.log("Sales Error:", sErr);
     console.log("Sample Sales:", sales);
 
-    const { data: prods, error: pErr } = await supabase.from('products').select('barcode, name, hq_stock, fc_stock, vf_stock, current_stock').limit(5);
+    const { data: prods, error: pErr } = await supabase.from('products').select('*').limit(5);
     console.log("Prods Error:", pErr);
     console.log("Sample Prods:", prods);
 
     const { count: sCount } = await supabase.from('daily_sales').select('*', { count: 'exact', head: true });
-    console.log("Total Sales Count:", sCount);
+    console.log("Total Sales:", sCount);
 
     const { count: pCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
-    console.log("Total Prods Count:", pCount);
+    console.log("Total Prods:", pCount);
 }
 checkDb();

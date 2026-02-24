@@ -136,6 +136,7 @@ export const api = {
         const uniqueBarcodes = Array.from(new Set(uniqueSales.map(s => s.barcode)));
 
         const PROD_CHUNK_SIZE = 500;
+        let setupProcessed = 0;
         for (let i = 0; i < uniqueBarcodes.length; i += PROD_CHUNK_SIZE) {
             const barcodeChunk = uniqueBarcodes.slice(i, i + PROD_CHUNK_SIZE);
             const { error: prodError } = await supabase
@@ -152,9 +153,12 @@ export const api = {
                 );
 
             if (prodError) throw prodError;
+
+            setupProcessed += barcodeChunk.length;
+            if (onProgress) onProgress(Math.round((setupProcessed / uniqueBarcodes.length) * 10)); // 0~10% range for setup
         }
 
-        const CHUNK_SIZE = 1000;
+        const CHUNK_SIZE = 500; // Reduced to prevent URI too long
         const total = uniqueSales.length;
         let processed = 0;
 
@@ -192,7 +196,8 @@ export const api = {
             if (error) throw error;
 
             processed += chunk.length;
-            if (onProgress) onProgress(Math.round((processed / total) * 100));
+            // 10% ~ 50% range for sales data insertion
+            if (onProgress) onProgress(10 + Math.round((processed / total) * 40));
         }
 
         // Update Product Stock Logic (Coupang Stock)
@@ -228,14 +233,19 @@ export const api = {
 
         // Pre-fetch existing products to avoid overwriting VF/FC stock when missing from the uploaded file
         const existingProductsMap = new Map<string, { fc_stock: number, vf_stock: number }>();
-        const FETCH_BATCH_SIZE = 500;
+        const FETCH_BATCH_SIZE = 200; // Safe for URI
         const updatedBarcodes = Array.from(stockMap.keys());
+
+        let stockFetchProcessed = 0;
         for (let i = 0; i < updatedBarcodes.length; i += FETCH_BATCH_SIZE) {
             const chunk = updatedBarcodes.slice(i, i + FETCH_BATCH_SIZE);
             const { data } = await supabase.from('products').select('barcode, fc_stock, vf_stock').in('barcode', chunk);
             if (data) {
                 data.forEach(p => existingProductsMap.set(p.barcode, p));
             }
+            stockFetchProcessed += chunk.length;
+            // 50% ~ 60% range for fetching old stocks
+            if (onProgress) onProgress(50 + Math.round((stockFetchProcessed / updatedBarcodes.length) * 10));
         }
 
         const stockUpdates = Array.from(stockMap.entries()).map(([barcode, data]) => {
@@ -286,9 +296,12 @@ ${sampleText}
 
             // Reduced chunk size for parallel updates to avoid rate limits/timeouts
             // Since we cannot use upsert (missing constraints/ID), we iterate updates.
-            const BATCH_SIZE = 50;
+            const BATCH_SIZE = 20; // smaller to prevent browser lock
 
-            for (let j = 0; j < stockUpdates.length; j += BATCH_SIZE) {
+            let stockUpdateProcessed = 0;
+            const totalUpdates = stockUpdates.length;
+
+            for (let j = 0; j < totalUpdates; j += BATCH_SIZE) {
                 const chunk = stockUpdates.slice(j, j + BATCH_SIZE);
 
                 // Process chunk in parallel (update by barcode)
@@ -316,6 +329,10 @@ ${sampleText}
                         successCount++;
                     }
                 });
+
+                stockUpdateProcessed += chunk.length;
+                // 60% ~ 100% range
+                if (onProgress) onProgress(60 + Math.round((stockUpdateProcessed / totalUpdates) * 40));
             }
 
             if (typeof window !== 'undefined') {
