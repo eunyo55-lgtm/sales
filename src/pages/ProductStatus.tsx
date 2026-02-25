@@ -224,8 +224,17 @@ export default function ProductStatus() {
       const s = p.season || '기타';
       map.set(s, (map.get(s) || 0) + p.sales7Days);
     });
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    return Array.from(map.entries())
+      .map(([name, value]) => ({
+        name,
+        value
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [products]);
+
+  const totalSeasonSales = useMemo(() => {
+    return seasonSales.reduce((acc, curr) => acc + curr.value, 0);
+  }, [seasonSales]);
 
   const categorySales = useMemo(() => {
     const map = new Map<string, number>();
@@ -254,7 +263,7 @@ export default function ProductStatus() {
     return top10.map(item => ({
       name: item.name,
       판매량: item.sales7Days,
-      재고량: item.hqStock + item.currentStock + item.fcStock + item.vfStock
+      쿠팡재고: item.currentStock
     }));
   }, [groupedProducts]);
 
@@ -285,7 +294,17 @@ export default function ProductStatus() {
                   {seasonSales.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(val: any) => val.toLocaleString() + '개'} />
-                <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value, entry: any) => `${value} (${(entry.payload.percent * 100).toFixed(0)}%)`} />
+                <Legend
+                  verticalAlign="middle"
+                  align="right"
+                  layout="vertical"
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 12 }}
+                  formatter={(value, entry: any) => {
+                    const percent = totalSeasonSales > 0 ? ((entry.payload.value / totalSeasonSales) * 100).toFixed(0) : 0;
+                    return `${value} (${percent}%)`;
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -329,7 +348,7 @@ export default function ProductStatus() {
           </div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[300px] flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2">상위 10개 상품 판매량 vs 총 재고량</h3>
+          <h3 className="font-bold text-gray-800 mb-2">상위 10개 상품 판매량 vs 쿠팡 재고</h3>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={top10StockData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -339,7 +358,7 @@ export default function ProductStatus() {
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="판매량" fill="#8884d8" name="7일 판매" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="재고량" fill="#82ca9d" name="현재 총재고" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="쿠팡재고" fill="#82ca9d" name="현재 쿠팡재고" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
