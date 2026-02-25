@@ -191,6 +191,10 @@ export default function InventoryStatus() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [products]);
 
+  const totalSeasonStock = useMemo(() => {
+    return seasonStock.reduce((acc, curr) => acc + curr.value, 0);
+  }, [seasonStock]);
+
   const categoryStock = useMemo(() => {
     const map = new Map<string, number>();
     const extractCategory = (name: string) => {
@@ -298,7 +302,17 @@ export default function InventoryStatus() {
                     {seasonStock.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(value: any) => value.toLocaleString() + '개'} />
-                  <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" wrapperStyle={{ fontSize: 12 }} formatter={(value: any, entry: any) => `${value} (${(entry.payload.percent * 100).toFixed(0)}%)`} />
+                  <Legend
+                    verticalAlign="middle"
+                    align="right"
+                    layout="vertical"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 12 }}
+                    formatter={(value: any, entry: any) => {
+                      const percent = totalSeasonStock > 0 ? ((entry.payload.value / totalSeasonStock) * 100).toFixed(0) : 0;
+                      return `${value} (${percent}%)`;
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
