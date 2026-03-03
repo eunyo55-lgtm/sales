@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Search, Plus, Trash2 } from 'lucide-react';
 
 export default function KeywordRanking() {
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
 
     // Form state
     const [newKeyword, setNewKeyword] = useState('');
@@ -27,7 +25,6 @@ export default function KeywordRanking() {
     }, []);
 
     const fetchData = async () => {
-        setLoading(true);
         try {
             // Fetch keywords with product name
             const { data: kwData, error: kwError } = await supabase
@@ -79,8 +76,6 @@ export default function KeywordRanking() {
             }
         } catch (error) {
             console.error('Error fetching keyword data:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -125,20 +120,13 @@ export default function KeywordRanking() {
         }
     };
 
-    // Prepare chart data for selected keyword
-    const chartData = rankings.filter(r => r.keyword_id === selectedKeywordId).map(r => ({
-        date: r.date.substring(5), // MM-DD
-        rank: r.rank_position > 0 ? r.rank_position : null
-    }));
 
-    const renderTrendIcon = (currentRank: number, prevRank: number) => {
-        if (!prevRank || prevRank === 0) return <Minus className="text-gray-400 w-4 h-4" />;
-        if (currentRank === 0) return <Minus className="text-gray-400 w-4 h-4" />;
 
-        if (currentRank < prevRank) return <TrendingUp className="text-red-500 w-4 h-4" />; // Rank number is lower -> Better
-        if (currentRank > prevRank) return <TrendingDown className="text-blue-500 w-4 h-4" />; // Rank number is higher -> Worse
-        return <Minus className="text-gray-400 w-4 h-4" />;
-    };
+    // Extract unique dates for table columns (last 7 days of data)
+    const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const displayDates = allUniqueDates.slice(-7);
+
+
 
     return (
         <div className="space-y-6">
@@ -218,34 +206,6 @@ export default function KeywordRanking() {
                             <Plus className="w-4 h-4 mr-1" /> 등록하기
                         </button>
                     </form>
-
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                        {loading && <p className="text-sm text-gray-500 text-center py-4">로딩 중...</p>}
-                        {!loading && keywords.length === 0 && (
-                            <p className="text-sm text-gray-500 text-center py-4">등록된 키워드가 없습니다.</p>
-                        )}
-                        {keywords.map(kw => (
-                            <div
-                                key={kw.id}
-                                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${selectedKeywordId === kw.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                                onClick={() => setSelectedKeywordId(kw.id)}
-                            >
-                                <div>
-                                    <div className="flex items-center space-x-2">
-                                        <h4 className="font-semibold text-gray-800 text-sm">{kw.keyword}</h4>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">ID: {kw.coupang_product_id}</p>
-                                    <p className="text-[10px] text-gray-400 truncate">{kw.products?.name || '연결 상품 없음'}</p>
-                                </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteKeyword(kw.id); }}
-                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
                 </div>
 
                 {/* Right: Dashboard */}
@@ -253,12 +213,12 @@ export default function KeywordRanking() {
                     {/* Chart Card */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">순위 변동 추이 (최근 30일)</h3>
+                            <h3 className="text-lg font-bold text-gray-800">단축 명령</h3>
                             <button
                                 onClick={() => setShowManualSync(true)}
                                 className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition border border-gray-200"
                             >
-                                ⚡ 수동 집계
+                                ⚡ 수동 순위 집계
                             </button>
                         </div>
 
@@ -276,80 +236,61 @@ export default function KeywordRanking() {
                                 </div>
                             </div>
                         )}
-                        {selectedKeywordId ? (
-                            <div className="h-72 w-full">
-                                {chartData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                                            <YAxis reversed={true} domain={[1, 'dataMax']} tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                                            <Tooltip
-                                                formatter={(value: any) => [`${value}위`, '자연 순위']}
-                                                labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Legend verticalAlign="top" height={36} />
-                                            <Line type="monotone" name="노출 순위" dataKey="rank" stroke="#3B82F6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls={true} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center text-gray-400">
-                                        데이터가 수집되지 않았습니다.
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="h-72 flex items-center justify-center bg-gray-50 rounded-lg text-gray-500 border border-dashed border-gray-300">
-                                좌측에서 키워드를 선택해주세요
-                            </div>
-                        )}
                     </div>
 
                     {/* Summary Table */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-sm">
                         <div className="p-4 border-b border-gray-200 bg-gray-50">
-                            <h3 className="font-bold text-gray-800">전체 키워드 순위 현황</h3>
+                            <h3 className="font-bold text-gray-800">키워드별 순위 누적 현황</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs">
-                                        <th className="py-3 px-4 font-medium">단어 (키워드)</th>
-                                        <th className="py-3 px-4 font-medium">연결 상품명</th>
-                                        <th className="py-3 px-4 font-medium">Product ID</th>
-                                        <th className="py-3 px-4 font-medium text-right">최신 순위</th>
-                                        <th className="py-3 px-4 font-medium text-center">전일 대비</th>
+                                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs text-center">
+                                        <th className="py-3 px-4 font-medium text-left min-w-[120px]">단어 (키워드)</th>
+                                        <th className="py-3 px-4 font-medium text-left min-w-[150px]">연결 상품명</th>
+                                        {displayDates.map(date => (
+                                            <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{date.substring(5).replace('-', '/')}</th>
+                                        ))}
+                                        <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {keywords.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="py-8 text-center text-gray-500">등록된 데이터가 없습니다.</td>
+                                            <td colSpan={3 + displayDates.length} className="py-8 text-center text-gray-500">등록된 데이터가 없습니다.</td>
                                         </tr>
                                     )}
                                     {keywords.map(kw => {
-                                        const kwRankings = rankings.filter(r => r.keyword_id === kw.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                                        const latest = kwRankings.length > 0 ? kwRankings[0].rank_position : 0;
-                                        const prev = kwRankings.length > 1 ? kwRankings[1].rank_position : 0;
+                                        const kwRankings = rankings.filter(r => r.keyword_id === kw.id);
 
                                         return (
-                                            <tr key={kw.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                            <tr
+                                                key={kw.id}
+                                                className={`border-b border-gray-100 cursor-pointer transition ${selectedKeywordId === kw.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                                                onClick={() => setSelectedKeywordId(kw.id)}
+                                            >
                                                 <td className="py-3 px-4 font-medium text-gray-800">{kw.keyword}</td>
                                                 <td className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate" title={kw.products?.name}>
                                                     {kw.products?.name || '-'}
                                                 </td>
-                                                <td className="py-3 px-4 text-gray-500 text-xs font-mono">{kw.coupang_product_id}</td>
-                                                <td className="py-3 px-4 text-right font-semibold text-gray-800">
-                                                    {latest > 0 ? `${latest}위` : <span className="text-gray-400 font-normal">미노출</span>}
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <div className="flex items-center justify-center">
-                                                        {renderTrendIcon(latest, prev)}
-                                                        <span className="text-xs text-gray-500 ml-1">
-                                                            {latest > 0 && prev > 0 && latest !== prev ? Math.abs(prev - latest) : '-'}
-                                                        </span>
-                                                    </div>
+                                                {displayDates.map(date => {
+                                                    const r = kwRankings.find(rank => rank.date === date);
+                                                    const pos = r ? r.rank_position : 0;
+                                                    return (
+                                                        <td key={date} className="py-3 px-3 text-center font-semibold text-gray-800">
+                                                            {pos > 0 ? `${pos}위` : <span className="text-gray-300 font-normal">-</span>}
+                                                        </td>
+                                                    )
+                                                })}
+                                                <td className="py-3 px-4 text-center">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteKeyword(kw.id); }}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                                        title="키워드 삭제"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );
