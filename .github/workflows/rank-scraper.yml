@@ -1,0 +1,35 @@
+name: Daily Coupang Rank Scraper
+
+on:
+  schedule:
+    # 매일 한국시간 오전 8시 (UTC 기준 전날 오후 11시)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 실행을 위한 트리거
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './scraper/package-lock.json'
+          
+      - name: Install dependencies
+        working-directory: ./scraper
+        run: |
+          npm install
+          npx playwright install chromium
+          
+      - name: Run Scraper Script
+        working-directory: ./scraper
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm start

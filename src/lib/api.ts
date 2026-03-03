@@ -502,11 +502,18 @@ ${sampleText}
         let statYesterday = 0; // Latest Date Sales
         let fcYesterday = 0;
         let vfYesterday = 0;
+        let statYesterdayPrevYear = 0; // [NEW] 364 days ago
+
         let statWeekly = 0;
         let fcWeekly = 0;
         let vfWeekly = 0;
+        let statWeeklyPrevYear = 0; // [NEW] 364 days ago
+
         let statMonthly = 0;
+        let statMonthlyPrevYear = 0; // [NEW] 364 days ago
+
         let statYearly = 0;
+        let statYearlyPrevYear = 0; // [NEW] 364 days ago
 
         const dailyTrendMap = new Map<string, number>();
         const weeklyTrendMap = new Map<string, number>();
@@ -542,8 +549,11 @@ ${sampleText}
 
             // Metrics
             // Previous Period Ranges
-            // 1. Prev Day
+            // 1. Prev Day (Yesterday vs 1 day ago)
             const prevDayStr = shiftDate(anchorDateStr, -1);
+            // 1-1. Prev Year Yesterday (364 days ago)
+            const prevYearYesterdayStr = shiftDate(anchorDateStr, -364);
+
             if (date === anchorDateStr) {
                 statYesterday += qty;
                 fcYesterday += (s.fc_quantity || 0);
@@ -551,12 +561,18 @@ ${sampleText}
                 rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + qty);
             } else if (date === prevDayStr) {
                 rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + qty);
+            } else if (date === prevYearYesterdayStr) {
+                statYesterdayPrevYear += qty;
             }
 
             // 2. Weekly & Prev Weekly
-            // Current Week: >= startOfWeekStr (Already defined)
+            // Current Week: >= startOfWeekStr
             // Prev Week: (startOfWeekStr - 7) ~ (startOfWeekStr - 1)
             const startOfPrevWeekStr = shiftDate(startOfWeekStr, -7);
+            // Prev Year Week: (startOfWeekStr - 364) ~ (startOfWeekStr - 358) => anchorDateStr is included if within week
+            // Rather than a fixed end, let's just use the exact 7-day window 364 days ago
+            const startOfPrevYearWeekStr = shiftDate(startOfWeekStr, -364);
+            const endOfPrevYearWeekStr = shiftDate(anchorDateStr, -364);
 
             if (date >= startOfWeekStr) {
                 statWeekly += qty;
@@ -565,17 +581,17 @@ ${sampleText}
                 rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + qty);
             } else if (date >= startOfPrevWeekStr && date < startOfWeekStr) {
                 rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + qty);
+            } else if (date >= startOfPrevYearWeekStr && date <= endOfPrevYearWeekStr) {
+                statWeeklyPrevYear += qty;
             }
 
             // 3. Monthly & Prev Monthly
-            // Current Month: >= startOfMonth
-            // Prev Month: (startOfMonth - 1 month) ~ (startOfMonth - 1 day)
-            // Simple logic: check year/month string
             const currentMonthPrefix = anchorDateStr.substring(0, 7); // YYYY-MM
-
             const prevMonthDate = new Date(startOfMonth);
             prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
             const prevMonthPrefix = prevMonthDate.toISOString().substring(0, 7); // YYYY-MM (prev)
+            const startOfMonthPrevYearStr = shiftDate(startOfMonth, -364);
+            const endOfMonthPrevYearStr = shiftDate(anchorDateStr, -364); // match up to same weekday point
 
             const rowMonthPrefix = date.substring(0, 7);
 
@@ -584,11 +600,19 @@ ${sampleText}
                 rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + qty);
             } else if (rowMonthPrefix === prevMonthPrefix) {
                 rankMonthlyPrev.set(productName, (rankMonthlyPrev.get(productName) || 0) + qty);
+            } else if (date >= startOfMonthPrevYearStr && date <= endOfMonthPrevYearStr) {
+                statMonthlyPrevYear += qty;
             }
+
+            // 4. Yearly
+            const startOfYearPrevYearStr = shiftDate(startOfYear, -364);
+            const endOfYearPrevYearStr = shiftDate(anchorDateStr, -364);
 
             if (date >= startOfYear) {
                 statYearly += qty;
                 rankYearly.set(productName, (rankYearly.get(productName) || 0) + qty);
+            } else if (date >= startOfYearPrevYearStr && date <= endOfYearPrevYearStr) {
+                statYearlyPrevYear += qty;
             }
 
             // Daily Trend (Filtered)
@@ -732,13 +756,17 @@ ${sampleText}
             anchorDate: anchorDateStr,
             metrics: {
                 yesterday: statYesterday,
+                yesterdayPrevYear: statYesterdayPrevYear,
                 fcYesterday: fcYesterday,
                 vfYesterday: vfYesterday,
                 weekly: statWeekly,
+                weeklyPrevYear: statWeeklyPrevYear,
                 fcWeekly: fcWeekly,
                 vfWeekly: vfWeekly,
                 monthly: statMonthly,
-                yearly: statYearly
+                monthlyPrevYear: statMonthlyPrevYear,
+                yearly: statYearly,
+                yearlyPrevYear: statYearlyPrevYear
             },
             trends: {
                 daily: sortedDaily.map(([date, quantity]) => ({ date: date.substring(5), quantity })),

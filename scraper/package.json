@@ -1,0 +1,14 @@
+{
+    "name": "coupang-rank-scraper",
+    "version": "1.0.0",
+    "description": "Coupang Keyword Ranking Scraper",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0",
+        "playwright": "^1.42.1"
+    }
+}

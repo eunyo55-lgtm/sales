@@ -5,12 +5,13 @@ import ProductStatus from './pages/ProductStatus';
 import InventoryStatus from './pages/InventoryStatus';
 import SmartOrder from './pages/SmartOrder';
 import Insights from './pages/Insights';
+import KeywordRanking from './pages/KeywordRanking';
 import { DataUploader } from './components/DataUploader';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights'>(() => {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword'>(() => {
     const saved = localStorage.getItem('activeTab');
-    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights') || 'dashboard';
+    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword') || 'dashboard';
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -87,6 +88,17 @@ function App() {
               <Lightbulb size={20} className={activeTab === 'insights' ? 'text-purple-600' : 'text-gray-500'} />
               <span className="font-medium">인사이트</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('keyword')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'keyword'
+                ? 'bg-rose-50 text-rose-600'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <span className="text-xl">📊</span>
+              <span className="font-medium">키워드 랭킹</span>
+            </button>
           </nav>
 
           <div className="w-full p-4 border-t border-gray-200 bg-gray-50">
@@ -114,6 +126,7 @@ function App() {
               {activeTab === 'inventory' && '재고 관리 현황'}
               {activeTab === 'smartorder' && '스마트 발주 추천'}
               {activeTab === 'insights' && '악성 재고 & 프로모션 인사이트'}
+              {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
             </h2>
           </div>
           <DataUploader />
@@ -125,6 +138,7 @@ function App() {
           {activeTab === 'inventory' && <InventoryStatus />}
           {activeTab === 'smartorder' && <SmartOrder />}
           {activeTab === 'insights' && <Insights />}
+          {activeTab === 'keyword' && <KeywordRanking />}
         </div>
       </main>
     </div>

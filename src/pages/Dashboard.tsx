@@ -47,21 +47,42 @@ export default function Dashboard() {
 
     const { metrics, trends, rankings, anchorDate } = data;
 
-    const StatCard = ({ title, value, sub, icon: Icon, colorClass }: any) => (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <h3 className="text-gray-500 text-sm font-medium mb-1">{title}</h3>
-                <div className="flex items-baseline space-x-2">
-                    <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
-                    <span className="text-sm font-normal text-gray-400">건</span>
+    const StatCard = ({ title, value, sub, icon: Icon, colorClass, yoyValue }: any) => {
+        let yoyEl = null;
+        if (yoyValue !== undefined && yoyValue !== null) {
+            const diff = value - yoyValue;
+            const rate = yoyValue > 0 ? (diff / yoyValue) * 100 : (value > 0 ? 100 : 0);
+            const isUp = diff > 0;
+            const isDown = diff < 0;
+
+            yoyEl = (
+                <div className={`mt-2 flex items-center text-xs font-medium ${isUp ? 'text-red-500' : isDown ? 'text-blue-500' : 'text-gray-400'}`}>
+                    <span>전년 동기대비(요일기준)</span>
+                    <span className="ml-1 flex items-center">
+                        {isUp ? '▲' : isDown ? '▼' : '-'} {Math.abs(diff).toLocaleString()}건
+                        {value > 0 || yoyValue > 0 ? ` (${isUp ? '+' : ''}${rate.toFixed(1)}%)` : ''}
+                    </span>
                 </div>
-                {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+            );
+        }
+
+        return (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <h3 className="text-gray-500 text-sm font-medium mb-1">{title}</h3>
+                    <div className="flex items-baseline space-x-2">
+                        <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
+                        <span className="text-sm font-normal text-gray-400">건</span>
+                    </div>
+                    {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+                    {yoyEl}
+                </div>
+                <div className={`p-3 rounded-full ${colorClass}`}>
+                    <Icon size={24} />
+                </div>
             </div>
-            <div className={`p-3 rounded-full ${colorClass}`}>
-                <Icon size={24} />
-            </div>
-        </div>
-    );
+        );
+    };
 
     const RankingList = ({ title, items, icon: Icon }: any) => (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
@@ -126,6 +147,7 @@ export default function Dashboard() {
                 <StatCard
                     title="최신 일자 판매량"
                     value={metrics.yesterday}
+                    yoyValue={metrics.yesterdayPrevYear}
                     sub={anchorDate ? `${anchorDate} 기준 (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
                     icon={TrendingUp}
                     colorClass="bg-blue-50 text-blue-600"
@@ -133,6 +155,7 @@ export default function Dashboard() {
                 <StatCard
                     title="주간 판매량 (금~목)"
                     value={metrics.weekly}
+                    yoyValue={metrics.weeklyPrevYear}
                     sub={`FC: ${metrics.fcWeekly?.toLocaleString() || 0} / VF: ${metrics.vfWeekly?.toLocaleString() || 0}`}
                     icon={Calendar}
                     colorClass="bg-green-50 text-green-600"
@@ -140,6 +163,7 @@ export default function Dashboard() {
                 <StatCard
                     title="연간 판매량 (올해)"
                     value={metrics.yearly}
+                    yoyValue={metrics.yearlyPrevYear}
                     sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적`}
                     icon={Trophy}
                     colorClass="bg-yellow-50 text-yellow-600"
