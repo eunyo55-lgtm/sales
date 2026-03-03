@@ -9,9 +9,8 @@
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.39.0",
-        "dotenv": "^17.3.1",
-        "playwright": "^1.42.1",
-        "playwright-extra": "^4.3.6",
-        "puppeteer-extra-plugin-stealth": "^2.11.2"
+        "axios": "^1.13.6",
+        "cheerio": "^1.2.0",
+        "dotenv": "^17.3.1"
     }
 }
