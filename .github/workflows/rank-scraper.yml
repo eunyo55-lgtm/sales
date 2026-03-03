@@ -25,11 +25,11 @@ jobs:
         working-directory: ./scraper
         run: |
           npm install
-          npx playwright install chromium
           
       - name: Run Scraper Script
         working-directory: ./scraper
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SCRAPER_API_KEY: ${{ secrets.VITE_SCRAPER_API_KEY }}
         run: npm start
