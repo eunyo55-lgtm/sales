@@ -43,24 +43,26 @@ async function scrapeKeywords() {
 
     console.log(`[Scraper] 총 ${keywords.length}개의 키워드를 추적합니다.`);
 
-    // 2. Connect to existing Chrome browser running with remote debugging port 9222
-    let browser = null;
-    console.log('[Scraper] 크롬 브라우저 연결 대기 중...');
-    for (let i = 0; i < 15; i++) {
-        try {
-            browser = await puppeteer.connect({
-                browserURL: 'http://127.0.0.1:9222',
-                defaultViewport: null
-            });
-            console.log('[Scraper] 브라우저에 성공적으로 연결되었습니다.');
-            break;
-        } catch (e) {
-            await new Promise(r => setTimeout(r, 1000));
-        }
-    }
-
-    if (!browser) {
-        console.error('[Scraper] 크롬 브라우저 연결 실패. (포트 9222 연결 못함)');
+    // 2. Launch Chrome directly with Puppeteer using a dedicated profile to bypass the profile picker and apply Stealth patches
+    let browser;
+    console.log('[Scraper] 크롬 브라우저를 보안 뚫기 모드로 엽니다...');
+    try {
+        browser = await puppeteer.launch({
+            headless: false,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            userDataDir: 'C:\\CoupangScraperProfile',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--window-position=0,0',
+                '--disable-infobars'
+            ],
+            ignoreDefaultArgs: ['--enable-automation'],
+            defaultViewport: null
+        });
+    } catch (e) {
+        console.error('[Scraper] 크롬 브라우저 실행 실패:', e.message);
         setTimeout(() => process.exit(1), 5000);
         return;
     }
@@ -104,8 +106,8 @@ async function scrapeKeywords() {
                     await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
                 }
 
-                // 제품 리스트 가져오기
-                const items = await page.$$('li.search-product');
+                // 제품 리스트 가져오기 (기존 UI 및 새로운 React UI 대응)
+                const items = await page.$$('li.search-product, li[class*="productUnit"], li[class*="ProductUnit"]');
 
                 if (items.length === 0) {
                     console.log(`   └ 검색결과를 찾을 수 없습니다. (차단 혹은 비정상 페이지)`);
@@ -113,20 +115,42 @@ async function scrapeKeywords() {
                 }
 
                 for (const item of items) {
-                    // 광고 여부 판별
+                    // 광고 여부 판별 (기존 및 신규 UI 대응)
                     const isAd = await page.evaluate(el => {
-                        return !!(el.querySelector('.ad-badge') || el.querySelector('.ad-badge-text'))
-                            || Array.from(el.querySelectorAll('span')).some(s => s?.textContent?.trim() === '광고');
+                        return !!(
+                            el.querySelector('.ad-badge') ||
+                            el.querySelector('.ad-badge-text') ||
+                            el.querySelector('[class*="AdMark_adMark"]')
+                        ) || Array.from(el.querySelectorAll('span, div')).some(s => {
+                            const txt = s?.textContent?.trim();
+                            return txt === '광고' || txt === 'AD';
+                        });
                     }, item);
 
                     if (isAd) continue;
 
                     naturalCount++; // 순수 랭크 증가
 
-                    const productIdAttr = await page.evaluate(el => el.getAttribute('data-product-id'), item);
-                    const vendorItemIdAttr = await page.evaluate(el => el.getAttribute('data-vendor-item-id'), item);
+                    // 상품 ID 추출 (href 우선 탐색, 없으면 기존 속성)
+                    const { parsedProductId, parsedVendorItemId } = await page.evaluate(el => {
+                        let pId = el.getAttribute('data-product-id');
+                        let vId = el.getAttribute('data-vendor-item-id');
 
-                    if (productIdAttr === kw.coupang_product_id || vendorItemIdAttr === kw.coupang_product_id) {
+                        // 신규 UI: a 태그의 href에서 추출
+                        const aTag = el.querySelector('a[href*="/vp/products/"]');
+                        if (aTag) {
+                            const href = aTag.getAttribute('href') || '';
+                            const match = href.match(/\/vp\/products\/(\d+)/);
+                            if (match) pId = match[1];
+
+                            const urlParams = new URLSearchParams(href.split('?')[1] || '');
+                            if (urlParams.has('vendorItemId')) vId = urlParams.get('vendorItemId');
+                        }
+
+                        return { parsedProductId: pId, parsedVendorItemId: vId };
+                    }, item);
+
+                    if (parsedProductId === kw.coupang_product_id || parsedVendorItemId === kw.coupang_product_id) {
                         rankPosition = naturalCount;
                         found = true;
                         console.log(`   ⭐ [성공!] 우리 상품 발견 - 자연 노출 순위: ${rankPosition}위 (Page ${pageNum})`);
@@ -151,9 +175,8 @@ async function scrapeKeywords() {
         });
     }
 
-    // Do not close the user's browser, just close the tab if we opened a new one
-    // We used the first tab, so we don't close it, just navigate away or leave it.
-    // await browser.close();
+    // Close the browser automatically after finishing
+    await browser.close();
 
     // 5. DB 저장
     console.log('\n[Scraper] 데이터베이스에 저장 중...');
