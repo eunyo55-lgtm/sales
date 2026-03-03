@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Trash2 } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowUpDown } from 'lucide-react';
 
 export default function KeywordRanking() {
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
 
     // Form state
+    const [newCategory, setNewCategory] = useState('');
     const [newKeyword, setNewKeyword] = useState('');
     const [newCoupangId, setNewCoupangId] = useState('');
     const [newBarcode, setNewBarcode] = useState('');
@@ -19,6 +20,7 @@ export default function KeywordRanking() {
 
     // Dashboard state
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'category', direction: 'asc' });
 
     useEffect(() => {
         fetchData();
@@ -86,6 +88,7 @@ export default function KeywordRanking() {
         try {
             const { error } = await supabase.from('keywords').insert([
                 {
+                    category: newCategory.trim() || null,
                     keyword: newKeyword.trim(),
                     type: 'core',
                     coupang_product_id: newCoupangId.trim(),
@@ -95,6 +98,7 @@ export default function KeywordRanking() {
 
             if (error) throw error;
 
+            setNewCategory('');
             setNewKeyword('');
             setNewCoupangId('');
             setNewBarcode('');
@@ -126,6 +130,34 @@ export default function KeywordRanking() {
     const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     const displayDates = allUniqueDates.slice(-7);
 
+    // Sorting logic
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        setSortConfig({ key, direction });
+    };
+
+    const sortedKeywords = [...keywords].sort((a, b) => {
+        if (!sortConfig) return 0;
+        let aValue = '';
+        let bValue = '';
+
+        if (sortConfig.key === 'category') {
+            aValue = a.category?.toLowerCase() || '';
+            bValue = b.category?.toLowerCase() || '';
+        } else if (sortConfig.key === 'keyword') {
+            aValue = a.keyword.toLowerCase();
+            bValue = b.keyword.toLowerCase();
+        } else if (sortConfig.key === 'product') {
+            aValue = a.products?.name?.toLowerCase() || '';
+            bValue = b.products?.name?.toLowerCase() || '';
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
 
 
     return (
@@ -143,7 +175,17 @@ export default function KeywordRanking() {
 
                     <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">대상 단어 (키워드)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">분류</label>
+                            <input
+                                type="text"
+                                value={newCategory}
+                                onChange={(e) => setNewCategory(e.target.value)}
+                                placeholder="예: 여름 의류"
+                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">키워드</label>
                             <input
                                 type="text"
                                 value={newKeyword}
@@ -154,7 +196,7 @@ export default function KeywordRanking() {
                             />
                         </div>
                         <div className="relative">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">우리 상품 연결 검색 (선택)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">연결 상품명 검색 (선택)</label>
                             <input
                                 type="text"
                                 value={searchQuery}
@@ -246,9 +288,34 @@ export default function KeywordRanking() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs text-center">
-                                        <th className="py-3 px-4 font-medium text-left min-w-[120px]">단어 (키워드)</th>
-                                        <th className="py-3 px-4 font-medium text-left min-w-[150px]">연결 상품명</th>
+                                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs shadow-sm">
+                                        <th 
+                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10" 
+                                            onClick={() => handleSort('category')}
+                                        >
+                                            <div className="flex items-center">
+                                                분류
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'category' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="py-3 px-4 font-medium min-w-[120px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
+                                            onClick={() => handleSort('keyword')}
+                                        >
+                                            <div className="flex items-center">
+                                                키워드
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'keyword' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="py-3 px-4 font-medium min-w-[150px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
+                                            onClick={() => handleSort('product')}
+                                        >
+                                            <div className="flex items-center">
+                                                연결 상품명
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
                                         {displayDates.map(date => (
                                             <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{date.substring(5).replace('-', '/')}</th>
                                         ))}
@@ -261,7 +328,7 @@ export default function KeywordRanking() {
                                             <td colSpan={3 + displayDates.length} className="py-8 text-center text-gray-500">등록된 데이터가 없습니다.</td>
                                         </tr>
                                     )}
-                                    {keywords.map(kw => {
+                                    {sortedKeywords.map(kw => {
                                         const kwRankings = rankings.filter(r => r.keyword_id === kw.id);
 
                                         return (
@@ -270,7 +337,10 @@ export default function KeywordRanking() {
                                                 className={`border-b border-gray-100 cursor-pointer transition ${selectedKeywordId === kw.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                                                 onClick={() => setSelectedKeywordId(kw.id)}
                                             >
-                                                <td className="py-3 px-4 font-medium text-gray-800">{kw.keyword}</td>
+                                                <td className="py-3 px-4 text-xs font-semibold text-gray-700 bg-gray-50/50">
+                                                    {kw.category || '-'}
+                                                </td>
+                                                <td className="py-3 px-4 font-medium text-blue-900">{kw.keyword}</td>
                                                 <td className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate" title={kw.products?.name}>
                                                     {kw.products?.name || '-'}
                                                 </td>
