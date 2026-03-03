@@ -37,10 +37,27 @@ export default function KeywordRanking() {
             if (kwError) throw kwError;
             setKeywords(kwData || []);
 
-            // Fetch products for dropdown
-            const { data: prodData } = await supabase.from('products').select('barcode, name').order('name').limit(10000);
+            // Fetch all products for dropdown (working around Supabase 1000 row limit)
+            let allProducts: any[] = [];
+            let from = 0;
+            const limit = 1000;
+
+            while (true) {
+                const { data: prodData } = await supabase
+                    .from('products')
+                    .select('barcode, name')
+                    .order('name')
+                    .range(from, from + limit - 1);
+
+                if (!prodData || prodData.length === 0) break;
+                allProducts = [...allProducts, ...prodData];
+
+                if (prodData.length < limit) break;
+                from += limit;
+            }
+
             // Remove duplicates by name
-            const uniqueProducts = Array.from(new Map((prodData || []).filter(p => p.name).map(item => [item.name, item])).values());
+            const uniqueProducts = Array.from(new Map(allProducts.filter(p => p.name).map(item => [item.name, item])).values());
             setProductsList(uniqueProducts);
 
             // Fetch rankings (last 30 days)
