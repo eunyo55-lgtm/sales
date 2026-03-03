@@ -23,7 +23,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-const MAX_PAGES = 5; // Look up to 5 pages
+const MAX_PAGES = 2; // 최대 2페이지까지만 탐색
 
 async function scrapeKeywords() {
     console.log(`[Scraper] 로컬 PC용 시각적 모드(Headed) 쿠팡 랭킹 추적 시작 - ${new Date().toLocaleString()}`);
@@ -44,16 +44,23 @@ async function scrapeKeywords() {
     console.log(`[Scraper] 총 ${keywords.length}개의 키워드를 추적합니다.`);
 
     // 2. Connect to existing Chrome browser running with remote debugging port 9222
-    let browser;
-    try {
-        browser = await puppeteer.connect({
-            browserURL: 'http://127.0.0.1:9222',
-            defaultViewport: null
-        });
-        console.log('[Scraper] 기존 크롬 브라우저에 성공적으로 연결되었습니다.');
-    } catch (e) {
-        console.error('[Scraper] 크롬 브라우저 연결 실패. (디버깅 포트 9222가 열려있지 않습니다.)');
-        console.error(e.message);
+    let browser = null;
+    console.log('[Scraper] 크롬 브라우저 연결 대기 중...');
+    for (let i = 0; i < 15; i++) {
+        try {
+            browser = await puppeteer.connect({
+                browserURL: 'http://127.0.0.1:9222',
+                defaultViewport: null
+            });
+            console.log('[Scraper] 브라우저에 성공적으로 연결되었습니다.');
+            break;
+        } catch (e) {
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+
+    if (!browser) {
+        console.error('[Scraper] 크롬 브라우저 연결 실패. (포트 9222 연결 못함)');
         setTimeout(() => process.exit(1), 5000);
         return;
     }
@@ -133,7 +140,7 @@ async function scrapeKeywords() {
         }
 
         if (!found) {
-            console.log(`   ❌ [실패] 5페이지 이내에서 제품을 찾을 수 없습니다.`);
+            console.log(`   ❌ [실패] ${MAX_PAGES}페이지 이내에서 제품을 찾을 수 없습니다.`);
         }
 
         results.push({
