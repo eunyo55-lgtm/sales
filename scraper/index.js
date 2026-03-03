@@ -1,8 +1,8 @@
-import { chromium } from 'playwright-extra';
+import puppeteer from 'puppeteer-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
 
-chromium.use(stealthPlugin());
+puppeteer.use(stealthPlugin());
 
 // Environment variables
 import dotenv from 'dotenv';
@@ -43,19 +43,29 @@ async function scrapeKeywords() {
 
     console.log(`[Scraper] 총 ${keywords.length}개의 키워드를 추적합니다.`);
 
-    // 2. Launch browser in UI mode (headless: false) to completely bypass bot checks
-    let launchOptions = {
-        headless: false, // UI 표시 (가장 중요)
-        channel: 'chrome', // 시스템 크롬 사용
-        viewport: { width: 1280, height: 800 }
-    };
+    // 2. Connect to existing Chrome browser running with remote debugging port 9222
+    let browser;
+    try {
+        browser = await puppeteer.connect({
+            browserURL: 'http://127.0.0.1:9222',
+            defaultViewport: null
+        });
+        console.log('[Scraper] 기존 크롬 브라우저에 성공적으로 연결되었습니다.');
+    } catch (e) {
+        console.error('[Scraper] 크롬 브라우저 연결 실패. (디버깅 포트 9222가 열려있지 않습니다.)');
+        console.error(e.message);
+        setTimeout(() => process.exit(1), 5000);
+        return;
+    }
 
-    const browser = await chromium.launch(launchOptions);
-    const context = await browser.newContext({
-        locale: 'ko-KR',
-        timezoneId: 'Asia/Seoul'
+    const pages = await browser.pages();
+    let page = pages.length > 0 ? pages[0] : await browser.newPage();
+
+    // Set extra headers to look like a normal user
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
     });
-    const page = await context.newPage();
+
     const today = new Date().toISOString().split('T')[0];
     const results = [];
 
@@ -63,7 +73,7 @@ async function scrapeKeywords() {
     console.log('[Scraper] 쿠팡 메인 페이지 보안 확인 중...');
     try {
         await page.goto('https://www.coupang.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await page.waitForTimeout(2000 + Math.random() * 2000);
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     } catch (e) { }
 
     // 4. 키워드별 순회
@@ -79,12 +89,12 @@ async function scrapeKeywords() {
 
             try {
                 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await page.waitForTimeout(1500 + Math.random() * 2000);
+                await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000));
 
                 // 스크롤 액션
                 for (let i = 0; i < 3; i++) {
                     await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.7));
-                    await page.waitForTimeout(500 + Math.random() * 1000);
+                    await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
                 }
 
                 // 제품 리스트 가져오기
@@ -97,17 +107,17 @@ async function scrapeKeywords() {
 
                 for (const item of items) {
                     // 광고 여부 판별
-                    const isAd = await item.evaluate(el => {
+                    const isAd = await page.evaluate(el => {
                         return !!(el.querySelector('.ad-badge') || el.querySelector('.ad-badge-text'))
-                            || Array.from(el.querySelectorAll('span')).some(s => s.textContent?.trim() === '광고');
-                    });
+                            || Array.from(el.querySelectorAll('span')).some(s => s?.textContent?.trim() === '광고');
+                    }, item);
 
                     if (isAd) continue;
 
                     naturalCount++; // 순수 랭크 증가
 
-                    const productIdAttr = await item.getAttribute('data-product-id');
-                    const vendorItemIdAttr = await item.getAttribute('data-vendor-item-id');
+                    const productIdAttr = await page.evaluate(el => el.getAttribute('data-product-id'), item);
+                    const vendorItemIdAttr = await page.evaluate(el => el.getAttribute('data-vendor-item-id'), item);
 
                     if (productIdAttr === kw.coupang_product_id || vendorItemIdAttr === kw.coupang_product_id) {
                         rankPosition = naturalCount;
@@ -134,7 +144,9 @@ async function scrapeKeywords() {
         });
     }
 
-    await browser.close();
+    // Do not close the user's browser, just close the tab if we opened a new one
+    // We used the first tab, so we don't close it, just navigate away or leave it.
+    // await browser.close();
 
     // 5. DB 저장
     console.log('\n[Scraper] 데이터베이스에 저장 중...');
