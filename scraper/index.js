@@ -1,5 +1,8 @@
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
+
+chromium.use(stealthPlugin());
 
 // Environment variables
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://YOUR_PROJECT_ID.supabase.co';
@@ -28,20 +31,52 @@ async function scrapeKeywords() {
 
     // 2. Launch browser in Incognito mode
     // Using default context which is incognito in playwright when launched this way
-    const browser = await chromium.launch({ headless: true });
+    let launchOptions = { headless: true };
+    // GitHub actions usually has chrome installed, fallback to bundled chromium if not
+    if (process.env.GITHUB_ACTIONS) {
+        // Try to use bundled chromium on actions
+    } else if (process.platform === 'win32') {
+        launchOptions.channel = 'chrome'; // use local chrome on windows for better stealth
+    }
+    const browser = await chromium.launch(launchOptions);
 
     // Create an isolated context to ensure it's completely clean (incognito)
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 }
+        viewport: { width: 1920, height: 1080 },
+        locale: 'ko-KR',
+        timezoneId: 'Asia/Seoul',
+        permissions: ['geolocation'],
+        extraHTTPHeaders: {
+            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1'
+        }
     });
 
     const page = await context.newPage();
     const today = new Date().toISOString().split('T')[0];
 
+    // 3. Initial connection to the main page to clear Cloudflare/Akamai Bot Check and get cookies
+    console.log('[Scraper] Connecting to main page to pass bot check...');
+    try {
+        await page.goto('https://www.coupang.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForTimeout(3000 + Math.random() * 2000); // 3-5 seconds human wait
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await page.waitForTimeout(1000 + Math.random() * 1000);
+    } catch (e) {
+        console.error('[Scraper] Failed to connect to main page:', e.message);
+    }
+
     const results = [];
 
-    // 3. Loop through keywords
+    // 4. Loop through keywords
     for (const kw of keywords) {
         console.log(`\n--- Tracking Keyword: "${kw.keyword}" ---`);
         let rankPosition = 0; // 0 means not found
@@ -53,9 +88,15 @@ async function scrapeKeywords() {
             const url = `https://www.coupang.com/np/search?component=&q=${encodeURIComponent(kw.keyword)}&channel=user&page=${pageNum}`;
 
             try {
-                // Coupang may block automated requests without proper headers/delay, wait a bit
+                // Human-like navigation and scrolling
                 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await page.waitForTimeout(2000 + Math.random() * 2000); // Random delay 2-4s to avoid blocking
+                await page.waitForTimeout(1500 + Math.random() * 2000); // Base wait 1.5s - 3.5s
+
+                // Emulate human scrolling down the page
+                for (let i = 0; i < 4; i++) {
+                    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.7));
+                    await page.waitForTimeout(500 + Math.random() * 1500); // Wait between scrolls
+                }
 
                 // Search for products
                 const items = await page.$$('li.search-product');
