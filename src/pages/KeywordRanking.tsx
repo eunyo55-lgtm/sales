@@ -12,6 +12,11 @@ export default function KeywordRanking() {
     const [newKeyword, setNewKeyword] = useState('');
     const [newType, setNewType] = useState('core');
     const [newCoupangId, setNewCoupangId] = useState('');
+    const [newBarcode, setNewBarcode] = useState('');
+    const [productsList, setProductsList] = useState<any[]>([]);
+
+    // UI state
+    const [showManualSync, setShowManualSync] = useState(false);
 
     // Dashboard state
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
@@ -23,10 +28,17 @@ export default function KeywordRanking() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch keywords
-            const { data: kwData, error: kwError } = await supabase.from('keywords').select('*').order('created_at', { ascending: false });
+            // Fetch keywords with product name
+            const { data: kwData, error: kwError } = await supabase
+                .from('keywords')
+                .select('*, products(name)')
+                .order('created_at', { ascending: false });
             if (kwError) throw kwError;
             setKeywords(kwData || []);
+
+            // Fetch products for dropdown
+            const { data: prodData } = await supabase.from('products').select('barcode, name').order('name');
+            setProductsList(prodData || []);
 
             // Fetch rankings (last 30 days)
             const thirtyDaysAgo = new Date();
@@ -61,7 +73,8 @@ export default function KeywordRanking() {
                 {
                     keyword: newKeyword.trim(),
                     type: newType,
-                    coupang_product_id: newCoupangId.trim()
+                    coupang_product_id: newCoupangId.trim(),
+                    barcode: newBarcode || null
                 }
             ]);
 
@@ -69,6 +82,7 @@ export default function KeywordRanking() {
 
             setNewKeyword('');
             setNewCoupangId('');
+            setNewBarcode('');
             fetchData();
         } catch (error) {
             console.error('Error adding keyword:', error);
@@ -111,9 +125,11 @@ export default function KeywordRanking() {
 
                 {/* Left: Keyword Management */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm col-span-1 border-t-4 border-t-blue-500">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <Search className="w-5 h-5 mr-2 text-blue-500" />
-                        추적 키워드 관리
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Search className="w-5 h-5 mr-2 text-blue-500" />
+                            추적 키워드 관리
+                        </div>
                     </h3>
 
                     <form onSubmit={handleAddKeyword} className="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
@@ -142,12 +158,25 @@ export default function KeywordRanking() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">쿠팡 상품번호 (ID)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">우리 상품 연결 (선택)</label>
+                            <select
+                                value={newBarcode}
+                                onChange={(e) => setNewBarcode(e.target.value)}
+                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white"
+                            >
+                                <option value="">-- 상품을 선택하세요 --</option>
+                                {productsList.map(p => (
+                                    <option key={p.barcode} value={p.barcode}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Coupang Product ID</label>
                             <input
                                 type="text"
                                 value={newCoupangId}
                                 onChange={(e) => setNewCoupangId(e.target.value)}
-                                placeholder="예: 70123456"
+                                placeholder="예: 9333942720"
                                 className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
                                 required
                             />
@@ -179,6 +208,7 @@ export default function KeywordRanking() {
                                         <h4 className="font-semibold text-gray-800 text-sm">{kw.keyword}</h4>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">ID: {kw.coupang_product_id}</p>
+                                    <p className="text-[10px] text-gray-400 truncate">{kw.products?.name || '연결 상품 없음'}</p>
                                 </div>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleDeleteKeyword(kw.id); }}
@@ -194,8 +224,32 @@ export default function KeywordRanking() {
                 {/* Right: Dashboard */}
                 <div className="col-span-1 lg:col-span-2 space-y-6">
                     {/* Chart Card */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">순위 변동 추이 (최근 30일)</h3>
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">순위 변동 추이 (최근 30일)</h3>
+                            <button
+                                onClick={() => setShowManualSync(true)}
+                                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition border border-gray-200"
+                            >
+                                ⚡ 수동 집계
+                            </button>
+                        </div>
+
+                        {showManualSync && (
+                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-10 w-80 text-sm">
+                                <h4 className="font-bold text-gray-800 mb-2">수동으로 순위 집계하기</h4>
+                                <p className="text-gray-600 mb-3 text-xs leading-relaxed">
+                                    현재 랭킹 집계는 브라우저 보안 정책으로 인해 백엔드 봇이 알아서 새벽에 수행하도록 되어있습니다. 즉시 실행하시려면 다음 두 가지 방법 중 하나를 이용해 주세요:
+                                </p>
+                                <ul className="list-decimal pl-4 space-y-2 text-xs text-gray-700 mb-4">
+                                    <li><b>GitHub Actions 이용:</b> GitHub 리포지토리의 <a href="https://github.com/eunyo55-lgtm/sales/actions/workflows/rank-scraper.yml" target="_blank" rel="noreferrer" className="text-blue-500 underline">Actions 탭</a>으로 이동하여 우측의 [Run workflow] 버튼을 클릭하세요. (1~2분 소요)</li>
+                                    <li><b>로컬 PC 이용:</b> VSCode 터미널을 열고 <code>cd scraper && npm start</code> 를 입력하여 직접 봇을 가동합니다.</li>
+                                </ul>
+                                <div className="flex justify-end">
+                                    <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
+                                </div>
+                            </div>
+                        )}
                         {selectedKeywordId ? (
                             <div className="h-72 w-full">
                                 {chartData.length > 0 ? (
@@ -236,8 +290,9 @@ export default function KeywordRanking() {
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs">
                                         <th className="py-3 px-4 font-medium">구분</th>
-                                        <th className="py-3 px-4 font-medium">키워드</th>
-                                        <th className="py-3 px-4 font-medium">대상 ID</th>
+                                        <th className="py-3 px-4 font-medium">단어 (키워드)</th>
+                                        <th className="py-3 px-4 font-medium">연결 상품명</th>
+                                        <th className="py-3 px-4 font-medium">Product ID</th>
                                         <th className="py-3 px-4 font-medium text-right">최신 순위</th>
                                         <th className="py-3 px-4 font-medium text-center">전일 대비</th>
                                     </tr>
@@ -261,7 +316,10 @@ export default function KeywordRanking() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 font-medium text-gray-800">{kw.keyword}</td>
-                                                <td className="py-3 px-4 text-gray-500 text-xs">{kw.coupang_product_id}</td>
+                                                <td className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate" title={kw.products?.name}>
+                                                    {kw.products?.name || '-'}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-500 text-xs font-mono">{kw.coupang_product_id}</td>
                                                 <td className="py-3 px-4 text-right font-semibold text-gray-800">
                                                     {latest > 0 ? `${latest}위` : <span className="text-gray-400 font-normal">미노출</span>}
                                                 </td>
