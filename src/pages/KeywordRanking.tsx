@@ -38,7 +38,7 @@ export default function KeywordRanking() {
             setKeywords(kwData || []);
 
             // Fetch products for dropdown
-            const { data: prodData } = await supabase.from('products').select('barcode, name').order('name');
+            const { data: prodData } = await supabase.from('products').select('barcode, name').order('name').limit(10000);
             // Remove duplicates by name
             const uniqueProducts = Array.from(new Map((prodData || []).filter(p => p.name).map(item => [item.name, item])).values());
             setProductsList(uniqueProducts);
