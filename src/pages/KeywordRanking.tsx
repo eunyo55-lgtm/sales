@@ -10,10 +10,11 @@ export default function KeywordRanking() {
 
     // Form state
     const [newKeyword, setNewKeyword] = useState('');
-    const [newType, setNewType] = useState('core');
     const [newCoupangId, setNewCoupangId] = useState('');
     const [newBarcode, setNewBarcode] = useState('');
     const [productsList, setProductsList] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
 
     // UI state
     const [showManualSync, setShowManualSync] = useState(false);
@@ -38,7 +39,9 @@ export default function KeywordRanking() {
 
             // Fetch products for dropdown
             const { data: prodData } = await supabase.from('products').select('barcode, name').order('name');
-            setProductsList(prodData || []);
+            // Remove duplicates by name
+            const uniqueProducts = Array.from(new Map((prodData || []).filter(p => p.name).map(item => [item.name, item])).values());
+            setProductsList(uniqueProducts);
 
             // Fetch rankings (last 30 days)
             const thirtyDaysAgo = new Date();
@@ -72,7 +75,7 @@ export default function KeywordRanking() {
             const { error } = await supabase.from('keywords').insert([
                 {
                     keyword: newKeyword.trim(),
-                    type: newType,
+                    type: 'core',
                     coupang_product_id: newCoupangId.trim(),
                     barcode: newBarcode || null
                 }
@@ -83,6 +86,7 @@ export default function KeywordRanking() {
             setNewKeyword('');
             setNewCoupangId('');
             setNewBarcode('');
+            setSearchQuery('');
             fetchData();
         } catch (error) {
             console.error('Error adding keyword:', error);
@@ -132,22 +136,9 @@ export default function KeywordRanking() {
                         </div>
                     </h3>
 
-                    <form onSubmit={handleAddKeyword} className="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
+                    <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">키워드 구분</label>
-                            <div className="flex space-x-2">
-                                <label className="flex items-center space-x-1 cursor-pointer">
-                                    <input type="radio" value="core" checked={newType === 'core'} onChange={(e) => setNewType(e.target.value)} className="text-blue-600 focus:ring-blue-500" />
-                                    <span className="text-sm">핵심</span>
-                                </label>
-                                <label className="flex items-center space-x-1 cursor-pointer">
-                                    <input type="radio" value="sub" checked={newType === 'sub'} onChange={(e) => setNewType(e.target.value)} className="text-blue-600 focus:ring-blue-500" />
-                                    <span className="text-sm">서브</span>
-                                </label>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">대상 키워드</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">대상 단어 (키워드)</label>
                             <input
                                 type="text"
                                 value={newKeyword}
@@ -157,18 +148,40 @@ export default function KeywordRanking() {
                                 required
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">우리 상품 연결 (선택)</label>
-                            <select
-                                value={newBarcode}
-                                onChange={(e) => setNewBarcode(e.target.value)}
+                        <div className="relative">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">우리 상품 연결 검색 (선택)</label>
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setShowDropdown(true);
+                                    if (e.target.value === '') setNewBarcode('');
+                                }}
+                                onFocus={() => setShowDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                                placeholder="상품명 검색..."
                                 className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white"
-                            >
-                                <option value="">-- 상품을 선택하세요 --</option>
-                                {productsList.map(p => (
-                                    <option key={p.barcode} value={p.barcode}>{p.name}</option>
-                                ))}
-                            </select>
+                            />
+                            {showDropdown && (
+                                <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-40 overflow-y-auto rounded-md shadow-lg">
+                                    {productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
+                                        <li
+                                            key={p.barcode}
+                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+                                            onClick={() => {
+                                                setNewBarcode(p.barcode);
+                                                setSearchQuery(p.name);
+                                            }}
+                                        >
+                                            {p.name}
+                                        </li>
+                                    ))}
+                                    {searchQuery && productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                                        <li className="px-3 py-2 text-sm text-gray-500 text-center">검색 결과가 없습니다.</li>
+                                    )}
+                                </ul>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Coupang Product ID</label>
@@ -202,9 +215,6 @@ export default function KeywordRanking() {
                             >
                                 <div>
                                     <div className="flex items-center space-x-2">
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${kw.type === 'core' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-700'}`}>
-                                            {kw.type === 'core' ? '핵심' : '서브'}
-                                        </span>
                                         <h4 className="font-semibold text-gray-800 text-sm">{kw.keyword}</h4>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">ID: {kw.coupang_product_id}</p>
@@ -289,7 +299,6 @@ export default function KeywordRanking() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs">
-                                        <th className="py-3 px-4 font-medium">구분</th>
                                         <th className="py-3 px-4 font-medium">단어 (키워드)</th>
                                         <th className="py-3 px-4 font-medium">연결 상품명</th>
                                         <th className="py-3 px-4 font-medium">Product ID</th>
@@ -310,11 +319,6 @@ export default function KeywordRanking() {
 
                                         return (
                                             <tr key={kw.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                                <td className="py-3 px-4">
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${kw.type === 'core' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-700'}`}>
-                                                        {kw.type === 'core' ? '핵심' : '서브'}
-                                                    </span>
-                                                </td>
                                                 <td className="py-3 px-4 font-medium text-gray-800">{kw.keyword}</td>
                                                 <td className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate" title={kw.products?.name}>
                                                     {kw.products?.name || '-'}
