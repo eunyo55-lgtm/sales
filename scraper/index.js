@@ -132,7 +132,7 @@ async function scrapeKeywords() {
                     naturalCount++; // 순수 랭크 증가
 
                     // 상품 ID 추출 (href 우선 탐색, 없으면 기존 속성)
-                    const { parsedProductId, parsedVendorItemId } = await page.evaluate(el => {
+                    const extractedData = await page.evaluate(el => {
                         let pId = el.getAttribute('data-product-id');
                         let vId = el.getAttribute('data-vendor-item-id');
 
@@ -147,13 +147,57 @@ async function scrapeKeywords() {
                             if (urlParams.has('vendorItemId')) vId = urlParams.get('vendorItemId');
                         }
 
-                        return { parsedProductId: pId, parsedVendorItemId: vId };
+                        // 평점(Rating)과 리뷰 수(Review Count) 추출
+                        let rating = 0;
+                        let reviewCount = 0;
+
+                        const ratingEl = el.querySelector('em.rating, .ProductRating_form__rating__1q2A3, [class*="ProductRating"] [aria-label], .star');
+                        if (ratingEl) {
+                            const rText = ratingEl.textContent?.trim() || ratingEl.getAttribute('aria-label') || '';
+                            const rMatch = rText.match(/([\d.]+)/);
+                            if (rMatch) rating = parseFloat(rMatch[1]);
+                        }
+
+                        const reviewEl = el.querySelector('span.rating-total-count, [class*="ProductRating"] span, .rating-count');
+                        if (reviewEl) {
+                            const cText = reviewEl.textContent?.replace(/[()]/g, '').replace(/,/g, '').trim() || '';
+                            const cMatch = cText.match(/(\d+)/);
+                            if (cMatch) reviewCount = parseInt(cMatch[1], 10);
+                        }
+
+                        // DOM 안쪽 span(텍스트만 있는 경우)을 한 번 더 풀스캔 대비
+                        if (rating === 0 || reviewCount === 0) {
+                            const spans = Array.from(el.querySelectorAll('span'));
+                            for (let s of spans) {
+                                const txt = s.textContent?.trim() || '';
+                                if (!reviewCount && txt.startsWith('(') && txt.endsWith(')')) {
+                                    const numStr = txt.replace(/[(),]/g, '');
+                                    if (!isNaN(parseInt(numStr, 10)) && parseInt(numStr, 10) > 0) {
+                                        reviewCount = parseInt(numStr, 10);
+                                    }
+                                }
+                            }
+                        }
+
+                        return { parsedProductId: pId, parsedVendorItemId: vId, rating, reviewCount };
                     }, item);
+
+                    const { parsedProductId, parsedVendorItemId, rating, reviewCount } = extractedData;
 
                     if (parsedProductId === kw.coupang_product_id || parsedVendorItemId === kw.coupang_product_id) {
                         rankPosition = naturalCount;
                         found = true;
-                        console.log(`   ⭐ [성공!] 우리 상품 발견 - 자연 노출 순위: ${rankPosition}위 (Page ${pageNum})`);
+
+                        // 임시 저장
+                        results.push({
+                            keyword_id: kw.id,
+                            date: today,
+                            rank_position: rankPosition,
+                            rating: rating,
+                            review_count: reviewCount
+                        });
+
+                        console.log(`   ⭐ [성공!] 우리 상품 발견 - 자연 노출 순위: ${rankPosition}위 (Page ${pageNum}) | 평점: ${rating}, 리뷰: ${reviewCount}`);
                         break;
                     }
                 }
@@ -165,14 +209,14 @@ async function scrapeKeywords() {
 
         if (!found) {
             console.log(`   ❌ [실패] ${MAX_PAGES}페이지 이내에서 제품을 찾을 수 없습니다.`);
+            results.push({
+                keyword_id: kw.id,
+                date: today,
+                rank_position: 0,
+                rating: 0,
+                review_count: 0
+            });
         }
-
-        results.push({
-            keyword_id: kw.id,
-            date: today,
-            rank_position: rankPosition,
-            updated_at: new Date().toISOString()
-        });
     }
 
     // Close the browser automatically after finishing
@@ -181,9 +225,17 @@ async function scrapeKeywords() {
     // 5. DB 저장
     console.log('\n[Scraper] 데이터베이스에 저장 중...');
     if (results.length > 0) {
+        const upsertData = results.map(r => ({
+            keyword_id: r.keyword_id,
+            date: r.date,
+            rank_position: r.rank_position,
+            rating: r.rating || 0,
+            review_count: r.review_count || 0,
+            updated_at: new Date().toISOString()
+        }));
         const { error: upsertError } = await supabase
             .from('keyword_rankings')
-            .upsert(results, { onConflict: 'keyword_id, date' });
+            .upsert(upsertData, { onConflict: 'keyword_id, date' });
 
         if (upsertError) {
             console.error('[Scraper] DB 저장 실패:', upsertError);

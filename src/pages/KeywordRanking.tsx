@@ -64,7 +64,7 @@ export default function KeywordRanking() {
 
             const { data: rankData, error: rankError } = await supabase
                 .from('keyword_rankings')
-                .select('*')
+                .select('id, keyword_id, date, rank_position, rating, review_count')
                 .gte('date', dateStr)
                 .order('date', { ascending: true });
 
@@ -278,8 +278,22 @@ export default function KeywordRanking() {
                                                     const r = kwRankings.find(rank => rank.date === date);
                                                     const pos = r ? r.rank_position : 0;
                                                     return (
-                                                        <td key={date} className="py-3 px-3 text-center font-semibold text-gray-800">
-                                                            {pos > 0 ? `${pos}위` : <span className="text-gray-300 font-normal">-</span>}
+                                                        <td key={date} className="py-3 px-3 text-center border-l border-gray-100/50">
+                                                            {pos > 0 ? (
+                                                                <div className="flex flex-col items-center justify-center space-y-1">
+                                                                    <span className="font-semibold text-gray-800 text-sm">{pos}위</span>
+                                                                    {(r?.rating > 0 || r?.review_count > 0) && (
+                                                                        <div className="flex items-center text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
+                                                                            <span className="text-yellow-500 mr-0.5">★</span>
+                                                                            <span>{r.rating || '-'}</span>
+                                                                            <span className="mx-1">|</span>
+                                                                            <span>({r.review_count || 0})</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-gray-300 font-normal">-</span>
+                                                            )}
                                                         </td>
                                                     )
                                                 })}
