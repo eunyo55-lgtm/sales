@@ -1,126 +1,129 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
 
+chromium.use(stealthPlugin());
+
 // Environment variables
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_KEY';
-const SCRAPER_API_KEY = process.env.VITE_SCRAPER_API_KEY || ''; // New ScraperAPI Key
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../.env') }); // Load upper directory .env
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('[Scraper] 오류: Supabase 환경변수(.env)를 찾을 수 없습니다.');
+    console.log('5초 뒤에 종료됩니다.');
+    setTimeout(() => process.exit(1), 5000);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 const MAX_PAGES = 5; // Look up to 5 pages
 
 async function scrapeKeywords() {
-    console.log(`[Scraper] Starting Coupang Keyword Ranking Scraper with ScraperAPI - ${new Date().toISOString()}`);
-
-    if (!SCRAPER_API_KEY) {
-        console.error('[Scraper] ERROR: ScraperAPI Key is missing!');
-        console.error('[Scraper] Please add VITE_SCRAPER_API_KEY to your GitHub Secrets and local .env file.');
-        process.exit(1);
-    }
+    console.log(`[Scraper] 로컬 PC용 시각적 모드(Headed) 쿠팡 랭킹 추적 시작 - ${new Date().toLocaleString()}`);
 
     // 1. Fetch keywords from DB
     const { data: keywords, error } = await supabase.from('keywords').select('*');
     if (error) {
-        console.error('[Scraper] Failed to fetch keywords from Supabase', error);
-        process.exit(1);
+        console.error('[Scraper] DB 키워드 연동 실패', error);
+        setTimeout(() => process.exit(1), 5000);
     }
 
     if (!keywords || keywords.length === 0) {
-        console.log('[Scraper] No keywords to track. Exiting.');
-        process.exit(0);
+        console.log('[Scraper] 등록된 키워드가 없습니다. 종료합니다.');
+        setTimeout(() => process.exit(0), 3000);
+        return;
     }
 
-    console.log(`[Scraper] Found ${keywords.length} keywords to track.`);
+    console.log(`[Scraper] 총 ${keywords.length}개의 키워드를 추적합니다.`);
 
+    // 2. Launch browser in UI mode (headless: false) to completely bypass bot checks
+    let launchOptions = {
+        headless: false, // UI 표시 (가장 중요)
+        channel: 'chrome', // 시스템 크롬 사용
+        viewport: { width: 1280, height: 800 }
+    };
+
+    const browser = await chromium.launch(launchOptions);
+    const context = await browser.newContext({
+        locale: 'ko-KR',
+        timezoneId: 'Asia/Seoul'
+    });
+    const page = await context.newPage();
     const today = new Date().toISOString().split('T')[0];
     const results = [];
 
-    // 2. Loop through keywords
+    // 3. 메인 접속으로 사람 인증(쿠키) 통과
+    console.log('[Scraper] 쿠팡 메인 페이지 보안 확인 중...');
+    try {
+        await page.goto('https://www.coupang.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForTimeout(2000 + Math.random() * 2000);
+    } catch (e) { }
+
+    // 4. 키워드별 순회
     for (const kw of keywords) {
-        console.log(`\n--- Tracking Keyword: "${kw.keyword}" ---`);
-        let rankPosition = 0; // 0 means not found
+        console.log(`\n--- [키워드: "${kw.keyword}"] ---`);
+        let rankPosition = 0;
         let found = false;
-        let naturalCount = 0; // The actual rank count (excluding ads)
+        let naturalCount = 0;
 
         for (let pageNum = 1; pageNum <= MAX_PAGES && !found; pageNum++) {
-            console.log(`Searching Page ${pageNum}...`);
-            const targetUrl = `https://www.coupang.com/np/search?component=&q=${encodeURIComponent(kw.keyword)}&channel=user&page=${pageNum}`;
-
-            // Build ScraperAPI request URL using premium residential proxies, avoiding headless browser rendering which Akamai blocks
-            const scraperApiUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(targetUrl)}&country_code=kr&premium=true&keep_headers=true`;
+            console.log(` ${pageNum}페이지 검색 중...`);
+            const url = `https://www.coupang.com/np/search?component=&q=${encodeURIComponent(kw.keyword)}&channel=user&page=${pageNum}`;
 
             try {
-                // Fetch the HTML via ScraperAPI
-                const response = await axios.get(scraperApiUrl, {
-                    timeout: 60000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                        'Sec-Ch-Ua-Mobile': '?0',
-                        'Sec-Ch-Ua-Platform': '"Windows"',
-                        'Sec-Fetch-Dest': 'document',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Site': 'none',
-                        'Sec-Fetch-User': '?1',
-                        'Upgrade-Insecure-Requests': '1'
-                    }
-                });
-                const html = response.data;
-                const $ = cheerio.load(html);
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(1500 + Math.random() * 2000);
 
-                // Search for products
-                const items = $('li.search-product');
-
-                if (items.length === 0) {
-                    console.log(`No products found on page ${pageNum}. Breaking.`);
-                    break;
+                // 스크롤 액션
+                for (let i = 0; i < 3; i++) {
+                    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.7));
+                    await page.waitForTimeout(500 + Math.random() * 1000);
                 }
 
-                items.each((i, el) => {
-                    if (found) return; // already found, break each loop
+                // 제품 리스트 가져오기
+                const items = await page.$$('li.search-product');
 
-                    const $el = $(el);
+                if (items.length === 0) {
+                    console.log(`   └ 검색결과를 찾을 수 없습니다. (차단 혹은 비정상 페이지)`);
+                    break; // 다음 키워드로 넘어감
+                }
 
-                    // Check if it's an ad
-                    const hasAdBadge = $el.find('.ad-badge, .ad-badge-text').length > 0;
-                    let hasAdText = false;
-                    $el.find('span').each((_, spanEl) => {
-                        if ($(spanEl).text().trim() === '광고') {
-                            hasAdText = true;
-                        }
+                for (const item of items) {
+                    // 광고 여부 판별
+                    const isAd = await item.evaluate(el => {
+                        return !!(el.querySelector('.ad-badge') || el.querySelector('.ad-badge-text'))
+                            || Array.from(el.querySelectorAll('span')).some(s => s.textContent?.trim() === '광고');
                     });
 
-                    if (hasAdBadge || hasAdText) {
-                        return; // Skip ad
-                    }
+                    if (isAd) continue;
 
-                    naturalCount++;
+                    naturalCount++; // 순수 랭크 증가
 
-                    // Check if this product is our target product
-                    const productIdAttr = $el.attr('data-product-id');
-                    const vendorItemIdAttr = $el.attr('data-vendor-item-id');
+                    const productIdAttr = await item.getAttribute('data-product-id');
+                    const vendorItemIdAttr = await item.getAttribute('data-vendor-item-id');
 
                     if (productIdAttr === kw.coupang_product_id || vendorItemIdAttr === kw.coupang_product_id) {
                         rankPosition = naturalCount;
                         found = true;
-                        console.log(`[SUCCESS] Found our product (ID: ${kw.coupang_product_id}) at Natural Rank: ${rankPosition} (Page: ${pageNum})`);
+                        console.log(`   ⭐ [성공!] 우리 상품 발견 - 자연 노출 순위: ${rankPosition}위 (Page ${pageNum})`);
+                        break;
                     }
-                });
-
+                }
             } catch (err) {
-                console.error(`Error searching page ${pageNum} for ${kw.keyword}:`, err.message || err);
+                console.error(`   └ 에러 발생:`, err.message);
                 break;
             }
         }
 
         if (!found) {
-            console.log(`[FAILED] Could not find the product within ${MAX_PAGES} pages.`);
+            console.log(`   ❌ [실패] 5페이지 이내에서 제품을 찾을 수 없습니다.`);
         }
 
         results.push({
@@ -131,24 +134,27 @@ async function scrapeKeywords() {
         });
     }
 
-    // 3. Save to DB
-    console.log('\n[Scraper] Saving results to Supabase...');
+    await browser.close();
+
+    // 5. DB 저장
+    console.log('\n[Scraper] 데이터베이스에 저장 중...');
     if (results.length > 0) {
         const { error: upsertError } = await supabase
             .from('keyword_rankings')
             .upsert(results, { onConflict: 'keyword_id, date' });
 
         if (upsertError) {
-            console.error('[Scraper] Failed to save results to DB', upsertError);
+            console.error('[Scraper] DB 저장 실패:', upsertError);
         } else {
-            console.log(`[Scraper] Successfully saved ${results.length} records.`);
+            console.log(`[Scraper] 저장 완료! 총 ${results.length}개의 키워드 정보가 갱신되었습니다.`);
         }
     }
 
-    console.log('[Scraper] Finished.');
+    console.log('[Scraper] 모든 작업을 마쳤습니다. 3초 뒤 창이 닫힙니다.');
+    setTimeout(() => process.exit(0), 3000);
 }
 
 scrapeKeywords().catch(err => {
-    console.error('[Scraper] Unhandled Error:', err);
-    process.exit(1);
+    console.error('[Scraper] 예기치 않은 오류 발생:', err);
+    setTimeout(() => process.exit(1), 5000);
 });

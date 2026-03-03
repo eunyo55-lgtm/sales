@@ -266,12 +266,11 @@ export default function KeywordRanking() {
                             <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-10 w-80 text-sm">
                                 <h4 className="font-bold text-gray-800 mb-2">수동으로 순위 집계하기</h4>
                                 <p className="text-gray-600 mb-3 text-xs leading-relaxed">
-                                    현재 랭킹 집계는 브라우저 보안 정책으로 인해 백엔드 봇이 알아서 새벽에 수행하도록 되어있습니다. 즉시 실행하시려면 다음 두 가지 방법 중 하나를 이용해 주세요:
+                                    현재 쿠팡의 강력한 봇 차단(방화벽) 정책으로 인해 외부 서버(GitHub)에서의 자동 수집이 불가능합니다. 순위를 갱신하시려면 <b>대표님의 PC</b>에서 직접 수집기를 작동시켜야 합니다.
                                 </p>
-                                <ul className="list-decimal pl-4 space-y-2 text-xs text-gray-700 mb-4">
-                                    <li><b>GitHub Actions 이용:</b> GitHub 리포지토리의 <a href="https://github.com/eunyo55-lgtm/sales/actions/workflows/rank-scraper.yml" target="_blank" rel="noreferrer" className="text-blue-500 underline">Actions 탭</a>으로 이동하여 우측의 [Run workflow] 버튼을 클릭하세요. (1~2분 소요)</li>
-                                    <li><b>로컬 PC 이용:</b> VSCode 터미널을 열고 <code>cd scraper && npm start</code> 를 입력하여 직접 봇을 가동합니다.</li>
-                                </ul>
+                                <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-4 border border-blue-100">
+                                    <b>사용 방법:</b> 바탕화면에 만들어진 <b>[쿠팡 키워드 랭킹 수집기]</b> 아이콘을 더블클릭하세요. 실제 크롬 브라우저 창이 열리며 사람처럼 안전하게 순위를 수집하고 자동으로 닫힙니다. (수집 완료 후 이 화면을 새로고침 하시면 반영됩니다.)
+                                </div>
                                 <div className="flex justify-end">
                                     <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
                                 </div>
