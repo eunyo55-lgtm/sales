@@ -22,6 +22,7 @@ export interface ProductStats {
     avgDailySales: number; // Last 7 days avg
     daysOfInventory: number;
     dailySales: Record<string, number>; // Date (YYYY-MM-DD) -> Quantity
+    dailyStock: Record<string, number>; // [NEW] Date (YYYY-MM-DD) -> Total Stock
     abcGrade: 'A' | 'B' | 'C' | 'D'; // ABC Analysis Grade (Based on 7-day sales)
     prevSales7Days: number; // Sales 8-14 days ago
     trend: 'hot' | 'cold' | 'up' | 'down' | 'flat';
@@ -105,7 +106,8 @@ export const api = {
         // Deduplicate sales data
         // Deduplicate sales data
         // We now need to track fcQty and vfQty separately
-        const aggregatedSalesMap = new Map<string, CoupangSalesRow & { fcQty: number, vfQty: number }>();
+        // We now need to track fcQty and vfQty separately, and track the maximum currentStock for that day
+        const aggregatedSalesMap = new Map<string, CoupangSalesRow & { fcQty: number, vfQty: number, maxStock: number }>();
         salesData.forEach(row => {
             const key = `${row.date}_${row.barcode}`;
             const existing = aggregatedSalesMap.get(key);
@@ -119,13 +121,14 @@ export const api = {
                 if (isVF) existing.vfQty += row.salesQty;
 
                 if (row.currentStock > 0) {
-                    existing.currentStock = Math.max(existing.currentStock, row.currentStock);
+                    existing.maxStock += row.currentStock; // Summing the stock from different centers for the daily total stock
                 }
             } else {
                 aggregatedSalesMap.set(key, {
                     ...row,
                     fcQty: isFC ? row.salesQty : 0,
-                    vfQty: isVF ? row.salesQty : 0
+                    vfQty: isVF ? row.salesQty : 0,
+                    maxStock: row.currentStock // initialize with current stock
                 });
             }
         });
@@ -170,7 +173,7 @@ export const api = {
             // Pre-fetch existing daily_sales to prevent wiping FC/VF quantities when uploading one-by-one
             const { data: existingSales } = await supabase
                 .from('daily_sales')
-                .select('date, barcode, fc_quantity, vf_quantity')
+                .select('date, barcode, fc_quantity, vf_quantity, stock')
                 .in('date', chunkDates)
                 .in('barcode', chunkBarcodes);
 
@@ -188,6 +191,7 @@ export const api = {
                             quantity: s.salesQty,
                             fc_quantity: s.fcQty > 0 || !existing ? s.fcQty : existing.fc_quantity,
                             vf_quantity: s.vfQty > 0 || !existing ? s.vfQty : existing.vf_quantity,
+                            stock: s.maxStock > 0 || !existing ? s.maxStock : (existing.stock || 0), // Save daily stock
                         };
                     }),
                     { onConflict: 'date, barcode' }
@@ -849,11 +853,11 @@ ${sampleText}
 
         // 2. Fetch Sales History (Last 30 Days for trends)
         // Note: For daily_sales, getting exact count might be slow if huge, but faster than serial fetch.
-        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string, fc_quantity: number, vf_quantity: number }>('daily_sales', 'barcode, quantity, date, fc_quantity, vf_quantity', 'date');
+        const sales = await fetchAllParallel<{ date: string, quantity: number, barcode: string, fc_quantity: number, vf_quantity: number, stock: number }>('daily_sales', 'barcode, quantity, date, fc_quantity, vf_quantity, stock', 'date');
 
         // ... existing aggregation logic ...
         // 3. Aggregate Sales (Anchor to Latest Date)
-        const salesMap = new Map<string, { total: number, fcTotal: number, vfTotal: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number> }>();
+        const salesMap = new Map<string, { total: number, fcTotal: number, vfTotal: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number>, dailyStock: Record<string, number> }>();
 
         // Find latest date from sales data itself to be accurate without extra query if possible?
         let maxDateStr = '';
@@ -878,7 +882,7 @@ ${sampleText}
         const date14DaysAgo = toLocalISO(d14);
 
         sales?.forEach(s => {
-            const entry = salesMap.get(s.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
+            const entry = salesMap.get(s.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {}, dailyStock: {} };
             entry.total += s.quantity;
             entry.fcTotal += (s.fc_quantity || 0);
             entry.vfTotal += (s.vf_quantity || 0);
@@ -890,13 +894,14 @@ ${sampleText}
 
             // Aggregate daily sales
             entry.daily[s.date] = (entry.daily[s.date] || 0) + s.quantity;
+            entry.dailyStock[s.date] = s.stock || 0; // Capture daily stock
 
             salesMap.set(s.barcode, entry);
         });
 
         // 4. Merge
         const result = products.map(p => {
-            const s = salesMap.get(p.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {} };
+            const s = salesMap.get(p.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {}, dailyStock: {} };
             const avgDailySales = s.last7Days / 7;
             const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
 
@@ -975,6 +980,7 @@ ${sampleText}
                 avgDailySales: parseFloat(avgDailySales.toFixed(1)),
                 daysOfInventory,
                 dailySales: s.daily,
+                dailyStock: s.dailyStock,
                 abcGrade: 'D' as 'A' | 'B' | 'C' | 'D', // Default, will be updated below
                 prevSales7Days,
                 trend

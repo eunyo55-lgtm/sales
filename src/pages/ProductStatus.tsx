@@ -18,6 +18,7 @@ interface GroupedProduct {
   fcSales: number;      // FC Sales
   vfSales: number;      // VF164 Sales
   dailySales: Record<string, number>;
+  dailyStock: Record<string, number>; // [NEW]
   abcGrade: 'A' | 'B' | 'C' | 'D'; // Representative grade (usually max of children or recalculated)
   children: ProductStats[];
 }
@@ -83,6 +84,11 @@ export default function ProductStatus() {
           existing.dailySales[date] = (existing.dailySales[date] || 0) + qty;
         });
 
+        // Sum daily stock across children for each date
+        Object.entries(p.dailyStock).forEach(([date, stock]) => {
+          existing.dailyStock[date] = (existing.dailyStock[date] || 0) + stock;
+        });
+
         existing.children.push(p);
       } else {
         groups.set(p.name, {
@@ -98,6 +104,7 @@ export default function ProductStatus() {
           vfStock: p.vfStock,
           hqStock: p.hqStock,
           dailySales: { ...p.dailySales },
+          dailyStock: { ...p.dailyStock },
           abcGrade: p.abcGrade,
           children: [p]
         });
@@ -645,9 +652,14 @@ export default function ProductStatus() {
                 const chartData = [];
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                   const dStr = d.toISOString().split('T')[0];
+                  let stockSum = group.dailyStock[dStr] || 0;
+
+                  // if there is no stock recorded for the day but there are children, try to see if they have stock recorded
+                  // but group.dailyStock is already aggregated
                   chartData.push({
                     date: dStr.substring(5).replace('-', '/'),
-                    sales: group.dailySales[dStr] || 0
+                    sales: group.dailySales[dStr] || 0,
+                    stock: stockSum
                   });
                 }
 
@@ -661,24 +673,51 @@ export default function ProductStatus() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                       <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} stroke="#cbd5e1" minTickGap={20} />
                       <YAxis
+                        yAxisId="left"
                         tick={{ fontSize: 12 }}
                         tickMargin={10}
-                        stroke="#cbd5e1"
+                        stroke="#10b981"
+                        allowDecimals={false}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontSize: 12 }}
+                        tickMargin={10}
+                        stroke="#8b5cf6"
                         allowDecimals={false}
                       />
                       <Tooltip
                         contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        formatter={(value: any) => [`${value}건`, '판매량']}
+                        formatter={(value: any, name: any) => {
+                          if (name === 'sales') return [`${value}건`, '판매량'];
+                          if (name === 'stock') return [`${value}개`, '총재고'];
+                          return [value, name];
+                        }}
                         labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
-                        itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
                       />
+                      <Legend verticalAlign="top" height={36} />
                       <Line
+                        yAxisId="left"
                         type="monotone"
                         dataKey="sales"
+                        name="판매량"
                         stroke="#10b981"
                         strokeWidth={3}
                         dot={false}
                         activeDot={{ r: 6, stroke: '#059669', strokeWidth: 2, fill: '#fff' }}
+                        animationDuration={1000}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="stepAfter"
+                        dataKey="stock"
+                        name="재고량"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        dot={false}
+                        opacity={0.8}
+                        activeDot={{ r: 4, stroke: '#7c3aed', strokeWidth: 2, fill: '#fff' }}
                         animationDuration={1000}
                       />
                     </LineChart>
