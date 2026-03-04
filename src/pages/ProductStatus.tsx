@@ -86,7 +86,9 @@ export default function ProductStatus() {
 
         // Sum daily stock across children for each date
         Object.entries(p.dailyStock).forEach(([date, stock]) => {
-          existing.dailyStock[date] = (existing.dailyStock[date] || 0) + stock;
+          if (stock !== undefined && stock !== null) {
+            existing.dailyStock[date] = (existing.dailyStock[date] || 0) + stock;
+          }
         });
 
         existing.children.push(p);
@@ -650,21 +652,20 @@ export default function ProductStatus() {
                 const endDate = new Date(latestDateStr);
 
                 const chartData = [];
-                let lastKnownStockSum = 0; // [FIX] Carry over stock because days with 0 sales have no rows in excel
+                let lastKnownStockSum: number | null = null; // Track the absolute last known sum
 
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                   const dStr = d.toISOString().split('T')[0];
-                  let stockSum = group.dailyStock[dStr] || 0;
+                  let stockSum = group.dailyStock[dStr]; // Might be undefined
 
-                  // If no stock is recorded today, use the last known stock
-                  if (stockSum === 0 && lastKnownStockSum > 0) {
-                    stockSum = lastKnownStockSum;
-                  } else if (stockSum > 0) {
-                    lastKnownStockSum = stockSum; // Update last known
+                  if (stockSum === undefined) {
+                    // No info for today: carry over last known if it exists, otherwise leave it as 0
+                    stockSum = lastKnownStockSum !== null ? lastKnownStockSum : 0;
+                  } else {
+                    // Actual data exists for today (even if 0) -> update last known
+                    lastKnownStockSum = stockSum;
                   }
 
-                  // if there is no stock recorded for the day but there are children, try to see if they have stock recorded
-                  // but group.dailyStock is already aggregated
                   chartData.push({
                     date: dStr.substring(5).replace('-', '/'),
                     sales: group.dailySales[dStr] || 0,

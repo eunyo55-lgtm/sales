@@ -894,7 +894,11 @@ ${sampleText}
 
             // Aggregate daily sales
             entry.daily[s.date] = (entry.daily[s.date] || 0) + s.quantity;
-            entry.dailyStock[s.date] = s.stock || 0; // Capture daily stock
+
+            // Capture daily stock only if it exists in DB for this date (so we know it's a real record)
+            if (s.stock !== null && s.stock !== undefined) {
+                entry.dailyStock[s.date] = s.stock;
+            }
 
             salesMap.set(s.barcode, entry);
         });
