@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import type { ProductStats } from '../lib/api';
-import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, Copy } from 'lucide-react';
+import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, Copy, X, TrendingUp } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LineChart, Line
 } from 'recharts';
 
 
@@ -34,6 +34,14 @@ export default function InventoryStatus() {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'minDaysOfInventory', direction: 'asc' });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
+  const [chartModalOpen, setChartModalOpen] = useState(false);
+  const [selectedGroupForChart, setSelectedGroupForChart] = useState<string | null>(null);
+
+  const openChartModal = (groupName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedGroupForChart(groupName);
+    setChartModalOpen(true);
+  };
 
   useEffect(() => {
     loadData();
@@ -440,7 +448,12 @@ export default function InventoryStatus() {
                         {g.imageUrl ? <img src={g.imageUrl} alt="" className="w-8 h-8 rounded mx-auto object-cover bg-gray-100 border border-gray-200" /> : <div className="w-8 h-8 rounded mx-auto bg-gray-100 border border-gray-200" />}
                       </td>
                       <td className={`px-4 py-2 font-bold text-gray-900 text-sm whitespace-nowrap sticky z-20 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME} ${stickyBg} border-b border-gray-100`}>
-                        {g.name}
+                        <span
+                          className="cursor-pointer hover:text-blue-600 hover:underline"
+                          onClick={(e) => openChartModal(g.name, e)}
+                        >
+                          {g.name}
+                        </span>
                         <span className="ml-1 text-xs font-normal text-gray-500">[{g.children.length}]</span>
                       </td>
 
@@ -513,6 +526,91 @@ export default function InventoryStatus() {
           </div>
         )}
       </div>
+
+      {/* Chart Modal */}
+      {chartModalOpen && selectedGroupForChart && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                <TrendingUp size={20} className="text-blue-500 mr-2" />
+                <span className="text-blue-600 mr-2">{selectedGroupForChart}</span> 누적 판매 추이 (올해 1월 1일 ~)
+              </h3>
+              <button
+                onClick={() => setChartModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 h-[400px] w-full">
+              {(() => {
+                const group = groupedData.find(g => g.name === selectedGroupForChart);
+                if (!group) return null;
+
+                let latestDateStr = '';
+                group.children.forEach(c => {
+                  Object.keys(c.dailySales).forEach(d => {
+                    if (d > latestDateStr) latestDateStr = d;
+                  });
+                });
+                if (!latestDateStr) latestDateStr = new Date().toISOString().split('T')[0];
+
+                const currentYear = latestDateStr.substring(0, 4);
+                const startDate = new Date(`${currentYear}-01-01`);
+                const endDate = new Date(latestDateStr);
+
+                const chartData = [];
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                  const dStr = d.toISOString().split('T')[0];
+                  let dailyTotal = 0;
+                  group.children.forEach(c => {
+                    dailyTotal += c.dailySales[dStr] || 0;
+                  });
+                  chartData.push({
+                    date: dStr.substring(5).replace('-', '/'),
+                    sales: dailyTotal
+                  });
+                }
+
+                if (chartData.length === 0) {
+                  return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;
+                }
+
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} stroke="#cbd5e1" minTickGap={20} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickMargin={10}
+                        stroke="#cbd5e1"
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: any) => [`${value}건`, '판매량']}
+                        labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
+                        itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="sales"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 6, stroke: '#059669', strokeWidth: 2, fill: '#fff' }}
+                        animationDuration={1000}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
