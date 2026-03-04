@@ -719,11 +719,12 @@ export default function ProductStatus() {
                       />
                       <Line
                         yAxisId="right"
-                        type="stepAfter"
+                        type="monotone"
                         dataKey="stock"
                         name="재고량"
                         stroke="#8b5cf6"
                         strokeWidth={2}
+                        strokeDasharray="5 5"
                         dot={false}
                         opacity={0.8}
                         activeDot={{ r: 4, stroke: '#7c3aed', strokeWidth: 2, fill: '#fff' }}
