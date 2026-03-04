@@ -184,7 +184,7 @@ export default function KeywordRanking() {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
                 {/* Left: Keyword Management */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm col-span-1 border-t-4 border-t-blue-500">
@@ -273,7 +273,7 @@ export default function KeywordRanking() {
                 </div>
 
                 {/* Right: Dashboard */}
-                <div className="col-span-1 lg:col-span-2 space-y-6">
+                <div className="col-span-1 lg:col-span-4 space-y-6">
                     {/* Chart Card */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
                         <div className="flex justify-between items-center mb-4">
@@ -485,7 +485,7 @@ export default function KeywordRanking() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="p-6 flex-1 min-h-[400px]">
+                        <div className="p-6 h-[400px] w-full">
                             {(() => {
                                 // If we want to show all dates even if discontinuous, remove the filter and set connectNulls={true} in Line
 
@@ -512,7 +512,7 @@ export default function KeywordRanking() {
                                                 tick={{ fontSize: 12 }}
                                                 tickMargin={10}
                                                 stroke="#cbd5e1"
-                                                domain={[1, 'dataMax']}
+                                                domain={[1, (dataMax: number) => (dataMax < 10 ? 10 : dataMax + 2)]}
                                                 allowDecimals={false}
                                                 label={{ value: '순위', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: 13 } }}
                                             />
