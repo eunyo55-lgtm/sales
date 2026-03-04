@@ -652,35 +652,25 @@ export default function ProductStatus() {
                 const endDate = new Date(latestDateStr);
 
                 const chartData: any[] = [];
-                let simulatedStock: number | null = null;
-                let lastDbStock: number | null = null;
+                let lastKnownStockSum: number | null = null;
 
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                   const dStr = d.toISOString().split('T')[0];
                   let dbStock = group.dailyStock[dStr];
-                  let sales = group.dailySales[dStr] || 0;
+                  let stockSum = dbStock;
 
-                  // 1. Detect genuine stock updates
-                  // Ignore undefined and ignore if the raw DB value is identical to the last seen one (which signifies a flat chunk upload)
-                  if (dbStock !== undefined && dbStock !== lastDbStock) {
-                    if (dbStock > 0) {
-                      // Found a new positive stock value -> Reset our simulation to this anchor
-                      simulatedStock = dbStock;
-                    }
-                    lastDbStock = dbStock; // Remember raw DB value to detect flats
-                  }
-
-                  // 2. Deplete simulated stock by today's sales
-                  if (simulatedStock !== null) {
-                    // Deplete stock based on sales to create a realistic downward curve
-                    simulatedStock -= sales;
-                    if (simulatedStock < 0) simulatedStock = 0; // Prevent negative stock
+                  if (dbStock === undefined) {
+                    // No info for today: carry over last known if it exists, otherwise leave it as 0
+                    stockSum = lastKnownStockSum !== null ? lastKnownStockSum : 0;
+                  } else {
+                    // Actual data exists for today (even if 0) -> update last known
+                    lastKnownStockSum = dbStock;
                   }
 
                   chartData.push({
                     date: dStr.substring(5).replace('-', '/'),
-                    sales: sales,
-                    stock: simulatedStock !== null ? simulatedStock : (dbStock || 0)
+                    sales: group.dailySales[dStr] || 0,
+                    stock: stockSum
                   });
                 }
 
