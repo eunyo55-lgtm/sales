@@ -30,6 +30,33 @@ export default function KeywordRanking() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery.trim() && showDropdown) {
+                searchProducts(searchQuery.trim());
+            } else if (!searchQuery.trim()) {
+                setProductsList([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, showDropdown]);
+
+    const searchProducts = async (query: string) => {
+        try {
+            const { data } = await supabase
+                .from('products')
+                .select('barcode, name')
+                .ilike('name', `%${query}%`)
+                .limit(50);
+            if (data) {
+                const unique = Array.from(new Map(data.filter(p => p.name).map(item => [item.name, item])).values());
+                setProductsList(unique);
+            }
+        } catch (error) {
+            console.error('Error searching products:', error);
+        }
+    };
+
     const fetchData = async () => {
         try {
             // Fetch keywords with product name
@@ -40,28 +67,7 @@ export default function KeywordRanking() {
             if (kwError) throw kwError;
             setKeywords(kwData || []);
 
-            // Fetch all products for dropdown (working around Supabase 1000 row limit)
-            let allProducts: any[] = [];
-            let from = 0;
-            const limit = 1000;
-
-            while (true) {
-                const { data: prodData } = await supabase
-                    .from('products')
-                    .select('barcode, name')
-                    .order('name')
-                    .range(from, from + limit - 1);
-
-                if (!prodData || prodData.length === 0) break;
-                allProducts = [...allProducts, ...prodData];
-
-                if (prodData.length < limit) break;
-                from += limit;
-            }
-
-            // Remove duplicates by name
-            const uniqueProducts = Array.from(new Map(allProducts.filter(p => p.name).map(item => [item.name, item])).values());
-            setProductsList(uniqueProducts);
+            // Products list is now fetched dynamically on search to improve load time
 
             // Fetch rankings (last 30 days)
             const thirtyDaysAgo = new Date();
