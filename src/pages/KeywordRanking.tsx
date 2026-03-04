@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Trash2, ArrowUpDown } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function KeywordRanking() {
     const [keywords, setKeywords] = useState<any[]>([]);
@@ -21,6 +22,9 @@ export default function KeywordRanking() {
     // Dashboard state
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'category', direction: 'asc' });
+    const [editingCategory, setEditingCategory] = useState<{ id: string, value: string } | null>(null);
+    const [chartModalOpen, setChartModalOpen] = useState(false);
+    const [selectedChartKeyword, setSelectedChartKeyword] = useState<any>(null);
 
     useEffect(() => {
         fetchData();
@@ -122,6 +126,24 @@ export default function KeywordRanking() {
             console.error('Error deleting keyword:', error);
             alert('키워드 삭제 중 오류가 발생했습니다.');
         }
+    };
+
+    const handleUpdateCategory = async (id: string, newCat: string) => {
+        try {
+            const { error } = await supabase.from('keywords').update({ category: newCat.trim() || null }).eq('id', id);
+            if (error) throw error;
+
+            setKeywords(prev => prev.map(k => k.id === id ? { ...k, category: newCat.trim() || null } : k));
+            setEditingCategory(null);
+        } catch (error) {
+            console.error('Error updating category:', error);
+            alert('분류 수정 중 오류가 발생했습니다.');
+        }
+    };
+
+    const openChartModal = (keyword: any) => {
+        setSelectedChartKeyword(keyword);
+        setChartModalOpen(true);
     };
 
 
@@ -289,8 +311,8 @@ export default function KeywordRanking() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs shadow-sm">
-                                        <th 
-                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10" 
+                                        <th
+                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
                                             onClick={() => handleSort('category')}
                                         >
                                             <div className="flex items-center">
@@ -298,7 +320,7 @@ export default function KeywordRanking() {
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'category' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        <th 
+                                        <th
                                             className="py-3 px-4 font-medium min-w-[120px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
                                             onClick={() => handleSort('keyword')}
                                         >
@@ -307,7 +329,7 @@ export default function KeywordRanking() {
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'keyword' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        <th 
+                                        <th
                                             className="py-3 px-4 font-medium min-w-[150px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
                                             onClick={() => handleSort('product')}
                                         >
@@ -337,21 +359,79 @@ export default function KeywordRanking() {
                                                 className={`border-b border-gray-100 cursor-pointer transition ${selectedKeywordId === kw.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                                                 onClick={() => setSelectedKeywordId(kw.id)}
                                             >
-                                                <td className="py-3 px-4 text-xs font-semibold text-gray-700 bg-gray-50/50">
-                                                    {kw.category || '-'}
+                                                <td
+                                                    className="py-3 px-4 text-xs font-semibold text-gray-700 bg-gray-50/50 cursor-pointer hover:bg-white"
+                                                    onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}
+                                                >
+                                                    {editingCategory?.id === kw.id ? (
+                                                        <input
+                                                            autoFocus
+                                                            type="text"
+                                                            className="w-full px-2 py-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                                                            value={editingCategory?.value || ''}
+                                                            onChange={(e) => setEditingCategory(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                            onBlur={() => { if (editingCategory) handleUpdateCategory(kw.id, editingCategory.value); }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && editingCategory) handleUpdateCategory(kw.id, editingCategory.value);
+                                                                if (e.key === 'Escape') setEditingCategory(null);
+                                                            }}
+                                                            onClick={e => e.stopPropagation()}
+                                                        />
+                                                    ) : (
+                                                        kw.category || <span className="text-gray-400 hover:text-blue-500 italic">+ 분류 추가</span>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-4 font-medium text-blue-900">{kw.keyword}</td>
-                                                <td className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate" title={kw.products?.name}>
+                                                <td
+                                                    className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate cursor-pointer hover:text-blue-600 hover:underline"
+                                                    title="클릭하여 순위 추이 보기"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openChartModal(kw);
+                                                    }}
+                                                >
                                                     {kw.products?.name || '-'}
                                                 </td>
-                                                {displayDates.map(date => {
+                                                {displayDates.map((date, index) => {
                                                     const r = kwRankings.find(rank => rank.date === date);
                                                     const pos = r ? r.rank_position : 0;
+
+                                                    // Calculate DoD (Day over Day)
+                                                    let prevPos = 0;
+                                                    if (index > 0) {
+                                                        const prevDate = displayDates[index - 1];
+                                                        const prevR = kwRankings.find(rank => rank.date === prevDate);
+                                                        if (prevR) prevPos = prevR.rank_position;
+                                                    } else {
+                                                        // For the first column, check the un-displayed previous date if available
+                                                        const prevDateIndex = allUniqueDates.indexOf(date) - 1;
+                                                        if (prevDateIndex >= 0) {
+                                                            const prevDate = allUniqueDates[prevDateIndex];
+                                                            const prevR = kwRankings.find(rank => rank.date === prevDate);
+                                                            if (prevR) prevPos = prevR.rank_position;
+                                                        }
+                                                    }
+
+                                                    let dodElement = null;
+                                                    if (pos > 0) {
+                                                        if (prevPos === 0) {
+                                                            dodElement = <span className="text-[9px] font-bold text-orange-500 bg-orange-50 px-1 rounded">NEW</span>;
+                                                        } else if (prevPos > pos) {
+                                                            dodElement = <span className="flex items-center text-[10px] text-red-500"><TrendingUp className="w-2.5 h-2.5 mr-0.5" />{prevPos - pos}</span>;
+                                                        } else if (prevPos < pos) {
+                                                            dodElement = <span className="flex items-center text-[10px] text-blue-500"><TrendingDown className="w-2.5 h-2.5 mr-0.5" />{pos - prevPos}</span>;
+                                                        } else {
+                                                            dodElement = <span className="flex items-center text-[10px] text-gray-400"><Minus className="w-2.5 h-2.5" /></span>;
+                                                        }
+                                                    }
                                                     return (
                                                         <td key={date} className="py-3 px-3 text-center border-l border-gray-100/50">
                                                             {pos > 0 ? (
                                                                 <div className="flex flex-col items-center justify-center space-y-1">
-                                                                    <span className="font-semibold text-gray-800 text-sm">{pos}위</span>
+                                                                    <div className="flex items-center space-x-1.5">
+                                                                        <span className="font-semibold text-gray-800 text-sm">{pos}위</span>
+                                                                        {dodElement}
+                                                                    </div>
                                                                     {(r?.rating > 0 || r?.review_count > 0) && (
                                                                         <div className="flex items-center text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
                                                                             <span className="text-yellow-500 mr-0.5">★</span>
@@ -385,6 +465,81 @@ export default function KeywordRanking() {
                     </div>
                 </div>
             </div>
+
+            {/* Chart Modal */}
+            {chartModalOpen && selectedChartKeyword && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                                    <TrendingUp className="w-5 h-5 text-blue-500 mr-2" />
+                                    순위 추이: <span className="text-blue-600 ml-1">{selectedChartKeyword.keyword}</span>
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">연결 상품: {selectedChartKeyword.products?.name || '없음'}</p>
+                            </div>
+                            <button
+                                onClick={() => setChartModalOpen(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 flex-1 min-h-[400px]">
+                            {(() => {
+                                // If we want to show all dates even if discontinuous, remove the filter and set connectNulls={true} in Line
+
+                                // We will show the last 30 unique dates, whether they have data or not.
+                                const finalData = allUniqueDates.slice(-30).map(date => {
+                                    const r = rankings.find(rank => rank.keyword_id === selectedChartKeyword.id && rank.date === date);
+                                    return {
+                                        date: date.substring(5).replace('-', '/'), // MM/DD
+                                        rank: r ? r.rank_position : null
+                                    };
+                                });
+
+                                if (finalData.filter(d => d.rank !== null).length === 0) {
+                                    return <div className="h-full flex items-center justify-center text-gray-500">이 키워드의 순위 데이터가 없습니다.</div>;
+                                }
+
+                                return (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={finalData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                            <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} stroke="#cbd5e1" />
+                                            <YAxis
+                                                reversed
+                                                tick={{ fontSize: 12 }}
+                                                tickMargin={10}
+                                                stroke="#cbd5e1"
+                                                domain={[1, 'dataMax']}
+                                                allowDecimals={false}
+                                                label={{ value: '순위', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: 13 } }}
+                                            />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                formatter={(value: any) => [`${value}위`, '순위']}
+                                                labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
+                                                itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="rank"
+                                                stroke="#3b82f6"
+                                                strokeWidth={3}
+                                                dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#3b82f6' }}
+                                                activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2, fill: '#fff' }}
+                                                connectNulls={true}
+                                                animationDuration={1000}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
