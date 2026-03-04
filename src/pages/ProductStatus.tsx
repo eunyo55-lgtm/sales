@@ -262,28 +262,6 @@ export default function ProductStatus() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [products]);
 
-  const top10SalesTrendDataList = useMemo(() => {
-    const top10 = [...groupedProducts].sort((a, b) => b.sales7Days - a.sales7Days).slice(0, 10);
-    const recentDates = uniqueDates.slice(-14);
-
-    return top10.map(item => {
-      const data = recentDates.map(date => ({
-        date: date.substring(5), // MM-DD
-        sales: item.dailySales[date] || 0
-      }));
-      return { name: item.name, data };
-    });
-  }, [groupedProducts, uniqueDates]);
-
-  const top10StockData = useMemo(() => {
-    const top10 = [...groupedProducts].sort((a, b) => b.sales7Days - a.sales7Days).slice(0, 10);
-    return top10.map(item => ({
-      name: item.name,
-      판매량: item.sales7Days,
-      쿠팡재고: item.currentStock
-    }));
-  }, [groupedProducts]);
-
   const W_TOGGLE = "w-10 min-w-[2.5rem]";
   const W_IMAGE = "w-12 min-w-[3rem]";
   const W_SEASON = 'w-24 min-w-[6rem]';
@@ -344,43 +322,7 @@ export default function ProductStatus() {
         </div>
       </div>
 
-      {/* Top 10 Trend Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-none">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[300px] flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2">상위 10개 상품 판매 추이 (최근 14일)</h3>
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
-            {top10SalesTrendDataList.map((item, idx) => (
-              <div key={item.name} className="h-[120px] bg-gray-50 p-2 rounded-lg border border-gray-100 flex flex-col">
-                <span className="text-xs font-bold text-gray-700 truncate px-2">{idx + 1}. {item.name}</span>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={item.data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="date" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                    <Tooltip labelStyle={{ color: 'black', fontSize: 10 }} itemStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="sales" name="판매" stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={{ r: 1 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[300px] flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2">상위 10개 상품 판매량 vs 쿠팡 재고</h3>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10StockData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={40} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="판매량" fill="#8884d8" name="7일 판매" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="쿠팡재고" fill="#82ca9d" name="현재 쿠팡재고" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col relative flex-1 min-h-[500px]">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-none">
