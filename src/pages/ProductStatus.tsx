@@ -650,9 +650,18 @@ export default function ProductStatus() {
                 const endDate = new Date(latestDateStr);
 
                 const chartData = [];
+                let lastKnownStockSum = 0; // [FIX] Carry over stock because days with 0 sales have no rows in excel
+
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                   const dStr = d.toISOString().split('T')[0];
                   let stockSum = group.dailyStock[dStr] || 0;
+
+                  // If no stock is recorded today, use the last known stock
+                  if (stockSum === 0 && lastKnownStockSum > 0) {
+                    stockSum = lastKnownStockSum;
+                  } else if (stockSum > 0) {
+                    lastKnownStockSum = stockSum; // Update last known
+                  }
 
                   // if there is no stock recorded for the day but there are children, try to see if they have stock recorded
                   // but group.dailyStock is already aggregated
