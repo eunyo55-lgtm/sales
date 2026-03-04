@@ -652,20 +652,20 @@ export default function ProductStatus() {
                 const endDate = new Date(latestDateStr);
 
                 const chartData: any[] = [];
-                let lastKnownStockSum: number | null = null;
+                const lastKnownStockPerChild: Record<string, number> = {};
 
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                   const dStr = d.toISOString().split('T')[0];
-                  let dbStock = group.dailyStock[dStr];
-                  let stockSum = dbStock;
 
-                  if (dbStock === undefined) {
-                    // No info for today: carry over last known if it exists, otherwise leave it as 0
-                    stockSum = lastKnownStockSum !== null ? lastKnownStockSum : 0;
-                  } else {
-                    // Actual data exists for today (even if 0) -> update last known
-                    lastKnownStockSum = dbStock;
-                  }
+                  let stockSum = 0;
+                  group.children.forEach(child => {
+                    const childStock = child.dailyStock[dStr];
+                    if (childStock !== undefined && childStock !== null) {
+                      lastKnownStockPerChild[child.barcode] = childStock;
+                    }
+                    // Accumulate carried over or newly updated stock for this child
+                    stockSum += lastKnownStockPerChild[child.barcode] || 0;
+                  });
 
                   chartData.push({
                     date: dStr.substring(5).replace('-', '/'),
