@@ -99,48 +99,48 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
 
-                // Force hardcoded columns as per user insistent request (A=Date, I=Barcode, M=Sales, N=Stock)
-                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 'A' });
+                // Memory efficient parsing without sheet_to_json
+                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+                const salesRows: CoupangSalesRow[] = [];
 
-                if (jsonData.length === 0) {
-                    reject(new Error("엑셀 파일이 비어있습니다."));
-                    return;
-                }
+                for (let r = range.s.r + 1; r <= range.e.r; r++) { // skip header at row 0
+                    const cellA = sheet[XLSX.utils.encode_cell({ c: 0, r })]; // Date
+                    const cellF = sheet[XLSX.utils.encode_cell({ c: 5, r })]; // Center
+                    const cellI = sheet[XLSX.utils.encode_cell({ c: 8, r })]; // Barcode
+                    const cellM = sheet[XLSX.utils.encode_cell({ c: 12, r })]; // Sales Qty
+                    const cellN = sheet[XLSX.utils.encode_cell({ c: 13, r })]; // Stock
 
-                const safeParseInt = (val: any) => {
-                    if (val === undefined || val === null) return 0;
-                    const str = String(val).replace(/,/g, '').trim();
-                    const num = Number(str);
-                    return isNaN(num) ? 0 : Math.round(num);
-                };
+                    if (!cellA || !cellI) continue;
 
-                const salesRows: CoupangSalesRow[] = jsonData.slice(1).map((row: any) => {
-                    // A: Date (e.g. 20260101)
-                    let dateStr = row['A'] ? String(row['A']).trim() : '';
-                    if (dateStr.length === 8) {
-                        // YYYYMMDD -> YYYY-MM-DD
+                    let dateStr = String(cellA.w || cellA.v).trim();
+                    if (dateStr.length === 8 && !dateStr.includes('-')) {
                         dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
                     }
 
-                    // F: Center (FC or VF164)
-                    const centerRaw = row['F'] ? String(row['F']).trim().toUpperCase() : '';
-                    // If it contains VF or VENDOR, it's VendorFlex. otherwise treat as FC.
+                    const centerRaw = String(cellF?.v || '').trim().toUpperCase();
                     let center = 'FC';
                     if (centerRaw === 'VF164' || centerRaw.includes('VF') || centerRaw.includes('VENDOR')) {
                         center = 'VF164';
                     }
 
-                    // I: Barcode
-                    const barcode = row['I'] ? String(row['I']).replace(/\s+/g, '') : '';
+                    const barcode = String(cellI.v || '').replace(/\s+/g, '');
 
-                    // M: Sales Qty
-                    const salesQty = safeParseInt(row['M']);
+                    let salesQty = 0;
+                    if (cellM && cellM.v) {
+                        const str = String(cellM.v).replace(/,/g, '').trim();
+                        salesQty = isNaN(Number(str)) ? 0 : Math.round(Number(str));
+                    }
 
-                    // N: Current Stock
-                    const currentStock = safeParseInt(row['N']);
+                    let currentStock = 0;
+                    if (cellN && cellN.v) {
+                        const str = String(cellN.v).replace(/,/g, '').trim();
+                        currentStock = isNaN(Number(str)) ? 0 : Math.round(Number(str));
+                    }
 
-                    return { date: dateStr, barcode, salesQty, currentStock, center, centerRaw };
-                }).filter(r => r.barcode && r.date);
+                    if (barcode && dateStr) {
+                        salesRows.push({ date: dateStr, barcode, salesQty, currentStock, center, centerRaw });
+                    }
+                }
 
                 resolve(salesRows);
             } catch (error) {
