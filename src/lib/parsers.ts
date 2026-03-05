@@ -27,6 +27,12 @@ export interface IncomingStockRow {
     incomingQty: number;
 }
 
+export interface HistoricalSalesRow {
+    date: string; // YYYY-MM-DD
+    barcode: string;
+    salesQty: number;
+}
+
 // --- Parsers ---
 
 /**
@@ -179,6 +185,87 @@ export const parseIncomingStock = async (file: File): Promise<IncomingStockRow[]
                 }).filter(r => r.barcode && r.incomingQty > 0);
 
                 resolve(incomingRows);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsArrayBuffer(file);
+    });
+};
+
+/**
+ * Parses Historical Sales Data (Wide Format)
+ * Mapping:
+ * - A (index 0): Barcode
+ * - B (index 1)...: Dates (e.g. 1/1, 1/2) -> Converted to YYYY-MM-DD
+ */
+export const parseHistoricalSales = async (file: File, targetYear: number): Promise<HistoricalSalesRow[]> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[];
+                if (jsonData.length < 2) return resolve([]);
+
+                const headers = jsonData[0];
+                const salesRows: HistoricalSalesRow[] = [];
+
+                // Parse dates from headers
+                const dateMap: Record<number, string> = {};
+                for (let i = 1; i < headers.length; i++) {
+                    const h = String(headers[i] || '').trim();
+                    if (h) {
+                        let month = '';
+                        let day = '';
+                        if (h.includes('/')) {
+                            const parts = h.split('/');
+                            month = parts[0].padStart(2, '0');
+                            day = parts[1].padStart(2, '0');
+                        } else if (h.includes('-')) {
+                            const parts = h.split('-');
+                            month = parts[0].padStart(2, '0');
+                            day = parts[1].padStart(2, '0');
+                        }
+
+                        if (month && day && !isNaN(Number(month)) && !isNaN(Number(day))) {
+                            dateMap[i] = `${targetYear}-${month}-${day}`;
+                        }
+                    }
+                }
+
+                for (let r = 1; r < jsonData.length; r++) {
+                    const row = jsonData[r];
+                    if (!row || row.length === 0) continue;
+
+                    const barcode = String(row[0] || '').replace(/\s+/g, '');
+                    if (!barcode) continue;
+
+                    for (let i = 1; i < row.length; i++) {
+                        const dateStr = dateMap[i];
+                        if (!dateStr) continue;
+
+                        const val = row[i];
+                        const str = String(val).replace(/,/g, '').trim();
+                        const num = Number(str);
+                        const qty = isNaN(num) ? 0 : Math.round(num);
+
+                        if (qty > 0) { // Only store non-zero sales
+                            salesRows.push({
+                                date: dateStr,
+                                barcode,
+                                salesQty: qty
+                            });
+                        }
+                    }
+                }
+
+                resolve(salesRows);
             } catch (error) {
                 reject(error);
             }
