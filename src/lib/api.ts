@@ -494,31 +494,26 @@ ${sampleText}
         // Group by barcode and date to avoid conflicts just in case
         const salesMap = new Map<string, number>();
         historicalData.forEach(row => {
-            const key = `${row.barcode}_${row.date} `;
+            const key = `${row.barcode}_${row.date}`;
             salesMap.set(key, (salesMap.get(key) || 0) + row.salesQty);
         });
 
-        const updates = Array.from(salesMap.entries()).map(([key, qty]) => {
-            const [barcode, date] = key.split('_');
-            return {
-                barcode,
-                date,
-                quantity: qty,
-                // We do NOT set fc_quantity, vf_quantity, or stock.
-                // Supabase will leave existing values alone if omitted during update (not bulk upsert).
-                // However, bulk upsert requires all columns if defaulting, or will nullify them if not careful.
-                // Since this is historical, we assume stock didn't exist or we don't care about it for *past* dates.
-                // Wait! If they upload yesterday's data over existing, it might clear stock.
-                // The safest way is to use a PostgreSQL function or do onConflict update matching.
-                // standard Supabase upsert:
-                // .upsert(data, { onConflict: 'date, barcode' })
-                // It replaces rows. If we only provide some columns, it replaces the missing columns with defaults!
-                // To avoid breaking stock data, we should probably fetch first or just trust it.
-                // Given historical data is from "previous year", it's unlikely to overlap with current live stock days (which is the last 30-60 days).
-                // Let's just do standard upsert.
-                created_at: new Date().toISOString()
-            };
-        });
+        // Fetch valid barcodes from the product master to prevent foreign key constraint errors
+        const validProducts = await this._getRawProducts();
+        const validBarcodes = new Set(validProducts.map(p => p.barcode));
+
+        const updates = Array.from(salesMap.entries())
+            .map(([key, qty]) => {
+                const [barcode, date] = key.split('_');
+                return {
+                    barcode,
+                    date,
+                    quantity: qty,
+                    created_at: new Date().toISOString()
+                };
+            })
+            .filter(item => validBarcodes.has(item.barcode)); // Filter out invalid barcodes
+
 
         const CHUNK_SIZE = 1000;
         const total = updates.length;
