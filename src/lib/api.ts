@@ -502,6 +502,41 @@ ${sampleText}
         const validProducts = await this._getRawProducts();
         const validBarcodes = new Set(validProducts.map(p => p.barcode));
 
+        // Auto-register missing barcodes as '단종' (Discontinued)
+        const missingBarcodes = new Set<string>();
+        historicalData.forEach(row => {
+            if (!validBarcodes.has(row.barcode)) {
+                missingBarcodes.add(row.barcode);
+            }
+        });
+
+        if (missingBarcodes.size > 0) {
+            console.log(`[API] Auto-registering ${missingBarcodes.size} missing barcodes as '단종'`);
+            const missingProductsPayload = Array.from(missingBarcodes).map(barcode => ({
+                barcode,
+                name: '단종',
+                option_value: '단종',
+                season: '단종',
+                image_url: '',
+                hq_stock: 0,
+                updated_at: new Date().toISOString(),
+            }));
+
+            // Chunk the product upsert just in case there are thousands
+            const PROD_CHUNK_SIZE = 500;
+            for (let i = 0; i < missingProductsPayload.length; i += PROD_CHUNK_SIZE) {
+                const chunk = missingProductsPayload.slice(i, i + PROD_CHUNK_SIZE);
+                const { error: prodError } = await supabase
+                    .from('products')
+                    .upsert(chunk, { onConflict: 'barcode' });
+
+                if (prodError) {
+                    console.error("[API] Error auto-registering missing products:", prodError);
+                    throw prodError;
+                }
+            }
+        }
+
         const updates = Array.from(salesMap.entries())
             .map(([key, qty]) => {
                 const [barcode, date] = key.split('_');
@@ -511,8 +546,8 @@ ${sampleText}
                     quantity: qty,
                     created_at: new Date().toISOString()
                 };
-            })
-            .filter(item => validBarcodes.has(item.barcode)); // Filter out invalid barcodes
+            });
+
 
 
         const CHUNK_SIZE = 1000;
