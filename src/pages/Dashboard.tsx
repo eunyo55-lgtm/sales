@@ -194,7 +194,8 @@ export default function Dashboard() {
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                             <Legend />
-                            <Line type="monotone" dataKey="quantity" name="판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                            <Line type="monotone" dataKey="quantity" name="판매량 (올해)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="판매량 (작년)" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -223,7 +224,8 @@ export default function Dashboard() {
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f3f4f6' }} />
                             <Legend />
-                            <Bar dataKey="quantity" name="주간 판매량" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                            <Bar dataKey="quantity" name="방문 수량 (올해)" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                            <Bar dataKey="prevYearQuantity" name="판매량 (작년)" fill="#f43f5e" opacity={0.6} radius={[4, 4, 0, 0]} barSize={20} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

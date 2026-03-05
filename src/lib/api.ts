@@ -652,7 +652,10 @@ ${sampleText}
             let statYearlyPrevYear = 0; // [NEW] 364 days ago
 
             const dailyTrendMap = new Map<string, number>();
+            const dailyTrendPrevYearMap = new Map<string, number>(); // [NEW] YOY Daily Trend
+
             const weeklyTrendMap = new Map<string, number>();
+            const weeklyTrendPrevYearMap = new Map<string, number>(); // [NEW] YOY Weekly Trend
 
             // Rank by Product Name (Grouped)
             // Rank by Product Name (Grouped)
@@ -752,14 +755,46 @@ ${sampleText}
                 }
 
                 // Daily Trend (Filtered)
-                dailyTrendMap.set(date, (dailyTrendMap.get(date) || 0) + qty);
+                // We want to show last 30 days of "current" dates in the chart.
+                // If it's a current date within the last 30 days, add to current.
+                const startOf30DaysStr = shiftDate(anchorDateStr, -30);
+                if (date > startOf30DaysStr && date <= anchorDateStr) {
+                    dailyTrendMap.set(date, (dailyTrendMap.get(date) || 0) + qty);
+                }
+
+                // Prev Year Daily Trend matching the same 30-day window
+                // If the data date is exactly 364 days ago from a date in our 30-day window
+                const startOf30DaysPrevYearStr = shiftDate(startOf30DaysStr, -364);
+                const endOf30DaysPrevYearStr = shiftDate(anchorDateStr, -364);
+
+                if (date > startOf30DaysPrevYearStr && date <= endOf30DaysPrevYearStr) {
+                    // Map it back to the "current year" date for chart alignment (shift forward 364 days)
+                    const alignedCurrentDate = shiftDate(date, 364);
+                    dailyTrendPrevYearMap.set(alignedCurrentDate, (dailyTrendPrevYearMap.get(alignedCurrentDate) || 0) + qty);
+                }
+
 
                 // Weekly Trend (Group by Friday) (Filtered)
                 const jsDate = new Date(date);
                 const sDay = jsDate.getDay();
                 const sDiff = (sDay + 2) % 7;
                 const friStr = shiftDate(date, -sDiff);
-                weeklyTrendMap.set(friStr, (weeklyTrendMap.get(friStr) || 0) + qty);
+
+                const startOf12WeeksStr = shiftDate(anchorDateStr, -84); // 12 weeks
+
+                if (date > startOf12WeeksStr && date <= anchorDateStr) {
+                    weeklyTrendMap.set(friStr, (weeklyTrendMap.get(friStr) || 0) + qty);
+                }
+
+                // Prev Year Weekly Trend matching the 12-week window
+                const startOf12WeeksPrevYearStr = shiftDate(startOf12WeeksStr, -364);
+                const endOf12WeeksPrevYearStr = shiftDate(anchorDateStr, -364);
+
+                if (date > startOf12WeeksPrevYearStr && date <= endOf12WeeksPrevYearStr) {
+                    // Map back to current year week
+                    const alignedCurrentFriDate = shiftDate(friStr, 364);
+                    weeklyTrendPrevYearMap.set(alignedCurrentFriDate, (weeklyTrendPrevYearMap.get(alignedCurrentFriDate) || 0) + qty);
+                }
             });
 
             // 5. Format Data
@@ -905,8 +940,16 @@ ${sampleText}
                     yearlyPrevYear: statYearlyPrevYear
                 },
                 trends: {
-                    daily: sortedDaily.map(([date, quantity]) => ({ date: date.substring(5), quantity })),
-                    weekly: sortedWeekly.map(([date, quantity]) => ({ date: date.substring(5), quantity }))
+                    daily: sortedDaily.map(([date, quantity]) => ({
+                        date: date.substring(5),
+                        quantity: quantity,
+                        prevYearQuantity: dailyTrendPrevYearMap.get(date) || 0 // [NEW] Attach prev year data
+                    })),
+                    weekly: sortedWeekly.map(([date, quantity]) => ({
+                        date: date.substring(5),
+                        quantity: quantity,
+                        prevYearQuantity: weeklyTrendPrevYearMap.get(date) || 0 // [NEW] Attach prev year data
+                    }))
                 },
                 rankings: {
                     yesterday: getTop10(rankYesterday, rankYesterdayPrev),
