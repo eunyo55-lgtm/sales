@@ -548,9 +548,7 @@ ${sampleText}
                 };
             });
 
-
-
-        const CHUNK_SIZE = 1000;
+        const CHUNK_SIZE = 200; // Reduced from 1000 to prevent statement timeouts
         const total = updates.length;
         let processed = 0;
 
@@ -568,6 +566,9 @@ ${sampleText}
 
             processed += chunk.length;
             if (onProgress) onProgress(Math.round((processed / total) * 100));
+
+            // Small delay to prevent overwhelming the DB connection pool
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
     },
 
