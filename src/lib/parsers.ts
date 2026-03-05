@@ -219,10 +219,19 @@ export const parseHistoricalSales = async (file: File, targetYear: number): Prom
                 // Parse dates from headers
                 const dateMap: Record<number, string> = {};
                 for (let i = 1; i < headers.length; i++) {
-                    const h = String(headers[i] || '').trim();
-                    if (h) {
-                        let month = '';
-                        let day = '';
+                    const val = headers[i];
+                    let month = '';
+                    let day = '';
+
+                    if (typeof val === 'number') {
+                        // Excel date serial number
+                        const parsedDate = XLSX.SSF.parse_date_code(val);
+                        if (parsedDate) {
+                            month = String(parsedDate.m).padStart(2, '0');
+                            day = String(parsedDate.d).padStart(2, '0');
+                        }
+                    } else {
+                        const h = String(val || '').trim();
                         if (h.includes('/')) {
                             const parts = h.split('/');
                             month = parts[0].padStart(2, '0');
@@ -232,10 +241,10 @@ export const parseHistoricalSales = async (file: File, targetYear: number): Prom
                             month = parts[0].padStart(2, '0');
                             day = parts[1].padStart(2, '0');
                         }
+                    }
 
-                        if (month && day && !isNaN(Number(month)) && !isNaN(Number(day))) {
-                            dateMap[i] = `${targetYear}-${month}-${day}`;
-                        }
+                    if (month && day && !isNaN(Number(month)) && !isNaN(Number(day))) {
+                        dateMap[i] = `${targetYear}-${month}-${day}`;
                     }
                 }
 
