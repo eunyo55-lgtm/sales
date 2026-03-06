@@ -9,9 +9,6 @@ import { isRedDay } from '../lib/dateUtils';
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [debugLogs, setDebugLogs] = useState<string[]>(['Dashboard component mounted.']);
-
-    const addLog = (msg: string) => setDebugLogs(prev => [...prev.slice(-10), `${new Date().toLocaleTimeString()} - ${msg}`]);
 
     useEffect(() => {
         loadData();
@@ -20,32 +17,21 @@ export default function Dashboard() {
     }, []);
 
     const loadData = async () => {
-        addLog('loadData started. Calling api.getDashboardAnalytics...');
         try {
             const result = await api.getDashboardAnalytics();
-            addLog('api.getDashboardAnalytics returned successfully!');
             console.log("Dashboard Data:", result);
             setData(result);
-            addLog('setData called. Render should update.');
         } catch (error: any) {
-            addLog(`Error in loadData: ${error.message}`);
             console.error("Failed to load dashboard data", error);
         } finally {
             setLoading(false);
-            addLog('setLoading(false) called.');
         }
     };
 
     if (loading) {
         return (
-            <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)]">
-                <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-                <div className="bg-gray-900 text-green-400 p-4 rounded text-xs w-[500px] h-[200px] overflow-auto font-mono text-left shadow-lg">
-                    <p className="text-gray-400 mb-2">// 실시간 로딩 추적 로그</p>
-                    {debugLogs.map((log, i) => (
-                        <div key={i}>{log}</div>
-                    ))}
-                </div>
+            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+                <Loader2 className="animate-spin text-blue-500" size={48} />
             </div>
         );
     }

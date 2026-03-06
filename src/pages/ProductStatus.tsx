@@ -26,8 +26,6 @@ interface GroupedProduct {
 export default function ProductStatus() {
   const [products, setProducts] = useState<ProductStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [debugLogs, setDebugLogs] = useState<string[]>(['ProductStatus component mounted.']);
-  const addLog = (msg: string) => setDebugLogs(prev => [...prev.slice(-10), `${new Date().toLocaleTimeString()} - ${msg}`]);
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'totalSales', direction: 'desc' });
@@ -57,17 +55,13 @@ export default function ProductStatus() {
   }, []);
 
   const loadData = async () => {
-    addLog('loadData started. Calling api.getProductStats...');
     try {
       const data = await api.getProductStats();
-      addLog(`getProductStats returned ${data?.length} products. Setting state...`);
       setProducts(data);
     } catch (error: any) {
-      addLog(`Error: ${error.message}`);
       console.error(error);
     } finally {
       setLoading(false);
-      addLog('setLoading(false) called.');
     }
   };
 
@@ -280,19 +274,7 @@ export default function ProductStatus() {
   const L_TREND = 'left-[11.5rem]';
   const L_NAME = 'left-[16.5rem]';
 
-  if (loading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)]">
-        <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-        <div className="bg-gray-900 text-green-400 p-4 rounded text-xs w-[500px] h-[200px] overflow-auto font-mono text-left shadow-lg">
-          <p className="text-gray-400 mb-2">// 실시간 로딩 추적 로그</p>
-          {debugLogs.map((log, i) => (
-            <div key={i}>{log}</div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
   return (
     <div className="space-y-6 flex flex-col h-full">
       {/* Top Level Charts (Season & Category Sales) */}
