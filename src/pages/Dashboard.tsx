@@ -177,7 +177,7 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Daily Trend Chart (Solo Row or grouped with something else) */}
+            {/* Daily Trend Chart */}
             <div className="grid grid-cols-1 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
                     <h3 className="font-bold text-gray-800 mb-4 flex items-center">
@@ -208,7 +208,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Rankings Row (Best 10) - Higher priority for user */}
+            {/* Rankings Row (Best 10) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
                 <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
                 <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
@@ -232,7 +232,7 @@ export default function Dashboard() {
                             <Legend />
                             <Bar dataKey="diff" name="증감량" fill="#a855f7" radius={[0, 4, 4, 0]}>
                                 {(insights?.categories || []).map((entry: any, index: number) => (
-                                    <Bar key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
+                                    <Cell key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
                                 ))}
                             </Bar>
                         </BarChart>
@@ -240,7 +240,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* YoY Winners/Losers (At the very bottom as requested) */}
+            {/* YoY Winners/Losers (At bottom) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매" />
                 <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매" />
