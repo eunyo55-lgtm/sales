@@ -238,7 +238,7 @@ export default function Dashboard() {
             </div>
 
             {/* Rankings Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
                 <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
                 <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
                 <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
