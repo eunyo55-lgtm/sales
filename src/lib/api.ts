@@ -44,6 +44,42 @@ export const api = {
     _rawDailySalesPromise: null as Promise<any[]> | null,
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
 
+    async _fetchRPCParallel<T>(rpcName: string, params: object) {
+        const BATCH_SIZE = 1000;
+        const allData: T[] = [];
+        let i = 0;
+        let isDone = false;
+
+        console.time(`[API] Sequential RPC: ${rpcName}`);
+        while (!isDone) {
+            const { data, error } = await supabase.rpc(rpcName, {
+                ...params,
+                limit_val: BATCH_SIZE,
+                offset_val: i
+            });
+
+            if (error) {
+                console.error(`[API] RPC Fetch error at offset ${i}: `, error);
+                throw error;
+            }
+
+            if (data && data.length > 0) {
+                allData.push(...(data as T[]));
+            }
+
+            if (!data || data.length < BATCH_SIZE) {
+                isDone = true;
+            }
+            i += BATCH_SIZE;
+
+            // Safety break to prevent infinite loops
+            if (i > 100000) break;
+        }
+        console.timeEnd(`[API] Sequential RPC: ${rpcName}`);
+        console.log(`[API] Total rows fetched from ${rpcName}: ${allData.length}`);
+        return allData;
+    },
+
     async _fetchAllParallel<T>(table: string, select: string, order?: string, filterBuilder?: (q: any) => any) {
         const BATCH_SIZE = 1000;
         const allData: T[] = [];
@@ -123,6 +159,63 @@ export const api = {
             this._rawDailySalesPromiseMap.delete(key);
             throw e;
         }
+    },
+
+    /**
+     * Identifies barcodes in daily_sales that are missing from products table
+     * and auto-registers them to ensure they appear in the UI.
+     */
+    async syncMissingBarcodes() {
+        console.log("[API] Syncing missing barcodes...");
+
+        // 1. Get unique barcodes from daily_sales (last 90 days to be efficient) - PAGINATED
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const dateStr = ninetyDaysAgo.toISOString().split('T')[0];
+
+        const salesData = await this._fetchAllParallel<{ barcode: string }>(
+            'daily_sales',
+            'barcode',
+            'barcode',
+            (q) => q.gte('date', dateStr)
+        );
+
+        if (!salesData) return;
+        const uniqueSalesBarcodes = Array.from(new Set(salesData.map(s => s.barcode)));
+
+        // 2. Get all existing product barcodes
+        const products = await this._getRawProducts();
+        const existingBarcodes = new Set(products.map(p => p.barcode));
+
+        // 3. Find missing
+        const missing = uniqueSalesBarcodes.filter(b => b && !existingBarcodes.has(b));
+
+        if (missing.length === 0) {
+            console.log("[API] No missing barcodes found.");
+            return;
+        }
+
+        console.log(`[API] Registering ${missing.length} missing barcodes...`);
+
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
+            const chunk = missing.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase
+                .from('products')
+                .upsert(
+                    chunk.map(barcode => ({
+                        barcode,
+                        name: barcode, // Use barcode as name so they don't all group together as "미등록 상품"
+                        option_value: '미등록',
+                        season: '정보없음',
+                        updated_at: new Date().toISOString()
+                    })),
+                    { onConflict: 'barcode', ignoreDuplicates: true }
+                );
+            if (error) console.error("[API] Error syncing barcodes:", error);
+        }
+
+        this._rawProductsPromise = null; // Invalidate cache
     },
 
     /**
@@ -658,8 +751,8 @@ ${sampleText}
             const rankYearly = new Map<string, number>();
             const nameMetadata = new Map<string, { image?: string }>();
 
-            // Call RPC for individual product sales stats for rankings
-            const { data: salesStats } = await supabase.rpc('get_product_sales_stats', { anchor_date: anchorDateStr });
+            // Call RPC for individual product sales stats for rankings - PAGINATED
+            const salesStats = await this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr });
 
             salesStats?.forEach((s: any) => {
                 const product = productMap.get(s.barcode);
@@ -844,60 +937,78 @@ ${sampleText}
             const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
             const anchorDateStr = latestData ? latestData.date.substring(0, 10) : new Date().toISOString().split('T')[0];
 
+            // 0. Proactively sync missing barcodes to ensure all sales are visible in the UI
+            // [DISABLED] User requested to stop adding unknown items to the master.
+            // await this.syncMissingBarcodes();
+
             // 1. Fetch Products (Master + Stock)
             const products = await this._getRawProducts();
 
             if (!products) return []; // Ensure products is an array for subsequent operations
 
-            // 2. Fetch Pre-calculated Stats via RPC
-            const { data: salesStats } = await supabase.rpc('get_product_sales_stats', { anchor_date: anchorDateStr });
+            // 2. Fetch Pre-calculated Stats via RPC - SEQUENTIAL
+            const salesStats = await this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr });
             const statsMap = new Map();
-            salesStats?.forEach((s: any) => statsMap.set(s.barcode, s));
+            salesStats?.forEach((s: any) => {
+                if (s.barcode) statsMap.set(s.barcode.trim(), s);
+            });
 
             // 5. Merge
             const result = products.map(p => {
-                const st = statsMap.get(p.barcode) || {};
+                const trimmedBarcode = p.barcode.trim();
+                const st = statsMap.get(trimmedBarcode) || {};
                 const dailySales = st.daily_sales || {};
                 const dailyStock = st.daily_stock || {};
 
-                const avgDailySales = (st.qty_7d || 0) / 7;
+                // Use Number() for BIGINT fields from RPC to prevent string concatenation in JS
+                const qty7d = Number(st.qty_7d || 0);
+                const qty14d = Number(st.qty_14d || 0);
+                const qty30d = Number(st.qty_30d || 0);
+                const qty60d = Number(st.qty_60d || 0);
+                const qtyYear = Number(st.qty_year || 0);
+                const qtyYesterday = Number(st.qty_yesterday || 0);
+                const qtyYesterdayPrev = Number(st.qty_yesterday_prev_day || 0);
+                const fcQtyYear = Number(st.fc_qty_year || 0);
+                const vfQtyYear = Number(st.vf_qty_year || 0);
+
+                const avgDailySales = qty7d / 7;
                 const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
 
                 // Trend Calculation
-                const prevSales7Days = (st.qty_14d || 0) - (st.qty_7d || 0);
-                const trendYesterday = (st.qty_yesterday || 0) - (st.qty_yesterday_prev_day || 0);
-                const trendWeek = (st.qty_7d || 0) - prevSales7Days;
-                const trendMonth = (st.qty_30d || 0) - ((st.qty_60d || 0) - (st.qty_30d || 0));
+                const prevSales7Days = qty14d - qty7d;
+                const trendYesterday = qtyYesterday - qtyYesterdayPrev;
+                const trendWeek = qty7d - prevSales7Days;
+                const trendMonth = qty30d - (qty60d - qty30d);
 
                 let trend: 'hot' | 'cold' | 'up' | 'down' | 'flat' = 'flat';
 
-                const diff = (st.qty_7d || 0) - prevSales7Days;
+                const diff = qty7d - prevSales7Days;
                 const rate = prevSales7Days > 0 ? diff / prevSales7Days : 0; // Growth rate
 
-                if (rate >= 0.5 && (st.qty_7d || 0) >= 10) trend = 'hot';
+                if (rate >= 0.5 && qty7d >= 10) trend = 'hot';
                 else if (rate <= -0.5 && prevSales7Days >= 10) trend = 'cold';
                 else if (diff > 0) trend = 'up';
                 else if (diff < 0) trend = 'down';
 
                 return {
-                    barcode: p.barcode,
+                    barcode: trimmedBarcode,
                     name: p.name,
-                    option: p.option_value, // Map DB column to API field
+                    option: p.option_value,
                     season: p.season || '정보없음',
                     imageUrl: p.image_url,
-                    hqStock: p.hq_stock || 0,
-                    coupangStock: p.current_stock || 0, // Alias
-                    fcStock: p.fc_stock || 0,
-                    vfStock: p.vf_stock || 0,
-                    incomingStock: p.incoming_stock || 0,
-                    safetyStock: p.safety_stock || 10,
-                    totalSales: st.qty_year || 0, // Using Year Sales as Cumulative
-                    fcSales: st.fc_qty_year || 0, // [FIX] Show Year Cumulative
-                    vfSales: st.vf_qty_year || 0, // [FIX] Show Year Cumulative
-                    sales14Days: st.qty_14d || 0,
-                    sales7Days: st.qty_7d || 0,
-                    salesYesterday: st.qty_yesterday || 0,
-                    sales30Days: st.qty_30d || 0,
+                    hqStock: Number(p.hq_stock || 0),
+                    coupangStock: Number(p.current_stock || 0),
+                    fcStock: Number(p.fc_stock || 0),
+                    vfStock: Number(p.vf_stock || 0),
+                    incomingStock: Number(p.incoming_stock || 0),
+                    safetyStock: Number(p.safety_stock || 10),
+                    totalSales: qtyYear,
+                    fcSales: fcQtyYear,
+                    vfSales: vfQtyYear,
+                    sales14Days: qty14d,
+                    sales7Days: qty7d,
+                    salesYesterday: qtyYesterday,
+                    sales30Days: qty30d,
                     trends: {
                         yesterday: trendYesterday,
                         week: trendWeek,
@@ -907,7 +1018,7 @@ ${sampleText}
                     daysOfInventory,
                     dailySales: dailySales,
                     dailyStock: dailyStock,
-                    abcGrade: 'D' as 'A' | 'B' | 'C' | 'D', // Default, will be updated below
+                    abcGrade: 'D' as 'A' | 'B' | 'C' | 'D',
                     prevSales7Days,
                     trend
                 };
