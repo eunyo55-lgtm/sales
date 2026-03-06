@@ -202,48 +202,43 @@ export default function Dashboard() {
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                             <Legend />
-                            <Line type="monotone" dataKey="quantity" name="판매량 (올해)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="판매량 (작년)" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                            {/* Rankings Row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
+                                <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
+                                <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
+                                <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
+                                <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} />
+                            </div>
 
-                {/* Categories Trend */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Package size={18} className="mr-2 text-purple-500" />
-                        카테고리별 전년 대비 성장 현황
-                    </h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                        <BarChart data={insights?.categories || []} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                            <XAxis type="number" fontSize={10} />
-                            <YAxis type="category" dataKey="category" fontSize={10} width={60} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="diff" name="증감량" fill="#a855f7" radius={[0, 4, 4, 0]}>
-                                {(insights?.categories || []).map((entry: any, index: number) => (
-                                    <Bar key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+                            {/* YoY Category Insights Row */}
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
+                                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                                        <Package size={18} className="mr-2 text-purple-500" />
+                                        카테고리별 전년 대비 성장 현황
+                                    </h3>
+                                    <ResponsiveContainer width="100%" height="90%">
+                                        <BarChart data={insights?.categories || []} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                            <XAxis type="number" fontSize={10} />
+                                            <YAxis type="category" dataKey="category" fontSize={10} width={60} />
+                                            <Tooltip />
+                                            <Legend />
+                                            <Bar dataKey="diff" name="증감량" fill="#a855f7" radius={[0, 4, 4, 0]}>
+                                                {(insights?.categories || []).map((entry: any, index: number) => (
+                                                    <Bar key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
 
-            {/* YoY Insights Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매" />
-                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매" />
-            </div>
-
-            {/* Rankings Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
-                <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
-                <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
-                <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
-                <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} />
-            </div>
-        </div>
-    );
+                            {/* YoY Product Insights Row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매" />
+                                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매" />
+                            </div>
+                        </div>
+                        );
 }
