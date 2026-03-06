@@ -344,9 +344,10 @@ export default function KeywordRanking() {
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        {displayDates.map(date => (
-                                            <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{date.substring(5).replace('-', '/')}</th>
-                                        ))}
+                                        {displayDates.map(date => {
+                                            const [y, m, d] = date.split('-');
+                                            return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{parseInt(m)}/{parseInt(d)}</th>
+                                        })}
                                         <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
                                     </tr>
                                 </thead>
@@ -499,7 +500,10 @@ export default function KeywordRanking() {
                                 const finalData = allUniqueDates.slice(-30).map(date => {
                                     const r = rankings.find(rank => rank.keyword_id === selectedChartKeyword.id && rank.date === date);
                                     return {
-                                        date: date.substring(5).replace('-', '/'), // MM/DD
+                                        date: (() => {
+                                            const [y, m, d] = date.split('-');
+                                            return `${parseInt(m)}/${parseInt(d)}`;
+                                        })(),
                                         rank: r ? r.rank_position : null
                                     };
                                 });
