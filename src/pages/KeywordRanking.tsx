@@ -345,7 +345,7 @@ export default function KeywordRanking() {
                                             </div>
                                         </th>
                                         {displayDates.map(date => {
-                                            const [y, m, d] = date.split('-');
+                                            const [, m, d] = date.split('-');
                                             return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{parseInt(m)}/{parseInt(d)}</th>
                                         })}
                                         <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
@@ -501,7 +501,7 @@ export default function KeywordRanking() {
                                     const r = rankings.find(rank => rank.keyword_id === selectedChartKeyword.id && rank.date === date);
                                     return {
                                         date: (() => {
-                                            const [y, m, d] = date.split('-');
+                                            const [, m, d] = date.split('-');
                                             return `${parseInt(m)}/${parseInt(d)}`;
                                         })(),
                                         rank: r ? r.rank_position : null
