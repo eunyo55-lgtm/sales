@@ -775,7 +775,20 @@ ${sampleText}
 
             const result = {
                 anchorDate: anchorDateStr,
-                metrics: metricsRes.data,
+                metrics: {
+                    yesterday: metricsRes.data?.statYesterday || 0,
+                    fcYesterday: metricsRes.data?.fcYesterday || 0,
+                    vfYesterday: metricsRes.data?.vfYesterday || 0,
+                    yesterdayPrevYear: metricsRes.data?.statYesterdayPrevYear || 0,
+                    weekly: metricsRes.data?.statWeekly || 0,
+                    fcWeekly: metricsRes.data?.fcWeekly || 0,
+                    vfWeekly: metricsRes.data?.vfWeekly || 0,
+                    weeklyPrevYear: metricsRes.data?.statWeeklyPrevYear || 0,
+                    monthly: metricsRes.data?.statMonthly || 0,
+                    monthlyPrevYear: metricsRes.data?.statMonthlyPrevYear || 0,
+                    yearly: metricsRes.data?.statYearly || 0,
+                    yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0
+                },
                 trends: {
                     daily: sortedDaily.map((item: any) => ({
                         date: item.date.substring(5),
