@@ -169,9 +169,9 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-master"
-                    className={`flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                    <FileUp size={16} className="text-gray-500" />
+                    <FileUp size={16} />
                     <span>상품 마스터 등록</span>
                 </label>
             </div>
@@ -226,9 +226,9 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-historical"
-                    className={`flex items-center space-x-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                    <FileUp size={16} />
+                    <FileUp size={16} className="text-gray-500" />
                     <span>과거 데이터 등록</span>
                 </label>
             </div>
