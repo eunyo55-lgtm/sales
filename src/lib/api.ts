@@ -42,34 +42,49 @@ export const api = {
     _productStatsPromise: null as Promise<ProductStats[]> | null,
     _rawProductsPromise: null as Promise<any[]> | null,
     _rawDailySalesPromise: null as Promise<any[]> | null,
+    _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
 
-    async _fetchAllParallel<T>(table: string, select: string, order?: string) {
+    async _fetchAllParallel<T>(table: string, select: string, order?: string, filterBuilder?: (q: any) => any) {
         const BATCH_SIZE = 1000;
         const allData: T[] = [];
         let i = 0;
 
-        // Fetch sequentially to completely avoid Supabase connection pool limits and count errors
-        while (true) {
-            let q = supabase.from(table).select(select).range(i, i + BATCH_SIZE - 1);
-            if (order) q = q.order(order);
+        // Optional: First get the count if no filterBuilder to determine exact bounds? 
+        // Or just fire parallel batches. We'll use a dynamic parallel approach: 
+        // Fire 5 requests at a time until we hit a batch < BATCH_SIZE.
+        const CONCURRENCY = 6;
+        let isDone = false;
 
-            try {
-                const { data, error } = await q;
+        while (!isDone) {
+            const batchPromises = [];
+            for (let c = 0; c < CONCURRENCY; c++) {
+                let q = supabase.from(table).select(select);
+                if (filterBuilder) q = filterBuilder(q);
+                q = q.range(i + (c * BATCH_SIZE), i + (c * BATCH_SIZE) + BATCH_SIZE - 1);
+                if (order) q = q.order(order);
+                batchPromises.push(q);
+            }
+
+            const results = await Promise.all(batchPromises);
+
+            for (let c = 0; c < CONCURRENCY; c++) {
+                const { data, error } = results[c];
                 if (error) {
-                    console.error(`[API] Fetch error in ${table} range ${i} -${i + BATCH_SIZE - 1}: `, error);
+                    console.error(`[API] Fetch error in ${table}: `, error);
                     throw error;
                 }
-                if (!data || data.length === 0) break;
-                allData.push(...(data as T[]));
 
-                // If we get fewer items than requested, we've reached the end
-                if (data.length < BATCH_SIZE) break;
+                if (data && data.length > 0) {
+                    allData.push(...(data as T[]));
+                }
 
-                i += BATCH_SIZE;
-            } catch (err) {
-                console.error(`[API] Network error fetching ${table}: `, err);
-                throw err;
+                // If any chunk returned less than BATCH_SIZE, this is the final tail
+                if (!data || data.length < BATCH_SIZE) {
+                    isDone = true;
+                    break;
+                }
             }
+            i += (CONCURRENCY * BATCH_SIZE);
         }
         return allData;
     },
@@ -90,18 +105,22 @@ export const api = {
         }
     },
 
-    async _getRawDailySales() {
-        if (this._rawDailySalesPromise) return this._rawDailySalesPromise;
+    async _getRawDailySales(startDate?: string) {
+        const key = startDate || 'ALL';
+        if (this._rawDailySalesPromiseMap.has(key)) return this._rawDailySalesPromiseMap.get(key);
+
         const promise = this._fetchAllParallel<any>(
             'daily_sales',
             'date, quantity, barcode, fc_quantity, vf_quantity, stock',
-            'date'
+            'date',
+            startDate ? (q) => q.gte('date', startDate) : undefined
         );
-        this._rawDailySalesPromise = promise;
+        this._rawDailySalesPromiseMap.set(key, promise);
+
         try {
             return await promise;
         } catch (e) {
-            this._rawDailySalesPromise = null;
+            this._rawDailySalesPromiseMap.delete(key);
             throw e;
         }
     },
@@ -116,6 +135,7 @@ export const api = {
         this._productStatsPromise = null;
         this._rawProductsPromise = null;
         this._rawDailySalesPromise = null;
+        this._rawDailySalesPromiseMap.clear();
     },
 
     /**
@@ -610,55 +630,21 @@ ${sampleText}
 
             // Enforce strict YYYY-MM-DD format (10 chars)
             const anchorDateStr = latestData.date.substring(0, 10);
-            const anchorDate = new Date(anchorDateStr);
 
-            // Helper for date math (YYYY-MM-DD input/output)
-            const shiftDate = (baseDateStr: string, days: number) => {
-                const d = new Date(baseDateStr);
-                d.setDate(d.getDate() + days);
-                return d.toISOString().split('T')[0];
-            };
-
-            const currentYear = anchorDateStr.substring(0, 4);
-            const startOfYear = `${currentYear}-01-01`;
-            const startOfMonth = `${anchorDateStr.substring(0, 7)}-01`;
-
-            // Weekly Range (Fri-Thu cycle) relative to Anchor
-            const dayOfWeek = anchorDate.getDay(); // 0=Sun, 5=Fri
-            const diffToFri = (dayOfWeek + 2) % 7;
-            const startOfWeekStr = shiftDate(anchorDateStr, -diffToFri);
-
-            // 2. Fetch Sales Data (Parallel)
-            const sales = await this._getRawDailySales();
+            // Fetch RPC Sales Data (Server-Side Aggregation)
+            const metricsProm = supabase.rpc('get_dashboard_metrics', { anchor_date: anchorDateStr });
+            const trendsProm = supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
 
             // 3. Fetch Product Metadata (for Rankings) - PAGINATED
-            const products_all = await this._getRawProducts();
-            const productMap = new Map(products_all.map(p => [p.barcode, p]));
+            const productsProm = this._getRawProducts();
 
-            // 4. Aggregation
-            let statYesterday = 0; // Latest Date Sales
-            let fcYesterday = 0;
-            let vfYesterday = 0;
-            let statYesterdayPrevYear = 0; // [NEW] 364 days ago
+            const [metricsRes, trendsRes, products_all] = await Promise.all([metricsProm, trendsProm, productsProm]);
 
-            let statWeekly = 0;
-            let fcWeekly = 0;
-            let vfWeekly = 0;
-            let statWeeklyPrevYear = 0; // [NEW] 364 days ago
+            if (metricsRes.error) throw metricsRes.error;
+            if (trendsRes.error) throw trendsRes.error;
 
-            let statMonthly = 0;
-            let statMonthlyPrevYear = 0; // [NEW] 364 days ago
+            const productMap = new Map(products_all.map((p: any) => [p.barcode, p]));
 
-            let statYearly = 0;
-            let statYearlyPrevYear = 0; // [NEW] 364 days ago
-
-            const dailyTrendMap = new Map<string, number>();
-            const dailyTrendPrevYearMap = new Map<string, number>(); // [NEW] YOY Daily Trend
-
-            const weeklyTrendMap = new Map<string, number>();
-            const weeklyTrendPrevYearMap = new Map<string, number>(); // [NEW] YOY Weekly Trend
-
-            // Rank by Product Name (Grouped)
             // Rank by Product Name (Grouped)
             const rankYesterday = new Map<string, number>();
             const rankYesterdayPrev = new Map<string, number>(); // [NEW] Previous Day
@@ -672,130 +658,28 @@ ${sampleText}
             const rankYearly = new Map<string, number>();
             const nameMetadata = new Map<string, { image?: string }>();
 
-            sales?.forEach(s => {
-                // Filter: Only include registered products (matches Product Status logic)
+            // Call RPC for individual product sales stats for rankings
+            const { data: salesStats } = await supabase.rpc('get_product_sales_stats', { anchor_date: anchorDateStr });
+
+            salesStats?.forEach((s: any) => {
                 const product = productMap.get(s.barcode);
                 if (!product) return;
 
-                const dateFull = s.date;
-                const date = dateFull.substring(0, 10); // Strict YYYY-MM-DD
-                const qty = s.quantity;
                 const productName = product.name;
-
-                // Capture metadata (first image found for name)
                 if (!nameMetadata.has(productName)) {
                     nameMetadata.set(productName, { image: product.image_url });
                 }
 
-                // Metrics
-                // Previous Period Ranges
-                // 1. Prev Day (Yesterday vs 1 day ago)
-                const prevDayStr = shiftDate(anchorDateStr, -1);
-                // 1-1. Prev Year Yesterday (364 days ago)
-                const prevYearYesterdayStr = shiftDate(anchorDateStr, -364);
+                rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + (s.qty_yesterday || 0));
+                rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + (s.qty_yesterday_prev_day || 0));
 
-                if (date === anchorDateStr) {
-                    statYesterday += qty;
-                    fcYesterday += (s.fc_quantity || 0);
-                    vfYesterday += (s.vf_quantity || 0);
-                    rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + qty);
-                } else if (date === prevDayStr) {
-                    rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + qty);
-                } else if (date === prevYearYesterdayStr) {
-                    statYesterdayPrevYear += qty;
-                }
+                rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + (s.qty_week || 0));
+                rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + (s.qty_week_prev_week || 0));
 
-                // 2. Weekly & Prev Weekly
-                // Current Week: >= startOfWeekStr
-                // Prev Week: (startOfWeekStr - 7) ~ (startOfWeekStr - 1)
-                const startOfPrevWeekStr = shiftDate(startOfWeekStr, -7);
-                // Prev Year Week: (startOfWeekStr - 364) ~ (startOfWeekStr - 358) => anchorDateStr is included if within week
-                // Rather than a fixed end, let's just use the exact 7-day window 364 days ago
-                const startOfPrevYearWeekStr = shiftDate(startOfWeekStr, -364);
-                const endOfPrevYearWeekStr = shiftDate(anchorDateStr, -364);
+                rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + (s.qty_month || 0));
+                rankMonthlyPrev.set(productName, (rankMonthlyPrev.get(productName) || 0) + (s.qty_month_prev_month || 0));
 
-                if (date >= startOfWeekStr) {
-                    statWeekly += qty;
-                    fcWeekly += (s.fc_quantity || 0);
-                    vfWeekly += (s.vf_quantity || 0);
-                    rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + qty);
-                } else if (date >= startOfPrevWeekStr && date < startOfWeekStr) {
-                    rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + qty);
-                } else if (date >= startOfPrevYearWeekStr && date <= endOfPrevYearWeekStr) {
-                    statWeeklyPrevYear += qty;
-                }
-
-                // 3. Monthly & Prev Monthly
-                const currentMonthPrefix = anchorDateStr.substring(0, 7); // YYYY-MM
-                const prevMonthDate = new Date(startOfMonth);
-                prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-                const prevMonthPrefix = prevMonthDate.toISOString().substring(0, 7); // YYYY-MM (prev)
-                const startOfMonthPrevYearStr = shiftDate(startOfMonth, -364);
-                const endOfMonthPrevYearStr = shiftDate(anchorDateStr, -364); // match up to same weekday point
-
-                const rowMonthPrefix = date.substring(0, 7);
-
-                if (rowMonthPrefix === currentMonthPrefix) {
-                    statMonthly += qty;
-                    rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + qty);
-                } else if (rowMonthPrefix === prevMonthPrefix) {
-                    rankMonthlyPrev.set(productName, (rankMonthlyPrev.get(productName) || 0) + qty);
-                } else if (date >= startOfMonthPrevYearStr && date <= endOfMonthPrevYearStr) {
-                    statMonthlyPrevYear += qty;
-                }
-
-                // 4. Yearly
-                const startOfYearPrevYearStr = shiftDate(startOfYear, -364);
-                const endOfYearPrevYearStr = shiftDate(anchorDateStr, -364);
-
-                if (date >= startOfYear) {
-                    statYearly += qty;
-                    rankYearly.set(productName, (rankYearly.get(productName) || 0) + qty);
-                } else if (date >= startOfYearPrevYearStr && date <= endOfYearPrevYearStr) {
-                    statYearlyPrevYear += qty;
-                }
-
-                // Daily Trend (Filtered)
-                // We want to show last 30 days of "current" dates in the chart.
-                // If it's a current date within the last 30 days, add to current.
-                const startOf30DaysStr = shiftDate(anchorDateStr, -30);
-                if (date > startOf30DaysStr && date <= anchorDateStr) {
-                    dailyTrendMap.set(date, (dailyTrendMap.get(date) || 0) + qty);
-                }
-
-                // Prev Year Daily Trend matching the same 30-day window
-                // If the data date is exactly 364 days ago from a date in our 30-day window
-                const startOf30DaysPrevYearStr = shiftDate(startOf30DaysStr, -364);
-                const endOf30DaysPrevYearStr = shiftDate(anchorDateStr, -364);
-
-                if (date > startOf30DaysPrevYearStr && date <= endOf30DaysPrevYearStr) {
-                    // Map it back to the "current year" date for chart alignment (shift forward 364 days)
-                    const alignedCurrentDate = shiftDate(date, 364);
-                    dailyTrendPrevYearMap.set(alignedCurrentDate, (dailyTrendPrevYearMap.get(alignedCurrentDate) || 0) + qty);
-                }
-
-
-                // Weekly Trend (Group by Friday) (Filtered)
-                const jsDate = new Date(date);
-                const sDay = jsDate.getDay();
-                const sDiff = (sDay + 2) % 7;
-                const friStr = shiftDate(date, -sDiff);
-
-                const startOf12WeeksStr = shiftDate(anchorDateStr, -84); // 12 weeks
-
-                if (date > startOf12WeeksStr && date <= anchorDateStr) {
-                    weeklyTrendMap.set(friStr, (weeklyTrendMap.get(friStr) || 0) + qty);
-                }
-
-                // Prev Year Weekly Trend matching the 12-week window
-                const startOf12WeeksPrevYearStr = shiftDate(startOf12WeeksStr, -364);
-                const endOf12WeeksPrevYearStr = shiftDate(anchorDateStr, -364);
-
-                if (date > startOf12WeeksPrevYearStr && date <= endOf12WeeksPrevYearStr) {
-                    // Map back to current year week
-                    const alignedCurrentFriDate = shiftDate(friStr, 364);
-                    weeklyTrendPrevYearMap.set(alignedCurrentFriDate, (weeklyTrendPrevYearMap.get(alignedCurrentFriDate) || 0) + qty);
-                }
+                rankYearly.set(productName, (rankYearly.get(productName) || 0) + (s.qty_year || 0));
             });
 
             // 5. Format Data
@@ -819,13 +703,8 @@ ${sampleText}
                     });
             };
 
-            const sortedDaily = Array.from(dailyTrendMap.entries())
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .slice(-30); // Last 30 days from Anchor
-
-            const sortedWeekly = Array.from(weeklyTrendMap.entries())
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .slice(-12); // Last 12 weeks from Anchor
+            const sortedDaily = trendsRes.data.daily || [];
+            const sortedWeekly = trendsRes.data.weekly || [];
 
             // 6. Inventory Ranking (Top Stock)
             const inventoryMap = new Map<string, number>();
@@ -856,41 +735,11 @@ ${sampleText}
 
             console.log(`[Risk Alert] Calculating risk for period: ${startOfRiskStr} ~${anchorDateStr} `);
 
-            // Fetch ALL sales for the period (Handle Supabase 1000 row limit)
-            const recentSales: { barcode: string, quantity: number }[] = [];
-            let rFrom = 0;
-            const rStep = 1000;
-
-            while (true) {
-                const { data, error } = await supabase
-                    .from('daily_sales')
-                    .select('barcode, quantity')
-                    .gte('date', startOfRiskStr)
-                    .lte('date', anchorDateStr)
-                    .range(rFrom, rFrom + rStep - 1);
-
-                if (error) {
-                    console.error("Error fetching recent sales:", error);
-                    break;
-                }
-                if (!data || data.length === 0) break;
-
-                recentSales.push(...data);
-                if (data.length < rStep) break;
-                rFrom += rStep;
-            }
-
-            if (recentSales.length > 0) {
-                // We need a map of Barcode -> Name because inventoryMap is by Name.
-                // But we don't have a direct Barcode->Name map readily available in this scope efficiently without reiterating products.
-                // Let's build it quickly.
-                const barcodeToName = new Map<string, string>();
-                products_all.forEach(p => barcodeToName.set(p.barcode, p.name));
-
-                recentSales.forEach(s => {
-                    const pName = barcodeToName.get(s.barcode);
-                    if (pName) {
-                        productSalesStats.set(pName, (productSalesStats.get(pName) || 0) + s.quantity);
+            if (salesStats && salesStats.length > 0) {
+                salesStats.forEach((s: any) => {
+                    const pName = productMap.get(s.barcode)?.name;
+                    if (pName && s.qty_7d > 0) {
+                        productSalesStats.set(pName, (productSalesStats.get(pName) || 0) + s.qty_7d);
                     }
                 });
             }
@@ -926,30 +775,17 @@ ${sampleText}
 
             const result = {
                 anchorDate: anchorDateStr,
-                metrics: {
-                    yesterday: statYesterday,
-                    yesterdayPrevYear: statYesterdayPrevYear,
-                    fcYesterday: fcYesterday,
-                    vfYesterday: vfYesterday,
-                    weekly: statWeekly,
-                    weeklyPrevYear: statWeeklyPrevYear,
-                    fcWeekly: fcWeekly,
-                    vfWeekly: vfWeekly,
-                    monthly: statMonthly,
-                    monthlyPrevYear: statMonthlyPrevYear,
-                    yearly: statYearly,
-                    yearlyPrevYear: statYearlyPrevYear
-                },
+                metrics: metricsRes.data,
                 trends: {
-                    daily: sortedDaily.map(([date, quantity]) => ({
-                        date: date.substring(5),
-                        quantity: quantity,
-                        prevYearQuantity: dailyTrendPrevYearMap.get(date) || 0 // [NEW] Attach prev year data
+                    daily: sortedDaily.map((item: any) => ({
+                        date: item.date.substring(5),
+                        quantity: item.quantity,
+                        prevYearQuantity: item.prevYearQuantity
                     })),
-                    weekly: sortedWeekly.map(([date, quantity]) => ({
-                        date: date.substring(5),
-                        quantity: quantity,
-                        prevYearQuantity: weeklyTrendPrevYearMap.get(date) || 0 // [NEW] Attach prev year data
+                    weekly: sortedWeekly.map((item: any) => ({
+                        date: item.date.substring(5),
+                        quantity: item.quantity,
+                        prevYearQuantity: item.prevYearQuantity
                     }))
                 },
                 rankings: {
@@ -992,112 +828,40 @@ ${sampleText}
         const promise = (async () => {
             console.time("getProductStats");
 
+            const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
+            const anchorDateStr = latestData ? latestData.date.substring(0, 10) : new Date().toISOString().split('T')[0];
+
             // 1. Fetch Products (Master + Stock)
             const products = await this._getRawProducts();
 
             if (!products) return []; // Ensure products is an array for subsequent operations
 
-            // 2. Fetch Sales History (Last 30 Days for trends)
-            const sales = await this._getRawDailySales();
+            // 2. Fetch Pre-calculated Stats via RPC
+            const { data: salesStats } = await supabase.rpc('get_product_sales_stats', { anchor_date: anchorDateStr });
+            const statsMap = new Map();
+            salesStats?.forEach((s: any) => statsMap.set(s.barcode, s));
 
-            // ... existing aggregation logic ...
-            // 3. Aggregate Sales (Anchor to Latest Date)
-            const salesMap = new Map<string, { total: number, fcTotal: number, vfTotal: number, last14Days: number, last7Days: number, yesterday: number, daily: Record<string, number>, dailyStock: Record<string, number> }>();
-
-            // Find latest date from sales data itself to be accurate without extra query if possible?
-            let maxDateStr = '';
-            sales.forEach(s => {
-                if (s.date > maxDateStr) maxDateStr = s.date;
-            });
-
-            // Calculate ranges
-            const anchorDate = maxDateStr ? new Date(maxDateStr) : new Date();
-
-            const toLocalISO = (d: Date) => {
-                const offset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - offset).toISOString().split('T')[0];
-            };
-
-            const dateYesterday = toLocalISO(anchorDate); // Latest date is "yesterday" contextually
-
-            const d7 = new Date(anchorDate); d7.setDate(anchorDate.getDate() - 6);
-            const date7DaysAgo = toLocalISO(d7);
-
-            const d14 = new Date(anchorDate); d14.setDate(anchorDate.getDate() - 13);
-            const date14DaysAgo = toLocalISO(d14);
-
-            sales?.forEach(s => {
-                const entry = salesMap.get(s.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {}, dailyStock: {} };
-                entry.total += s.quantity;
-                entry.fcTotal += (s.fc_quantity || 0);
-                entry.vfTotal += (s.vf_quantity || 0);
-
-                // Ranges
-                if (s.date >= date14DaysAgo) entry.last14Days += s.quantity;
-                if (s.date >= date7DaysAgo) entry.last7Days += s.quantity;
-                if (s.date === dateYesterday) entry.yesterday += s.quantity;
-
-                // Aggregate daily sales
-                entry.daily[s.date] = (entry.daily[s.date] || 0) + s.quantity;
-
-                // Capture daily stock only if it exists in DB for this date (so we know it's a real record)
-                if (s.stock !== null && s.stock !== undefined) {
-                    entry.dailyStock[s.date] = s.stock;
-                }
-
-                salesMap.set(s.barcode, entry);
-            });
-
-            // 4. Merge
+            // 5. Merge
             const result = products.map(p => {
-                const s = salesMap.get(p.barcode) || { total: 0, fcTotal: 0, vfTotal: 0, last14Days: 0, last7Days: 0, yesterday: 0, daily: {}, dailyStock: {} };
-                const avgDailySales = s.last7Days / 7;
+                const st = statsMap.get(p.barcode) || {};
+                const dailySales = st.daily_sales || {};
+                const dailyStock = st.daily_stock || {};
+
+                const avgDailySales = (st.qty_7d || 0) / 7;
                 const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
 
                 // Trend Calculation
-                const prevSales7Days = s.last14Days - s.last7Days;
-
-                // Monthly Sales (Approx last 30 days)            
-                // 1. Yesterday Trend
-                const yesterdayDate = new Date();
-                yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-                const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-
-                const dayBeforeDate = new Date();
-                dayBeforeDate.setDate(dayBeforeDate.getDate() - 2);
-                const dayBeforeStr = dayBeforeDate.toISOString().split('T')[0];
-
-                const qtyYesterday = s.daily[yesterdayStr] || 0;
-                const qtyDayBefore = s.daily[dayBeforeStr] || 0;
-                const trendYesterday = qtyYesterday - qtyDayBefore; // Simple diff
-
-                // 2. Weekly Trend (Last 7 Days vs Previous 7 Days)
-                // Already have prevSales7Days.
-                const trendWeek = s.last7Days - prevSales7Days;
-
-                // 3. Monthly Trend (Last 30 Days vs Previous 30 Days)
-                // We need to loop daily sales.
-                let sales30Days = 0;
-                let salesPrev30Days = 0;
-
-                const now = new Date();
-                for (let i = 0; i < 60; i++) {
-                    const d = new Date(now);
-                    d.setDate(d.getDate() - (i + 1)); // start from yesterday backwards
-                    const dStr = d.toISOString().split('T')[0];
-                    const qty = s.daily[dStr] || 0;
-
-                    if (i < 30) sales30Days += qty;
-                    else salesPrev30Days += qty;
-                }
-                const trendMonth = sales30Days - salesPrev30Days;
+                const prevSales7Days = (st.qty_14d || 0) - (st.qty_7d || 0);
+                const trendYesterday = (st.qty_yesterday || 0) - (st.qty_yesterday_prev_day || 0);
+                const trendWeek = (st.qty_7d || 0) - prevSales7Days;
+                const trendMonth = (st.qty_30d || 0) - ((st.qty_60d || 0) - (st.qty_30d || 0));
 
                 let trend: 'hot' | 'cold' | 'up' | 'down' | 'flat' = 'flat';
 
-                const diff = s.last7Days - prevSales7Days;
+                const diff = (st.qty_7d || 0) - prevSales7Days;
                 const rate = prevSales7Days > 0 ? diff / prevSales7Days : 0; // Growth rate
 
-                if (rate >= 0.5 && s.last7Days >= 10) trend = 'hot';
+                if (rate >= 0.5 && (st.qty_7d || 0) >= 10) trend = 'hot';
                 else if (rate <= -0.5 && prevSales7Days >= 10) trend = 'cold';
                 else if (diff > 0) trend = 'up';
                 else if (diff < 0) trend = 'down';
@@ -1110,17 +874,17 @@ ${sampleText}
                     imageUrl: p.image_url,
                     hqStock: p.hq_stock || 0,
                     coupangStock: p.current_stock || 0, // Alias
-                    fcStock: p.fc_stock || 0, // [NEW]
-                    vfStock: p.vf_stock || 0, // [NEW]
-                    incomingStock: p.incoming_stock || 0, // [NEW]
+                    fcStock: p.fc_stock || 0,
+                    vfStock: p.vf_stock || 0,
+                    incomingStock: p.incoming_stock || 0,
                     safetyStock: p.safety_stock || 10,
-                    totalSales: s.total,
-                    fcSales: s.fcTotal, // [NEW]
-                    vfSales: s.vfTotal, // [NEW]
-                    sales14Days: s.last14Days,
-                    sales7Days: s.last7Days,
-                    salesYesterday: s.yesterday,
-                    sales30Days,
+                    totalSales: st.qty_year || 0, // Using Year Sales as Cumulative
+                    fcSales: st.fc_qty_yesterday || 0,
+                    vfSales: st.vf_qty_yesterday || 0,
+                    sales14Days: st.qty_14d || 0,
+                    sales7Days: st.qty_7d || 0,
+                    salesYesterday: st.qty_yesterday || 0,
+                    sales30Days: st.qty_30d || 0,
                     trends: {
                         yesterday: trendYesterday,
                         week: trendWeek,
@@ -1128,8 +892,8 @@ ${sampleText}
                     },
                     avgDailySales: parseFloat(avgDailySales.toFixed(1)),
                     daysOfInventory,
-                    dailySales: s.daily,
-                    dailyStock: s.dailyStock,
+                    dailySales: dailySales,
+                    dailyStock: dailyStock,
                     abcGrade: 'D' as 'A' | 'B' | 'C' | 'D', // Default, will be updated below
                     prevSales7Days,
                     trend

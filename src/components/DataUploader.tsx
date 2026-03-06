@@ -214,6 +214,24 @@ export function DataUploader() {
                     <span>공급 중 수량 등록</span>
                 </label>
             </div>
+            {/* New: Historical Stock Upload */}
+            <div className="relative">
+                <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleHistoricalUpload}
+                    className="hidden"
+                    id="upload-historical"
+                    disabled={isUploading}
+                />
+                <label
+                    htmlFor="upload-historical"
+                    className={`flex items-center space-x-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <FileUp size={16} />
+                    <span>과거 데이터 등록</span>
+                </label>
+            </div>
         </div>
     );
 }
