@@ -200,7 +200,7 @@ export const api = {
         // We now need to track fcQty and vfQty separately, and track the maximum currentStock for that day
         const aggregatedSalesMap = new Map<string, CoupangSalesRow & { fcQty: number, vfQty: number, maxStock: number }>();
         salesData.forEach(row => {
-            const key = `${row.date}_${row.barcode} `;
+            const key = `${row.date}_${row.barcode}`;
             const existing = aggregatedSalesMap.get(key);
 
             const isFC = row.center === 'FC';
@@ -269,13 +269,13 @@ export const api = {
                 .in('barcode', chunkBarcodes);
 
             const existingSalesMap = new Map();
-            existingSales?.forEach(s => existingSalesMap.set(`${s.date}_${s.barcode} `, s));
+            existingSales?.forEach(s => existingSalesMap.set(`${s.date}_${s.barcode}`, s));
 
             const { error } = await supabase
                 .from('daily_sales')
                 .upsert(
                     chunk.map(s => {
-                        const existing = existingSalesMap.get(`${s.date}_${s.barcode} `);
+                        const existing = existingSalesMap.get(`${s.date}_${s.barcode}`);
                         return {
                             date: s.date,
                             barcode: s.barcode,
@@ -892,8 +892,8 @@ ${sampleText}
                     incomingStock: p.incoming_stock || 0,
                     safetyStock: p.safety_stock || 10,
                     totalSales: st.qty_year || 0, // Using Year Sales as Cumulative
-                    fcSales: st.fc_qty_yesterday || 0,
-                    vfSales: st.vf_qty_yesterday || 0,
+                    fcSales: st.fc_qty_year || 0, // [FIX] Show Year Cumulative
+                    vfSales: st.vf_qty_year || 0, // [FIX] Show Year Cumulative
                     sales14Days: st.qty_14d || 0,
                     sales7Days: st.qty_7d || 0,
                     salesYesterday: st.qty_yesterday || 0,
