@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import {
-    LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Package, Loader2 } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
@@ -214,30 +214,6 @@ export default function Dashboard() {
                 <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
                 <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
                 <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} />
-            </div>
-
-            {/* Category Trend Chart */}
-            <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Package size={18} className="mr-2 text-purple-500" />
-                        카테고리별 전년 대비 성장 현황
-                    </h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                        <BarChart data={insights?.categories || []} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                            <XAxis type="number" fontSize={10} />
-                            <YAxis type="category" dataKey="category" fontSize={10} width={80} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="diff" name="증감량" fill="#a855f7" radius={[0, 4, 4, 0]}>
-                                {(insights?.categories || []).map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
             </div>
 
             {/* YoY Winners/Losers (At bottom) */}
