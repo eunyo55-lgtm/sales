@@ -686,11 +686,26 @@ ${sampleText}
     },
 
     /**
-     * Fetch Comprehensive Dashboard Analytics
-     * - Key Metrics: Yesterday, Weekly (Fri-Thu), Monthly, Yearly
-     * - Trends: Daily (30d), Weekly (12w)
-     * - Rankings: Yesterday, Weekly, Yearly Top 10
+     * Fetch New Dashboard Insights (Winner/Loser/Category Trends)
      */
+    async getDashboardInsights() {
+        const { data: latestData } = await supabase
+            .from('daily_sales')
+            .select('date')
+            .order('date', { ascending: false })
+            .limit(1)
+            .single();
+
+        const anchorDateStr = latestData?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase.rpc('get_dashboard_insights', { anchor_date: anchorDateStr });
+
+        if (error) {
+            console.error("[API] getDashboardInsights error:", error);
+            throw error;
+        }
+        return data; // returns jsonb object { winners, losers, categories }
+    },
+
     async getDashboardAnalytics() {
         if (this._dashboardCache) {
             console.log("[Cache] Dashboard HIT");

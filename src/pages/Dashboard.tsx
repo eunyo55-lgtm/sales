@@ -8,6 +8,7 @@ import { isRedDay } from '../lib/dateUtils';
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
+    const [insights, setInsights] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -18,9 +19,13 @@ export default function Dashboard() {
 
     const loadData = async () => {
         try {
-            const result = await api.getDashboardAnalytics();
+            const [result, insightsResult] = await Promise.all([
+                api.getDashboardAnalytics(),
+                api.getDashboardInsights().catch(() => null)
+            ]);
             console.log("Dashboard Data:", result);
             setData(result);
+            setInsights(insightsResult);
         } catch (error: any) {
             console.error("Failed to load dashboard data", error);
         } finally {
@@ -85,7 +90,7 @@ export default function Dashboard() {
         );
     };
 
-    const RankingList = ({ title, items, icon: Icon }: any) => (
+    const RankingList = ({ title, items, icon: Icon, valueLabel = '판매량', showDiff = false }: any) => (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
             <div className="p-4 border-b border-gray-50 flex items-center space-x-2">
                 <Icon size={18} className="text-gray-400" />
@@ -97,19 +102,19 @@ export default function Dashboard() {
                         <tr>
                             <th className="px-3 py-2 text-center w-12">순위</th>
                             <th className="px-3 py-2">상품명</th>
-                            <th className="px-3 py-2 text-right">판매량</th>
+                            <th className="px-3 py-2 text-right">{valueLabel}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {items.length > 0 ? items.map((item: any) => (
-                            <tr key={item.barcode} className="hover:bg-gray-50">
+                        {items && items.length > 0 ? items.map((item: any, idx: number) => (
+                            <tr key={item.barcode || item.category || idx} className="hover:bg-gray-50">
                                 <td className="px-3 py-3 text-center font-medium text-gray-600">
-                                    {item.rank <= 3 ? (
-                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs text-white ${item.rank === 1 ? 'bg-yellow-400' : item.rank === 2 ? 'bg-gray-400' : 'bg-orange-400'
+                                    {idx + 1 <= 3 ? (
+                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'
                                             }`}>
-                                            {item.rank}
+                                            {idx + 1}
                                         </span>
-                                    ) : item.rank}
+                                    ) : idx + 1}
                                 </td>
                                 <td className="px-3 py-3">
                                     <div className="flex items-center space-x-3">
@@ -119,15 +124,16 @@ export default function Dashboard() {
                                             <div className="w-8 h-8 rounded bg-gray-100 flex-none" />
                                         )}
                                         <div className="min-w-0">
-                                            <p className="font-medium text-gray-900 truncate" title={item.name}>{item.name}</p>
+                                            <p className="font-medium text-gray-900 truncate" title={item.name || item.category}>{item.name || item.category}</p>
+                                            {item.option_value && <p className="text-[10px] text-gray-400 truncate">{item.option_value}</p>}
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-3 py-3 text-right font-bold text-gray-900">
-                                    {item.quantity.toLocaleString()}
-                                    {item.trend !== undefined && item.trend !== null && (
-                                        <div className={`text-xs ${item.trend > 0 ? 'text-red-500' : item.trend < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-                                            {item.trend > 0 ? '▲' : item.trend < 0 ? '▼' : '-'} {Math.abs(item.trend).toLocaleString()}
+                                    {(item.curr_qty || item.quantity || 0).toLocaleString()}건
+                                    {(showDiff || item.diff !== undefined) && (
+                                        <div className={`text-xs ${item.diff > 0 ? 'text-red-500' : item.diff < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                                            {item.diff > 0 ? '▲' : item.diff < 0 ? '▼' : '-'} {Math.abs(item.diff).toLocaleString()}
                                         </div>
                                     )}
                                 </td>
@@ -170,6 +176,7 @@ export default function Dashboard() {
                     colorClass="bg-yellow-50 text-yellow-600"
                 />
             </div>
+
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Daily Trend */}
@@ -201,40 +208,37 @@ export default function Dashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Weekly Trend */}
+                {/* Categories Trend */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
                     <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Calendar size={18} className="mr-2 text-green-500" />
-                        주간 판매 추이 (최근 12주)
+                        <Package size={18} className="mr-2 text-purple-500" />
+                        카테고리별 전년 대비 성장 현황
                     </h3>
                     <ResponsiveContainer width="100%" height="90%">
-                        <BarChart data={trends.weekly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                            <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                            <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                            <XAxis
-                                dataKey="date"
-                                fontSize={12}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={({ x, y, payload }) => (
-                                    <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
-                                        {payload.value}
-                                    </text>
-                                )}
-                            />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f3f4f6' }} />
+                        <BarChart data={insights?.categories || []} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis type="number" fontSize={10} />
+                            <YAxis type="category" dataKey="category" fontSize={10} width={60} />
+                            <Tooltip />
                             <Legend />
-                            <Bar dataKey="quantity" name="방문 수량 (올해)" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-                            <Bar dataKey="prevYearQuantity" name="판매량 (작년)" fill="#f43f5e" opacity={0.6} radius={[4, 4, 0, 0]} barSize={20} />
+                            <Bar dataKey="diff" name="증감량" fill="#a855f7" radius={[0, 4, 4, 0]}>
+                                {(insights?.categories || []).map((entry: any, index: number) => (
+                                    <Bar key={`cell-${index}`} fill={entry.diff >= 0 ? '#10b981' : '#ef4444'} />
+                                ))}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
+            {/* YoY Insights Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매" />
+                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매" />
+            </div>
+
             {/* Rankings Row */}
-            {/* Rankings Row - 2x2 Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-auto">
                 <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
                 <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
                 <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
