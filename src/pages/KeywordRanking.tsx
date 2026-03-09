@@ -387,13 +387,13 @@ export default function KeywordRanking() {
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        {displayDates.map(date => {
-                                            const [, m, d] = date.split('-');
-                                            return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{parseInt(m)}/{parseInt(d)}</th>
-                                        })}
                                         <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100">조회수 (이번주)</th>
                                         <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100">조회수 (지난주)</th>
                                         <th className="py-3 px-3 font-medium bg-green-50 text-green-700">추이</th>
+                                        {displayDates.map(date => {
+                                            const [, m, d] = date.split('-');
+                                            return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50 border-l border-gray-200">{parseInt(m)}/{parseInt(d)}</th>
+                                        })}
                                         <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
                                     </tr>
                                 </thead>
@@ -445,6 +445,39 @@ export default function KeywordRanking() {
                                                 >
                                                     {kw.products?.name || '-'}
                                                 </td>
+
+                                                {/* Search Volume Columns (Moved next to Product Name) */}
+                                                {(() => {
+                                                    const latestSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === latestSvDate);
+                                                    const prevSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === prevSvDate);
+
+                                                    const latestVol = latestSv?.total_volume || 0;
+                                                    const prevVol = prevSv?.total_volume || 0;
+                                                    const trend = latestVol - prevVol;
+
+                                                    return (
+                                                        <>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-x border-green-100 font-medium">
+                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-r border-green-100 text-gray-500">
+                                                                {prevVol > 0 ? prevVol.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30">
+                                                                {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
+                                                                    <div className={`flex items-center justify-center text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                        {trend > 0 ? '+' : ''}{trend.toLocaleString()}
+                                                                    </div>
+                                                                ) : trend === 0 && latestVol > 0 ? (
+                                                                    <Minus className="w-2.5 h-2.5 mx-auto text-gray-400" />
+                                                                ) : (
+                                                                    <span className="text-gray-300">-</span>
+                                                                )}
+                                                            </td>
+                                                        </>
+                                                    );
+                                                })()}
+
                                                 {displayDates.map((date, index) => {
                                                     const r = kwRankings.find(rank => rank.date === date);
                                                     const pos = r ? r.rank_position : 0;
@@ -521,8 +554,7 @@ export default function KeywordRanking() {
                                                             <td className="py-3 px-3 text-center bg-green-50/30">
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
                                                                     <div className={`flex items-center justify-center text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                                                        {trend > 0 ? <TrendingUp className="w-2.5 h-2.5 mr-0.5" /> : <TrendingDown className="w-2.5 h-2.5 mr-0.5" />}
-                                                                        {Math.abs(trend).toLocaleString()}
+                                                                        {trend > 0 ? '+' : ''}{trend.toLocaleString()}
                                                                     </div>
                                                                 ) : trend === 0 && latestVol > 0 ? (
                                                                     <Minus className="w-2.5 h-2.5 mx-auto text-gray-400" />
