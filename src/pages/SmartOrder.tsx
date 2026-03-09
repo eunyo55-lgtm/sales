@@ -350,7 +350,7 @@ export default function SmartOrder() {
             </div>
 
             {/* List Content */}
-            <div className="flex-1 overflow-auto bg-white rounded-xl border border-gray-200 shadow-sm relative">
+            <div className="flex-1 overflow-auto max-h-[calc(100vh-250px)] bg-white rounded-xl border border-gray-200 shadow-sm relative">
                 {groupedOrders.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                         <Truck size={48} className="mb-4 text-gray-300" />
@@ -358,7 +358,7 @@ export default function SmartOrder() {
                         <p className="text-sm">현재 설정된 리드타임({leadTime}일) 기준 재고가 넉넉합니다.</p>
                     </div>
                 ) : (
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full whitespace-nowrap min-w-max relative text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-3 w-8"></th>

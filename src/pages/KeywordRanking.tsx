@@ -47,7 +47,7 @@ export default function KeywordRanking() {
         try {
             const { data } = await supabase
                 .from('products')
-                .select('barcode, name')
+                .select('barcode, name, image_url')
                 .ilike('name', `%${query}%`)
                 .limit(50);
             if (data) {
@@ -64,7 +64,7 @@ export default function KeywordRanking() {
             // Fetch keywords with product name
             const { data: kwData, error: kwError } = await supabase
                 .from('keywords')
-                .select('*, products(name)')
+                .select('*, products(name, image_url)')
                 .order('created_at', { ascending: false });
             if (kwError) throw kwError;
             setKeywords(kwData || []);
@@ -483,7 +483,16 @@ export default function KeywordRanking() {
                                                         openChartModal(kw);
                                                     }}
                                                 >
-                                                    {kw.products?.name || '-'}
+                                                    <div className="flex items-center">
+                                                        {kw.products?.image_url && (
+                                                            <img
+                                                                src={kw.products.image_url}
+                                                                alt=""
+                                                                className="w-8 h-8 rounded object-cover mr-2 bg-gray-100 border border-gray-200"
+                                                            />
+                                                        )}
+                                                        <span>{kw.products?.name || '-'}</span>
+                                                    </div>
                                                 </td>
 
                                                 {/* Search Volume Columns (Moved next to Product Name) */}

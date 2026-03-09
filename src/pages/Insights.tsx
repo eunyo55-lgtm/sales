@@ -172,14 +172,14 @@ export default function Insights() {
             </div>
 
             {/* Table Area */}
-            <div className="flex-1 overflow-auto bg-white rounded-xl border border-gray-200 shadow-sm relative">
+            <div className="flex-1 overflow-auto max-h-[calc(100vh-250px)] bg-white rounded-xl border border-gray-200 shadow-sm relative">
                 {deadStockGroups.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                         <AlertCircle size={48} className="mb-4 text-gray-300" />
                         <p className="text-lg font-medium">해당 조건의 악성 재고가 없습니다.</p>
                     </div>
                 ) : (
-                    <table className="w-full text-sm text-left">
+                    <table className="w-full whitespace-nowrap min-w-max relative text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
                             <tr>
                                 <th className="px-5 py-3 w-8"></th>

@@ -343,8 +343,8 @@ export default function InventoryStatus() {
           </div>
         </div>
 
-        <div className="overflow-auto relative max-h-[calc(100vh-200px)]">
-          <table className="min-w-full text-sm text-left border-separate border-spacing-0">
+        <div className="overflow-auto relative flex-1 max-h-[calc(100vh-250px)]">
+          <table className="min-w-full whitespace-nowrap min-w-max relative text-sm text-left border-separate border-spacing-0">
             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100 sticky top-0 z-30 shadow-sm">
               <tr>
                 <th className={`px-2 py-3 bg-gray-50 sticky z-30 ${W_TOGGLE} ${L_TOGGLE}`}></th>
