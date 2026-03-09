@@ -183,8 +183,8 @@ export default function KeywordRanking() {
 
     const sortedKeywords = [...keywords].sort((a, b) => {
         if (!sortConfig) return 0;
-        let aValue = '';
-        let bValue = '';
+        let aValue: any = '';
+        let bValue: any = '';
 
         if (sortConfig.key === 'category') {
             aValue = a.category?.toLowerCase() || '';
@@ -195,6 +195,22 @@ export default function KeywordRanking() {
         } else if (sortConfig.key === 'product') {
             aValue = a.products?.name?.toLowerCase() || '';
             bValue = b.products?.name?.toLowerCase() || '';
+        } else if (sortConfig.key === 'views_latest' || sortConfig.key === 'views_prev' || sortConfig.key === 'trend') {
+            const aLatest = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
+            const aPrev = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
+            const bLatest = searchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
+            const bPrev = searchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
+
+            if (sortConfig.key === 'views_latest') {
+                aValue = aLatest;
+                bValue = bLatest;
+            } else if (sortConfig.key === 'views_prev') {
+                aValue = aPrev;
+                bValue = bPrev;
+            } else if (sortConfig.key === 'trend') {
+                aValue = aLatest - aPrev;
+                bValue = bLatest - bPrev;
+            }
         }
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -357,7 +373,7 @@ export default function KeywordRanking() {
                             <h3 className="font-bold text-gray-800">키워드별 순위 누적 현황</h3>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                            <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs shadow-sm">
                                         <th
@@ -387,14 +403,38 @@ export default function KeywordRanking() {
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100">조회수 (이번주)</th>
-                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100">조회수 (지난주)</th>
-                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700">추이</th>
+                                        <th
+                                            className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
+                                            onClick={() => handleSort('views_latest')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                조회수 (이번주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_latest' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
+                                            onClick={() => handleSort('views_prev')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                조회수 (지난주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_prev' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-3 font-medium bg-green-50 text-green-700 cursor-pointer hover:bg-green-100 transition-colors group select-none"
+                                            onClick={() => handleSort('trend')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                추이
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'trend' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
                                         {displayDates.map(date => {
                                             const [, m, d] = date.split('-');
                                             return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50 border-l border-gray-200">{parseInt(m)}/{parseInt(d)}</th>
                                         })}
-                                        <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
+                                        <th className="py-3 px-4 font-medium min-w-[60px] text-center">삭제</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -436,7 +476,7 @@ export default function KeywordRanking() {
                                                 </td>
                                                 <td className="py-3 px-4 font-medium text-blue-900">{kw.keyword}</td>
                                                 <td
-                                                    className="py-3 px-4 text-gray-600 text-xs max-w-[150px] truncate cursor-pointer hover:text-blue-600 hover:underline"
+                                                    className="py-3 px-4 text-gray-600 text-xs cursor-pointer hover:text-blue-600 hover:underline"
                                                     title="클릭하여 순위 추이 보기"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -534,37 +574,7 @@ export default function KeywordRanking() {
                                                     )
                                                 })}
 
-                                                {/* Search Volume Columns */}
-                                                {(() => {
-                                                    const latestSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === latestSvDate);
-                                                    const prevSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === prevSvDate);
 
-                                                    const latestVol = latestSv?.total_volume || 0;
-                                                    const prevVol = prevSv?.total_volume || 0;
-                                                    const trend = latestVol - prevVol;
-
-                                                    return (
-                                                        <>
-                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-x border-green-100 font-medium">
-                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
-                                                            </td>
-                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-r border-green-100 text-gray-500">
-                                                                {prevVol > 0 ? prevVol.toLocaleString() : '-'}
-                                                            </td>
-                                                            <td className="py-3 px-3 text-center bg-green-50/30">
-                                                                {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
-                                                                    <div className={`flex items-center justify-center text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                                                        {trend > 0 ? '+' : ''}{trend.toLocaleString()}
-                                                                    </div>
-                                                                ) : trend === 0 && latestVol > 0 ? (
-                                                                    <Minus className="w-2.5 h-2.5 mx-auto text-gray-400" />
-                                                                ) : (
-                                                                    <span className="text-gray-300">-</span>
-                                                                )}
-                                                            </td>
-                                                        </>
-                                                    );
-                                                })()}
 
                                                 <td className="py-3 px-4 text-center">
                                                     <button
