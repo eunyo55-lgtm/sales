@@ -171,8 +171,25 @@ export default function KeywordRanking() {
 
     // Get unique search volume dates
     const allSvDates = Array.from(new Set(searchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    const latestSvDate = allSvDates[0];
-    const prevSvDate = allSvDates[1];
+
+    // Group into Friday-Thursday weeks to determine latest/prev dates
+    const getWeekKey = (dateStr: string | Date) => {
+        const d = new Date(dateStr);
+        // getDay(): 0(Sun), 1(Mon), 2(Tue), 3(Wed), 4(Thu), 5(Fri), 6(Sat)
+        // We want Friday to be 0, Saturday to be 1, ..., Thursday to be 6
+        const diff = (d.getDay() + 2) % 7;
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - diff);
+        return weekStart.toISOString().split('T')[0];
+    };
+
+    const currentWeekKey = getWeekKey(new Date());
+    const prevWeekDateObj = new Date();
+    prevWeekDateObj.setDate(prevWeekDateObj.getDate() - 7);
+    const lastWeekKey = getWeekKey(prevWeekDateObj);
+
+    const latestSvDate = allSvDates.find(d => getWeekKey(d) === currentWeekKey) || '';
+    const prevSvDate = allSvDates.find(d => getWeekKey(d) === lastWeekKey) || '';
 
     // Sorting logic
     const handleSort = (key: string) => {
