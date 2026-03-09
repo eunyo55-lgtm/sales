@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function KeywordRanking() {
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
+    const [searchVolumes, setSearchVolumes] = useState<any[]>([]);
 
     // Form state
     const [newCategory, setNewCategory] = useState('');
@@ -18,6 +19,7 @@ export default function KeywordRanking() {
 
     // UI state
     const [showManualSync, setShowManualSync] = useState(false);
+    const [showNaverSync, setShowNaverSync] = useState(false);
 
     // Dashboard state
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
@@ -82,6 +84,15 @@ export default function KeywordRanking() {
 
             if (rankError) throw rankError;
             setRankings(rankData || []);
+
+            // Fetch search volumes (latest and previous)
+            const { data: svData, error: svError } = await supabase
+                .from('keyword_search_volumes')
+                .select('*')
+                .order('target_date', { ascending: false });
+
+            if (svError) throw svError;
+            setSearchVolumes(svData || []);
 
             if (kwData && kwData.length > 0 && !selectedKeywordId) {
                 setSelectedKeywordId(kwData[0].id);
@@ -157,6 +168,11 @@ export default function KeywordRanking() {
     // Extract unique dates for table columns (last 7 days of data)
     const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     const displayDates = allUniqueDates.slice(-7);
+
+    // Get unique search volume dates
+    const allSvDates = Array.from(new Set(searchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const latestSvDate = allSvDates[0];
+    const prevSvDate = allSvDates[1];
 
     // Sorting logic
     const handleSort = (key: string) => {
@@ -290,6 +306,12 @@ export default function KeywordRanking() {
                             >
                                 ⚡ 수동 순위 집계
                             </button>
+                            <button
+                                onClick={() => setShowNaverSync(true)}
+                                className="ml-2 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-md transition border border-green-200"
+                            >
+                                📊 네이버 조회수 갱신
+                            </button>
                         </div>
 
                         {showManualSync && (
@@ -303,6 +325,27 @@ export default function KeywordRanking() {
                                 </div>
                                 <div className="flex justify-end">
                                     <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {showNaverSync && (
+                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-10 w-80 text-sm">
+                                <h4 className="font-bold text-gray-800 mb-2">네이버 조회수 수동 갱신</h4>
+                                <p className="text-gray-600 mb-3 text-xs leading-relaxed">
+                                    네이버 광고시스템의 보안 정책으로 인해 서버에서 자동 수집이 어렵습니다. 아래 순서대로 직접 실행해 주세요.
+                                </p>
+                                <div className="bg-green-50 p-3 rounded text-xs text-green-800 mb-4 border border-green-100">
+                                    <b>사용 방법:</b>
+                                    <ol className="list-decimal ml-4 mt-1 space-y-1">
+                                        <li>바탕화면의 <b>[네이버 조회수 수집기]</b>를 실행합니다.</li>
+                                        <li>크롬 창이 열리면 <b>네이버 로그인</b>을 완료해 주세요.</li>
+                                        <li>로그인 후 자동으로 키워드 도구로 이동하여 조회를 시작합니다.</li>
+                                        <li>수집이 끝나고 창이 닫히면 이 화면을 새로고침 하세요.</li>
+                                    </ol>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button onClick={() => setShowNaverSync(false)} className="px-3 py-1 bg-green-50 text-green-600 rounded text-xs font-medium hover:bg-green-100">닫기</button>
                                 </div>
                             </div>
                         )}
@@ -348,6 +391,9 @@ export default function KeywordRanking() {
                                             const [, m, d] = date.split('-');
                                             return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50">{parseInt(m)}/{parseInt(d)}</th>
                                         })}
+                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100">조회수 (이번주)</th>
+                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100">조회수 (지난주)</th>
+                                        <th className="py-3 px-3 font-medium bg-green-50 text-green-700">추이</th>
                                         <th className="py-3 px-4 font-medium min-w-[60px]">관리</th>
                                     </tr>
                                 </thead>
@@ -454,6 +500,40 @@ export default function KeywordRanking() {
                                                         </td>
                                                     )
                                                 })}
+
+                                                {/* Search Volume Columns */}
+                                                {(() => {
+                                                    const latestSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === latestSvDate);
+                                                    const prevSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === prevSvDate);
+
+                                                    const latestVol = latestSv?.total_volume || 0;
+                                                    const prevVol = prevSv?.total_volume || 0;
+                                                    const trend = latestVol - prevVol;
+
+                                                    return (
+                                                        <>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-x border-green-100 font-medium">
+                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-r border-green-100 text-gray-500">
+                                                                {prevVol > 0 ? prevVol.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30">
+                                                                {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
+                                                                    <div className={`flex items-center justify-center text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                        {trend > 0 ? <TrendingUp className="w-2.5 h-2.5 mr-0.5" /> : <TrendingDown className="w-2.5 h-2.5 mr-0.5" />}
+                                                                        {Math.abs(trend).toLocaleString()}
+                                                                    </div>
+                                                                ) : trend === 0 && latestVol > 0 ? (
+                                                                    <Minus className="w-2.5 h-2.5 mx-auto text-gray-400" />
+                                                                ) : (
+                                                                    <span className="text-gray-300">-</span>
+                                                                )}
+                                                            </td>
+                                                        </>
+                                                    );
+                                                })()}
+
                                                 <td className="py-3 px-4 text-center">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteKeyword(kw.id); }}
