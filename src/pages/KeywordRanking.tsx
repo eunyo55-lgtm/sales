@@ -405,20 +405,20 @@ export default function KeywordRanking() {
                                         </th>
                                         <th
                                             className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
-                                            onClick={() => handleSort('views_latest')}
-                                        >
-                                            <div className="flex items-center justify-center">
-                                                조회수 (이번주)
-                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_latest' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
-                                            </div>
-                                        </th>
-                                        <th
-                                            className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
                                             onClick={() => handleSort('views_prev')}
                                         >
                                             <div className="flex items-center justify-center">
                                                 조회수 (지난주)
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_prev' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-3 font-medium bg-green-50 text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
+                                            onClick={() => handleSort('views_latest')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                조회수 (이번주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_latest' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th
@@ -506,11 +506,11 @@ export default function KeywordRanking() {
 
                                                     return (
                                                         <>
-                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-x border-green-100 font-medium">
-                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
-                                                            </td>
-                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-r border-green-100 text-gray-500">
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-x border-green-100 text-gray-500">
                                                                 {prevVol > 0 ? prevVol.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center bg-green-50/30 border-r border-green-100 font-medium">
+                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
                                                             </td>
                                                             <td className="py-3 px-3 text-center bg-green-50/30">
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
