@@ -372,12 +372,12 @@ export default function KeywordRanking() {
                         <div className="p-4 border-b border-gray-200 bg-gray-50">
                             <h3 className="font-bold text-gray-800">키워드별 순위 누적 현황</h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
-                                <thead>
-                                    <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs shadow-sm">
+                        <div className="overflow-auto max-h-[calc(100vh-250px)]">
+                            <table className="w-full text-left border-collapse whitespace-nowrap min-w-max relative">
+                                <thead className="sticky top-0 z-20 shadow-sm">
+                                    <tr className="text-gray-500 border-b border-gray-200 text-xs">
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
+                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
                                             onClick={() => handleSort('category')}
                                         >
                                             <div className="flex items-center">
@@ -386,7 +386,7 @@ export default function KeywordRanking() {
                                             </div>
                                         </th>
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[120px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
+                                            className="py-3 px-4 font-medium min-w-[120px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
                                             onClick={() => handleSort('keyword')}
                                         >
                                             <div className="flex items-center">
@@ -395,7 +395,7 @@ export default function KeywordRanking() {
                                             </div>
                                         </th>
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[150px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative z-10"
+                                            className="py-3 px-4 font-medium min-w-[150px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
                                             onClick={() => handleSort('product')}
                                         >
                                             <div className="flex items-center">
@@ -432,9 +432,9 @@ export default function KeywordRanking() {
                                         </th>
                                         {displayDates.map(date => {
                                             const [, m, d] = date.split('-');
-                                            return <th key={date} className="py-3 px-3 font-medium bg-blue-50/50 border-l border-gray-200">{parseInt(m)}/{parseInt(d)}</th>
+                                            return <th key={date} className="py-3 px-3 font-medium bg-blue-50 border-l border-gray-200">{parseInt(m)}/{parseInt(d)}</th>
                                         })}
-                                        <th className="py-3 px-4 font-medium min-w-[60px] text-center">삭제</th>
+                                        <th className="py-3 px-4 font-medium min-w-[60px] text-center bg-gray-50">삭제</th>
                                     </tr>
                                 </thead>
                                 <tbody>
