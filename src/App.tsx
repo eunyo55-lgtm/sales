@@ -136,15 +136,6 @@ function App() {
               {activeTab === 'insights' && '악성 재고 & 프로모션 인사이트'}
               {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
             </h2>
-            {activeTab === 'keyword' && (
-              <button
-                onClick={() => setShowKeywordManager(!showKeywordManager)}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors ml-1"
-                title={showKeywordManager ? "관리창 숨기기" : "관리창 보이기"}
-              >
-                <Menu size={20} />
-              </button>
-            )}
           </div>
           <DataUploader />
         </header>
