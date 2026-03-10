@@ -299,7 +299,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                     className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white"
                                 />
                                 {showDropdown && (
-                                    <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-40 overflow-y-auto rounded-md shadow-lg">
+                                    <ul className="absolute z-[60] w-full bg-white border border-gray-300 mt-1 max-h-40 overflow-y-auto rounded-md shadow-lg">
                                         {productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
                                             <li
                                                 key={p.barcode}
@@ -371,7 +371,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         </div>
 
                         {showManualSync && (
-                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-10 w-80 text-sm">
+                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
                                 <h4 className="font-bold text-gray-800 mb-2">수동으로 순위 집계하기</h4>
                                 <p className="text-gray-600 mb-3 text-xs leading-relaxed">
                                     현재 쿠팡의 강력한 봇 차단(방화벽) 정책으로 인해 외부 서버(GitHub)에서의 자동 수집이 불가능합니다. 순위를 갱신하시려면 <b>대표님의 PC</b>에서 직접 수집기를 작동시켜야 합니다.
@@ -386,7 +386,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         )}
 
                         {showNaverSync && (
-                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-10 w-80 text-sm">
+                            <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
                                 <h4 className="font-bold text-gray-800 mb-2">네이버 조회수 수동 갱신</h4>
                                 <p className="text-gray-600 mb-3 text-xs leading-relaxed">
                                     네이버 광고시스템의 보안 정책으로 인해 서버에서 자동 수집이 어렵습니다. 아래 순서대로 직접 실행해 주세요.
