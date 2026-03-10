@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, ChevronLeft, LayoutList } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function KeywordRanking() {
@@ -20,6 +20,14 @@ export default function KeywordRanking() {
     // UI state
     const [showManualSync, setShowManualSync] = useState(false);
     const [showNaverSync, setShowNaverSync] = useState(false);
+    const [showKeywordManager, setShowKeywordManager] = useState(() => {
+        const saved = localStorage.getItem('showKeywordManager');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('showKeywordManager', JSON.stringify(showKeywordManager));
+    }, [showKeywordManager]);
 
     // Dashboard state
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
@@ -242,93 +250,116 @@ export default function KeywordRanking() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
                 {/* Left: Keyword Management */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm col-span-1 border-t-4 border-t-blue-500">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
-                        <div className="flex items-center">
-                            <Search className="w-5 h-5 mr-2 text-blue-500" />
-                            추적 키워드 관리
-                        </div>
-                    </h3>
-
-                    <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">분류</label>
-                            <input
-                                type="text"
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                                placeholder="예: 여름 의류"
-                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">키워드</label>
-                            <input
-                                type="text"
-                                value={newKeyword}
-                                onChange={(e) => setNewKeyword(e.target.value)}
-                                placeholder="예: 여아구두"
-                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                                required
-                            />
-                        </div>
-                        <div className="relative">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">연결 상품명 검색 (선택)</label>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setShowDropdown(true);
-                                    if (e.target.value === '') setNewBarcode('');
-                                }}
-                                onFocus={() => setShowDropdown(true)}
-                                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                                placeholder="상품명 검색..."
-                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white"
-                            />
-                            {showDropdown && (
-                                <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-40 overflow-y-auto rounded-md shadow-lg">
-                                    {productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
-                                        <li
-                                            key={p.barcode}
-                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
-                                            onClick={() => {
-                                                setNewBarcode(p.barcode);
-                                                setSearchQuery(p.name);
-                                            }}
-                                        >
-                                            {p.name}
-                                        </li>
-                                    ))}
-                                    {searchQuery && productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                                        <li className="px-3 py-2 text-sm text-gray-500 text-center">검색 결과가 없습니다.</li>
-                                    )}
-                                </ul>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Coupang Product ID</label>
-                            <input
-                                type="text"
-                                value={newCoupangId}
-                                onChange={(e) => setNewCoupangId(e.target.value)}
-                                placeholder="예: 9333942720"
-                                className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
-                                required
-                            />
-                        </div>
+                {showKeywordManager ? (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm col-span-1 border-t-4 border-t-blue-500 relative">
                         <button
-                            type="submit"
-                            className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-md hover:bg-blue-700 transition flex justify-center items-center"
+                            onClick={() => setShowKeywordManager(false)}
+                            className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="관리창 숨기기"
                         >
-                            <Plus className="w-4 h-4 mr-1" /> 등록하기
+                            <ChevronLeft className="w-5 h-5" />
                         </button>
-                    </form>
-                </div>
+                        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
+                            <div className="flex items-center">
+                                <Search className="w-5 h-5 mr-2 text-blue-500" />
+                                추적 키워드 관리
+                            </div>
+                        </h3>
+
+                        <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">분류</label>
+                                <input
+                                    type="text"
+                                    value={newCategory}
+                                    onChange={(e) => setNewCategory(e.target.value)}
+                                    placeholder="예: 여름 의류"
+                                    className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">키워드</label>
+                                <input
+                                    type="text"
+                                    value={newKeyword}
+                                    onChange={(e) => setNewKeyword(e.target.value)}
+                                    placeholder="예: 여아구두"
+                                    className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
+                                    required
+                                />
+                            </div>
+                            <div className="relative">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">연결 상품명 검색 (선택)</label>
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setShowDropdown(true);
+                                        if (e.target.value === '') setNewBarcode('');
+                                    }}
+                                    onFocus={() => setShowDropdown(true)}
+                                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                                    placeholder="상품명 검색..."
+                                    className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white"
+                                />
+                                {showDropdown && (
+                                    <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-40 overflow-y-auto rounded-md shadow-lg">
+                                        {productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
+                                            <li
+                                                key={p.barcode}
+                                                className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+                                                onClick={() => {
+                                                    setNewBarcode(p.barcode);
+                                                    setSearchQuery(p.name);
+                                                }}
+                                            >
+                                                {p.name}
+                                            </li>
+                                        ))}
+                                        {searchQuery && productsList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                                            <li className="px-3 py-2 text-sm text-gray-500 text-center">검색 결과가 없습니다.</li>
+                                        )}
+                                    </ul>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Coupang Product ID</label>
+                                <input
+                                    type="text"
+                                    value={newCoupangId}
+                                    onChange={(e) => setNewCoupangId(e.target.value)}
+                                    placeholder="예: 9333942720"
+                                    className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 border"
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-md hover:bg-blue-700 transition flex justify-center items-center"
+                            >
+                                <Plus className="w-4 h-4 mr-1" /> 등록하기
+                            </button>
+                        </form>
+                    </div>
+                ) : null}
 
                 {/* Right: Dashboard */}
-                <div className="col-span-1 lg:col-span-4 space-y-6">
+                <div className={`${showKeywordManager ? 'col-span-1 lg:col-span-4' : 'col-span-1 lg:col-span-5'} space-y-6`}>
+                    {/* Toolbar for hidden manager */}
+                    {!showKeywordManager && (
+                        <div className="flex items-center space-x-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-left-2">
+                            <button
+                                onClick={() => setShowKeywordManager(true)}
+                                className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 text-sm font-bold rounded-md transition-all border border-blue-100"
+                            >
+                                <LayoutList className="w-4 h-4 mr-1.5" />
+                                키워드 관리창 열기
+                            </button>
+                            <div className="h-4 w-[1px] bg-gray-200 mx-2" />
+                            <span className="text-xs text-gray-500">키워드 관리창이 숨겨져 있습니다.</span>
+                        </div>
+                    )}
                     {/* Chart Card */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
                         <div className="flex justify-between items-center mb-4">

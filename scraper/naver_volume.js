@@ -56,24 +56,62 @@ async function scrapeNaverVolume() {
 
     const page = await browser.newPage();
 
-    // Naver Keyword Tool URL
-    const NAVER_AD_URL = 'https://searchad.naver.com/my-center/tool/keyword-planner';
+    // Naver Keyword Tool URL - Updated to management console
+    const NAVER_AD_URL = 'https://manage.searchad.naver.com/my-center/tool/keyword-planner';
+    const NAVER_MAIN_URL = 'https://searchad.naver.com';
 
-    console.log('[NaverScraper] 네이버 광고 키워드 도구 접속 중...');
-    await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2' });
-
-    // Check if login is required
-    const currentUrl = page.url();
-    if (currentUrl.includes('nid.naver.com')) {
-        console.log('[NaverScraper] 로그인이 필요합니다. 브라우저에서 로그인을 완료해 주세요.');
-        console.log('[NaverScraper] 로그인이 완료될 때까지 기다립니다...');
-        await page.waitForFunction(() => window.location.href.includes('keyword-planner'), { timeout: 0 });
+    console.log('[NaverScraper] 네이버 광고 시스템 접속 중...');
+    try {
+        await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+    } catch (e) {
+        console.log('[NaverScraper] 직접 접속 실패, 메인 페이지로 이동합니다.');
+        await page.goto(NAVER_MAIN_URL, { waitUntil: 'networkidle2' });
     }
 
-    console.log('[NaverScraper] 키워드 도구 로드 완료.');
+    // Check if login is required
+    let currentUrl = page.url();
+    if (currentUrl.includes('nid.naver.com') || currentUrl.includes('searchad.naver.com')) {
+        if (currentUrl.includes('nid.naver.com')) {
+            console.log('[NaverScraper] 로그인이 필요합니다. 브라우저에서 로그인을 완료해 주세요.');
+        } else {
+            console.log('[NaverScraper] 로그인 세션을 확인했습니다.');
+        }
+
+        // Wait for the user to be on ANY page that isn't the login page
+        await page.waitForFunction(() => !window.location.href.includes('nid.naver.com'), { timeout: 0 });
+
+        // Once logged in, force go to the keyword planner URL
+        console.log('[NaverScraper] 키워드 도구 페이지로 이동 중...');
+        await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+    }
+
+    // Double check we are on the right page
+    if (!page.url().includes('keyword-planner')) {
+        console.log('[NaverScraper] 페이지 이동 재시도 중...');
+        await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2' });
+    }
+
+    console.log('[NaverScraper] 키워드 도구 로드 대기 중...');
+
+    // Wait for the main tool container/iframe to load
+    try {
+        await page.waitForSelector('iframe#container', { timeout: 30000 });
+    } catch (e) {
+        console.log('[NaverScraper] iframe#container를 찾을 수 없습니다. 일반 페이지로 진행합니다.');
+    }
 
     const results = [];
     const today = new Date().toISOString().split('T')[0];
+
+    // Helper function to find the correct frame
+    const getTargetFrame = async () => {
+        const frames = page.frames();
+        for (const frame of frames) {
+            const hasInput = await frame.$('textarea.input_keyword');
+            if (hasInput) return frame;
+        }
+        return null;
+    };
 
     // Naver Keyword Tool can process up to 5 keywords at once
     const BATCH_SIZE = 5;
@@ -82,18 +120,35 @@ async function scrapeNaverVolume() {
         console.log(`[NaverScraper] 배치 처리 중: ${batch.join(', ')}`);
 
         try {
-            // Clear textarea and input keywords
-            await page.waitForSelector('textarea.input_keyword');
-            await page.click('textarea.input_keyword', { clickCount: 3 });
+            // Find the frame that contains our tool
+            let targetFrame = await getTargetFrame();
+
+            if (!targetFrame) {
+                console.log('[NaverScraper] 키워드 입력창을 찾는 중...');
+                await new Promise(r => setTimeout(r, 3000));
+                targetFrame = await getTargetFrame();
+            }
+
+            if (!targetFrame) {
+                throw new Error('키워드 입력창(textarea.input_keyword)을 찾을 수 없습니다. 페이지가 아직 로딩 중이거나 주소가 잘못되었을 수 있습니다.');
+            }
+
+            // Clear textarea and input keywords within the frame
+            await targetFrame.waitForSelector('textarea.input_keyword');
+            await targetFrame.click('textarea.input_keyword', { clickCount: 3 });
+            await targetFrame.focus('textarea.input_keyword');
+            await page.keyboard.down('Control');
+            await page.keyboard.press('A');
+            await page.keyboard.up('Control');
             await page.keyboard.press('Backspace');
-            await page.type('textarea.input_keyword', batch.join('\n'));
+            await targetFrame.type('textarea.input_keyword', batch.join('\n'));
 
-            // Click search button
-            await page.click('button.btn_search');
-            await new Promise(r => setTimeout(r, 2000)); // Wait for results
+            // Click search button within the frame
+            await targetFrame.click('button.btn_search');
+            await new Promise(r => setTimeout(r, 3000)); // Wait for results
 
-            // Extract data from the result table
-            const data = await page.evaluate(() => {
+            // Extract data from the result table within the frame
+            const data = await targetFrame.evaluate(() => {
                 const rows = Array.from(document.querySelectorAll('table.tbl_keyword tbody tr'));
                 return rows.map(row => {
                     const keyword = row.querySelector('td:nth-child(1)')?.textContent?.trim();
