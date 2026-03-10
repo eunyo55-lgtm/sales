@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function KeywordRanking({ showKeywordManager }: { showKeywordManager: boolean }) {
+export default function KeywordRanking({ showKeywordManager, setShowKeywordManager }: {
+    showKeywordManager: boolean;
+    setShowKeywordManager: (val: boolean) => void;
+}) {
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
     const [searchVolumes, setSearchVolumes] = useState<any[]>([]);
@@ -249,6 +252,13 @@ export default function KeywordRanking({ showKeywordManager }: { showKeywordMana
                                 <Search className="w-5 h-5 mr-2 text-blue-500" />
                                 추적 키워드 관리
                             </div>
+                            <button
+                                onClick={() => setShowKeywordManager(false)}
+                                className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="관리창 숨기기"
+                            >
+                                <Menu size={18} />
+                            </button>
                         </h3>
 
                         <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
@@ -331,6 +341,17 @@ export default function KeywordRanking({ showKeywordManager }: { showKeywordMana
 
                 {/* Right: Dashboard */}
                 <div className={`${showKeywordManager ? 'col-span-1 lg:col-span-4' : 'col-span-1 lg:col-span-5'} space-y-6`}>
+                    {!showKeywordManager && (
+                        <div className="flex items-center space-x-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-left-2 mb-6">
+                            <button
+                                onClick={() => setShowKeywordManager(true)}
+                                className="flex items-center px-3 py-1.5 text-gray-600 hover:bg-gray-100 text-sm font-bold rounded-md transition-all border border-gray-200"
+                            >
+                                <LayoutList className="w-4 h-4 mr-1.5 text-blue-500" />
+                                키워드 관리창 열기
+                            </button>
+                        </div>
+                    )}
                     {/* Chart Card */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
                         <div className="flex justify-between items-center mb-4">

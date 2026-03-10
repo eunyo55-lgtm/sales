@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, Archive, Lightbulb, Menu, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { LayoutDashboard, Package, Archive, Lightbulb, Menu } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ProductStatus from './pages/ProductStatus';
 import InventoryStatus from './pages/InventoryStatus';
@@ -139,11 +139,10 @@ function App() {
             {activeTab === 'keyword' && (
               <button
                 onClick={() => setShowKeywordManager(!showKeywordManager)}
-                className={`p-2 ml-4 rounded-lg transition-all ${showKeywordManager ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-gray-400 hover:bg-gray-100'
-                  }`}
-                title={showKeywordManager ? "접기" : "펼치기"}
+                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors ml-1"
+                title={showKeywordManager ? "관리창 숨기기" : "관리창 보이기"}
               >
-                {showKeywordManager ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+                <Menu size={20} />
               </button>
             )}
           </div>
@@ -156,7 +155,12 @@ function App() {
           {activeTab === 'inventory' && <InventoryStatus />}
           {activeTab === 'smartorder' && <SmartOrder />}
           {activeTab === 'insights' && <Insights />}
-          {activeTab === 'keyword' && <KeywordRanking showKeywordManager={showKeywordManager} />}
+          {activeTab === 'keyword' && (
+            <KeywordRanking
+              showKeywordManager={showKeywordManager}
+              setShowKeywordManager={setShowKeywordManager}
+            />
+          )}
         </div>
       </main>
     </div>
