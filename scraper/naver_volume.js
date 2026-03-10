@@ -43,7 +43,7 @@ async function scrapeNaverVolume() {
     const browser = await puppeteer.launch({
         headless: false,
         executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        userDataDir: 'C:\\NaverScraperProfile', // Separate profile for Naver
+        userDataDir: path.join(__dirname, '../temp/NaverScraperProfile'), // Separate profile for Naver
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -78,26 +78,71 @@ async function scrapeNaverVolume() {
         }
 
         // Wait for the user to be on ANY page that isn't the login page
-        await page.waitForFunction(() => !window.location.href.includes('nid.naver.com'), { timeout: 0 });
+        console.log('[NaverScraper] 로그인이 완료될 때까지 대기합니다...');
+        await page.waitForFunction(() => {
+            const href = window.location.href;
+            return !href.includes('nid.naver.com') && (href.includes('searchad.naver.com') || href.includes('manage.searchad.naver.com'));
+        }, { timeout: 0 });
 
-        // Once logged in, force go to the keyword planner URL
+        // Intermediate step: Brand Selection (My Center)
+        if (page.url().includes('searchad.naver.com/my-center') || !page.url().includes('manage.searchad.naver.com')) {
+            console.log('[NaverScraper] *** 중요: 브라우저 창에서 [관리할 브랜드(광고계정)]를 클릭해 주세요! ***');
+            console.log('[NaverScraper] 실제 광고 관리 화면(manage.searchad.naver.com)에 진입하면 자동으로 수집을 재개합니다.');
+
+            // Wait until the URL changes to manage.searchad.naver.com
+            await page.waitForFunction(() => window.location.href.includes('manage.searchad.naver.com'), { timeout: 0 });
+            console.log('[NaverScraper] 광고 관리 화면 진입이 확인되었습니다.');
+            await new Promise(r => setTimeout(r, 2000)); // Give it a moment to load the GNB
+        }
+
+        // Once logged in and brand selected, force go to the keyword planner URL
         console.log('[NaverScraper] 키워드 도구 페이지로 이동 중...');
-        await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        try {
+            await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+        } catch (e) {
+            console.log('[NaverScraper] 직접 이동이 지연되어 메뉴 클릭으로 시도합니다.');
+        }
     }
 
-    // Double check we are on the right page
+    // Double check we are on the right page. If not, try to click the Tools menu.
     if (!page.url().includes('keyword-planner')) {
-        console.log('[NaverScraper] 페이지 이동 재시도 중...');
-        await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2' });
+        console.log('[NaverScraper] 키워드 도구로 이동을 재시도합니다...');
+        try {
+            // Find "도구" menu using title attribute
+            const toolMenuSelector = 'a[title="도구"]';
+            await page.waitForSelector(toolMenuSelector, { timeout: 10000 });
+            await page.click(toolMenuSelector);
+            console.log('[NaverScraper] [도구] 메뉴를 클릭했습니다.');
+
+            await new Promise(r => setTimeout(r, 1500));
+
+            // Find "키워드 도구" sub-menu
+            const plannerMenuSelector = 'a[title="키워드 도구"], a[href*="keyword-planner"]';
+            await page.waitForSelector(plannerMenuSelector, { timeout: 5000 });
+            await page.click(plannerMenuSelector);
+            console.log('[NaverScraper] [키워드 도구] 메뉴를 클릭했습니다.');
+        } catch (e) {
+            console.log('[NaverScraper] 자동 메뉴 클릭 실패. 직접 [도구] -> [키워드 도구]를 클릭해 주세요.');
+            await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => { });
+        }
     }
 
-    console.log('[NaverScraper] 키워드 도구 로드 대기 중...');
-
-    // Wait for the main tool container/iframe to load
+    // Wait for the user to reach the keyword planner page if still not there
+    console.log('[NaverScraper] 키워드 도구 화면이 나타날 때까지 대기합니다...');
     try {
-        await page.waitForSelector('iframe#container', { timeout: 30000 });
+        await page.waitForFunction(() => window.location.href.includes('keyword-planner'), { timeout: 60000 });
     } catch (e) {
-        console.log('[NaverScraper] iframe#container를 찾을 수 없습니다. 일반 페이지로 진행합니다.');
+        console.log('[NaverScraper] 경고: 아직 키워드 도구 페이지가 아닙니다. 브라우저에서 직접 이동해 주세요.');
+    }
+
+    // Wait for the input field to appear
+    console.log('[NaverScraper] 키워드 입력창 로드 대기 중...');
+    const inputSelector = 'textarea.input_keyword';
+    try {
+        await page.waitForSelector(inputSelector, { timeout: 30000 });
+        console.log('[NaverScraper] 입력창이 확인되었습니다.');
+    } catch (e) {
+        console.log('[NaverScraper] 입력창을 찾을 수 없습니다. 프레임 내부를 탐색합니다...');
     }
 
     const results = [];
@@ -105,10 +150,17 @@ async function scrapeNaverVolume() {
 
     // Helper function to find the correct frame
     const getTargetFrame = async () => {
+        // In the modern management UI, it's usually on the main page
+        const hasInputMain = await page.$(inputSelector);
+        if (hasInputMain) return page;
+
+        // Fallback for older interface/iframes
         const frames = page.frames();
         for (const frame of frames) {
-            const hasInput = await frame.$('textarea.input_keyword');
-            if (hasInput) return frame;
+            try {
+                const hasInput = await frame.$(inputSelector);
+                if (hasInput) return frame;
+            } catch (e) { }
         }
         return null;
     };
@@ -117,35 +169,40 @@ async function scrapeNaverVolume() {
     const BATCH_SIZE = 5;
     for (let i = 0; i < uniqueKeywords.length; i += BATCH_SIZE) {
         const batch = uniqueKeywords.slice(i, i + BATCH_SIZE);
-        console.log(`[NaverScraper] 배치 처리 중: ${batch.join(', ')}`);
+        console.log(`[NaverScraper] 배치 처리 중 (${i + 1}/${uniqueKeywords.length}): ${batch.join(', ')}`);
 
         try {
-            // Find the frame that contains our tool
-            let targetFrame = await getTargetFrame();
-
-            if (!targetFrame) {
-                console.log('[NaverScraper] 키워드 입력창을 찾는 중...');
-                await new Promise(r => setTimeout(r, 3000));
+            // Find the frame that contains our tool (with retries)
+            let targetFrame = null;
+            for (let retry = 0; retry < 5; retry++) {
                 targetFrame = await getTargetFrame();
+                if (targetFrame) break;
+                console.log(`[NaverScraper] 입력창을 찾는 중... (${retry + 1}/5)`);
+                await new Promise(r => setTimeout(r, 2500));
             }
 
             if (!targetFrame) {
-                throw new Error('키워드 입력창(textarea.input_keyword)을 찾을 수 없습니다. 페이지가 아직 로딩 중이거나 주소가 잘못되었을 수 있습니다.');
+                console.error('[NaverScraper] 오류: 키워드 입력창을 찾을 수 없습니다. 브라우저에서 직접 키워드 도구 화면을 열어주세요.');
+                continue;
             }
 
             // Clear textarea and input keywords within the frame
-            await targetFrame.waitForSelector('textarea.input_keyword');
-            await targetFrame.click('textarea.input_keyword', { clickCount: 3 });
-            await targetFrame.focus('textarea.input_keyword');
+            console.log('[NaverScraper] 키워드 입력 중...');
+            await targetFrame.waitForSelector(inputSelector, { timeout: 10000 });
+            await targetFrame.focus(inputSelector);
+
+            // UI interaction to clear
             await page.keyboard.down('Control');
             await page.keyboard.press('A');
             await page.keyboard.up('Control');
             await page.keyboard.press('Backspace');
-            await targetFrame.type('textarea.input_keyword', batch.join('\n'));
+            await targetFrame.type(inputSelector, batch.join('\n'));
 
             // Click search button within the frame
-            await targetFrame.click('button.btn_search');
-            await new Promise(r => setTimeout(r, 3000)); // Wait for results
+            console.log('[NaverScraper] 조회 버튼 클릭...');
+            const searchBtnSelector = 'button.btn_search, .btn-search, button[type="submit"]';
+            await targetFrame.click(searchBtnSelector);
+            await new Promise(r => setTimeout(r, 4000)); // Wait for results
 
             // Extract data from the result table within the frame
             const data = await targetFrame.evaluate(() => {
