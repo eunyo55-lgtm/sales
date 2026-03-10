@@ -14,6 +14,14 @@ function App() {
     return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword') || 'dashboard';
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showKeywordManager, setShowKeywordManager] = useState(() => {
+    const saved = localStorage.getItem('showKeywordManager');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('showKeywordManager', JSON.stringify(showKeywordManager));
+  }, [showKeywordManager]);
 
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
@@ -128,6 +136,16 @@ function App() {
               {activeTab === 'insights' && '악성 재고 & 프로모션 인사이트'}
               {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
             </h2>
+            {activeTab === 'keyword' && (
+              <button
+                onClick={() => setShowKeywordManager(!showKeywordManager)}
+                className={`p-2 rounded-lg transition-all ${showKeywordManager ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-gray-400 hover:bg-gray-100'
+                  }`}
+                title={showKeywordManager ? "키워드 관리창 숨기기" : "키워드 관리창 보이기"}
+              >
+                <Menu size={20} />
+              </button>
+            )}
           </div>
           <DataUploader />
         </header>
@@ -138,7 +156,7 @@ function App() {
           {activeTab === 'inventory' && <InventoryStatus />}
           {activeTab === 'smartorder' && <SmartOrder />}
           {activeTab === 'insights' && <Insights />}
-          {activeTab === 'keyword' && <KeywordRanking />}
+          {activeTab === 'keyword' && <KeywordRanking showKeywordManager={showKeywordManager} />}
         </div>
       </main>
     </div>
