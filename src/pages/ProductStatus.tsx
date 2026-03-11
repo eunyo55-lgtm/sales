@@ -31,6 +31,7 @@ export default function ProductStatus() {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'totalSales', direction: 'desc' });
   const [selectedSeason, setSelectedSeason] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all'); // ABC Filter
+  const [viewMode, setViewMode] = useState<'qty' | 'amount'>('qty'); // [NEW] View Mode Toggle
 
   const [visibleCount, setVisibleCount] = useState(20);
   const [chartModalOpen, setChartModalOpen] = useState(false);
@@ -223,7 +224,12 @@ export default function ProductStatus() {
         stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
       });
     });
-    return stats;
+
+    const totalQty = stats.totalSales;
+    const totalCostSum = filteredGroups.reduce((acc, g) => acc + (g.children[0]?.cost || 0) * g.totalSales, 0);
+    const avgCost = totalQty > 0 ? totalCostSum / totalQty : 0;
+
+    return { ...stats, avgCost };
   }, [filteredGroups]);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
@@ -389,6 +395,21 @@ export default function ProductStatus() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            {/* View Mode Toggle Buttons */}
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+              <button
+                onClick={() => setViewMode('qty')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'qty' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                수량보기
+              </button>
+              <button
+                onClick={() => setViewMode('amount')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'amount' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                금액보기
+              </button>
+            </div>
           </div>
         </div>
 
@@ -434,13 +455,13 @@ export default function ProductStatus() {
                     </div>
                   </div>
                 </th>
-                <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`} onClick={() => handleSort('name')}>상품명 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`} onClick={() => handleSort('name')}>상품명(원가) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
 
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>쿠팡재고(합계) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right font-bold select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>누적판매(합계) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>FC판매 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>VF판매 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사재고량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>쿠팡재고량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right font-bold select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>누적판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>FC판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>VF판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
                 {uniqueDates.map(date => (
                   <th key={date} className={`px-2 py-3 hover:bg-gray-100 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
                     {formatDateHeader(date)}
@@ -454,14 +475,14 @@ export default function ProductStatus() {
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TREND} ${L_TREND}`}></th>
                 <th className={`px-4 py-2 sticky z-30 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
 
-                <th className="px-4 py-2 text-right bg-blue-100">{totalStats.hqStock.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-green-100">{totalStats.currentStock.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-gray-100">{totalStats.totalSales.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{totalStats.fcSales.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{totalStats.vfSales.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : (totalStats.hqStock * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : (totalStats.currentStock * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : (totalStats.totalSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : (totalStats.fcSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : (totalStats.vfSales * totalStats.avgCost).toLocaleString()}</th>
                 {uniqueDates.map(date => (
                   <th key={date} className="px-2 py-2 text-center text-xs bg-gray-100">
-                    {totalStats.dailySales[date]?.toLocaleString() || '-'}
+                    {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : (totalStats.dailySales[date] * totalStats.avgCost).toLocaleString()) : '-'}
                   </th>
                 ))}
               </tr>
@@ -489,7 +510,7 @@ export default function ProductStatus() {
                         >
                           {group.name}
                         </span>
-                        <span className="ml-1 text-xs font-normal text-gray-500">[{group.children.length}]</span>
+                        <span className="text-gray-500 text-[10px] ml-1">({(group.children[0]?.cost || 0).toLocaleString()}원)</span>
                         <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded border ${group.abcGrade === 'A' ? 'bg-red-50 text-red-600 border-red-200 font-bold' :
                           group.abcGrade === 'B' ? 'bg-green-50 text-green-600 border-green-200 font-medium' :
                             group.abcGrade === 'C' ? 'bg-gray-50 text-gray-500 border-gray-200' :
@@ -499,14 +520,14 @@ export default function ProductStatus() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50 whitespace-nowrap">{group.hqStock.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50 whitespace-nowrap">{group.currentStock.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono whitespace-nowrap">{group.totalSales.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{group.fcSales.toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{group.vfSales.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50 whitespace-nowrap">{viewMode === 'qty' ? group.hqStock.toLocaleString() : (group.hqStock * (group.children[0]?.cost || 0)).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50 whitespace-nowrap">{viewMode === 'qty' ? group.currentStock.toLocaleString() : (group.currentStock * (group.children[0]?.cost || 0)).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono whitespace-nowrap">{viewMode === 'qty' ? group.totalSales.toLocaleString() : (group.totalSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? group.fcSales.toLocaleString() : (group.fcSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? group.vfSales.toLocaleString() : (group.vfSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
                       {uniqueDates.map(date => (
                         <td key={date} className={`px-2 py-2 text-center text-xs min-w-[50px] ${group.dailySales[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
-                          {group.dailySales[date] || '-'}
+                          {group.dailySales[date] ? (viewMode === 'qty' ? group.dailySales[date].toLocaleString() : (group.dailySales[date] * (group.children[0]?.cost || 0)).toLocaleString()) : '-'}
                         </td>
                       ))}
                     </tr>
@@ -531,14 +552,14 @@ export default function ProductStatus() {
                           </div>
                         </td>
 
-                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{child.hqStock.toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{child.coupangStock.toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-600 font-medium whitespace-nowrap">{child.totalSales.toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.fcSales.toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{child.vfSales.toLocaleString()}</td>
+                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.hqStock.toLocaleString() : (child.hqStock * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.coupangStock.toLocaleString() : (child.coupangStock * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="px-4 py-1 text-right text-gray-600 font-medium whitespace-nowrap">{viewMode === 'qty' ? child.totalSales.toLocaleString() : (child.totalSales * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{viewMode === 'qty' ? child.fcSales.toLocaleString() : (child.fcSales * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="px-4 py-1 text-right text-gray-400 text-[10px] whitespace-nowrap">{viewMode === 'qty' ? child.vfSales.toLocaleString() : (child.vfSales * (child.cost || 0)).toLocaleString()}</td>
                         {uniqueDates.map(date => (
                           <td key={date} className={`px-2 py-1 text-center min-w-[50px] ${child.dailySales[date] ? 'text-gray-700' : 'text-gray-200'}`}>
-                            {child.dailySales[date] || '-'}
+                            {child.dailySales[date] ? (viewMode === 'qty' ? child.dailySales[date].toLocaleString() : (child.dailySales[date] * (child.cost || 0)).toLocaleString()) : '-'}
                           </td>
                         ))}
                       </tr>

@@ -11,6 +11,7 @@ export interface ProductMaster {
     optionCode?: string;
     option?: string; // New: Option Value from Column D
     hqStock?: number;
+    cost?: number; // New: Cost from Column M
 }
 
 export interface CoupangSalesRow {
@@ -73,6 +74,7 @@ export const parseProductMaster = async (file: File): Promise<ProductMaster[]> =
                         season: row['E'] ? String(row['E']).trim() : '정보없음',
                         imageUrl: row['Q'] || '',
                         hqStock: safeParseInt(row['U']),
+                        cost: safeParseInt(row['M']), // New: Cost from Column M (0-indexed 12)
                     };
                 }).filter(p => p.barcode && p.name !== 'Unknown Product');
 

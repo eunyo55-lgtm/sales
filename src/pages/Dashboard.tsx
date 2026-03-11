@@ -72,6 +72,9 @@ export default function Dashboard() {
             );
         }
 
+        const avgCost = data?.avgCost || 0;
+        const totalAmount = value * avgCost;
+
         return (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
@@ -79,6 +82,11 @@ export default function Dashboard() {
                     <div className="flex items-baseline space-x-2">
                         <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
                         <span className="text-sm font-normal text-gray-400">건</span>
+                        {avgCost > 0 && (
+                            <span className="text-sm font-bold text-blue-500 ml-2">
+                                (약 {totalAmount.toLocaleString()}원)
+                            </span>
+                        )}
                     </div>
                     {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
                     {yoyEl}
@@ -102,7 +110,7 @@ export default function Dashboard() {
                         <tr>
                             <th className="px-3 py-2 text-center w-12">순위</th>
                             <th className="px-3 py-2">상품명</th>
-                            <th className="px-3 py-2 text-right">{valueLabel}</th>
+                            <th className="px-3 py-2 text-right">{valueLabel === '판매량' ? '판매량/금액' : valueLabel}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -130,7 +138,12 @@ export default function Dashboard() {
                                     </div>
                                 </td>
                                 <td className="px-3 py-3 text-right font-bold text-gray-900">
-                                    {(item.curr_qty || item.quantity || 0).toLocaleString()}건
+                                    <div>{(item.curr_qty || item.quantity || 0).toLocaleString()}건</div>
+                                    {item.cost > 0 && (
+                                        <div className="text-[10px] text-blue-500 font-normal">
+                                            {((item.curr_qty || item.quantity || 0) * item.cost).toLocaleString()}원
+                                        </div>
+                                    )}
                                     {(showDiff || item.diff !== undefined) && (
                                         <div className={`text-xs ${item.diff > 0 ? 'text-red-500' : item.diff < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
                                             {item.diff > 0 ? '▲' : item.diff < 0 ? '▼' : '-'} {Math.abs(item.diff).toLocaleString()}
@@ -213,13 +226,13 @@ export default function Dashboard() {
                 <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
                 <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
                 <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
-                <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} />
+                <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} valueLabel="재고량/재고액" />
             </div>
 
             {/* YoY Winners/Losers (At bottom) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매" />
-                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매" />
+                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매량/판매액" />
+                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매량/판매액" />
             </div>
         </div>
     );

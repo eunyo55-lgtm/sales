@@ -21,6 +21,7 @@ export interface ProductStats {
     salesYesterday: number;// Latest date sales
     avgDailySales: number; // Last 7 days avg
     daysOfInventory: number;
+    cost: number;          // [NEW]
     dailySales: Record<string, number>; // Date (YYYY-MM-DD) -> Quantity
     dailyStock: Record<string, number>; // [NEW] Date (YYYY-MM-DD) -> Total Stock
     abcGrade: 'A' | 'B' | 'C' | 'D'; // ABC Analysis Grade (Based on 7-day sales)
@@ -129,7 +130,7 @@ export const api = {
         if (this._rawProductsPromise) return this._rawProductsPromise;
         const promise = this._fetchAllParallel<any>(
             'products',
-            'barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock, fc_stock, vf_stock',
+            'barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock, fc_stock, vf_stock, cost',
             'barcode'
         );
         this._rawProductsPromise = promise;
@@ -266,7 +267,8 @@ export const api = {
                         option_value: p.option || '옵션없음', // Save to DB
                         season: p.season,
                         image_url: p.imageUrl,
-                        hq_stock: p.hqStock || 0, // Prepare to save this to DB
+                        hq_stock: p.hqStock || 0,
+                        cost: p.cost || 0, // [NEW] Save cost to DB
                         updated_at: new Date().toISOString(),
                     })),
                     { onConflict: 'barcode' }
@@ -703,7 +705,21 @@ ${sampleText}
             console.error("[API] getDashboardInsights error:", error);
             throw error;
         }
-        return data; // returns jsonb object { winners, losers, categories }
+
+        // Add cost to winners/losers from raw products
+        const products = await this._getRawProducts();
+        const costMap = new Map(products.map(p => [p.name, p.cost]));
+
+        const enhance = (items: any[]) => items?.map(item => ({
+            ...item,
+            cost: costMap.get(item.name || item.category) || 0
+        })) || [];
+
+        return {
+            ...data,
+            winners: enhance(data.winners),
+            losers: enhance(data.losers)
+        };
     },
 
     async getDashboardAnalytics() {
@@ -752,6 +768,14 @@ ${sampleText}
             if (trendsRes.error) throw trendsRes.error;
 
             const productMap = new Map(products_all.map((p: any) => [p.barcode, p]));
+            
+            // [IMPROVED] Create a reliable Name -> Cost map by choosing a representative cost
+            const productByNameMap = new Map<string, number>();
+            products_all.forEach(p => {
+                if (p.cost > 0 || !productByNameMap.has(p.name)) {
+                    productByNameMap.set(p.name, p.cost || 0);
+                }
+            });
 
             // Rank by Product Name (Grouped)
             const rankYesterday = new Map<string, number>();
@@ -805,6 +829,7 @@ ${sampleText}
                             name: name,
                             imageUrl: nameMetadata.get(name)?.image,
                             quantity: qty,
+                            cost: productByNameMap.get(name)?.cost || 0, // [FIXED] Use name-based map
                             abcGrade: 'A', // Default abcGrade
                             trend: trend // Add trend
                         };
@@ -816,16 +841,25 @@ ${sampleText}
 
             // 6. Inventory Ranking (Top Stock)
             const inventoryMap = new Map<string, number>();
+            let totalCostSum = 0;
+            let productCount = 0;
+
             products_all.forEach(p => {
                 // User requested Coupang Stock Only (current_stock)
                 const coupangStock = p.current_stock || 0;
                 inventoryMap.set(p.name, (inventoryMap.get(p.name) || 0) + coupangStock);
+
+                if (p.cost > 0) {
+                    totalCostSum += p.cost;
+                    productCount++;
+                }
 
                 if (!nameMetadata.has(p.name)) {
                     nameMetadata.set(p.name, { image: p.image_url });
                 }
             });
 
+            const avgCost = productCount > 0 ? totalCostSum / productCount : 0;
             const rankInventory = getTop10(inventoryMap);
 
             // 7. Stockout Risk Alert (Opportunity Loss)
@@ -916,7 +950,8 @@ ${sampleText}
                     yearly: getTop10(rankYearly),
                     inventory: rankInventory
                 },
-                riskItems: riskItems
+                riskItems: riskItems,
+                avgCost: avgCost
             };
 
             this._dashboardCache = result; // Cache the result
@@ -1031,6 +1066,7 @@ ${sampleText}
                     },
                     avgDailySales: parseFloat(avgDailySales.toFixed(1)),
                     daysOfInventory,
+                    cost: Number(p.cost || 0), // [NEW]
                     dailySales: dailySales,
                     dailyStock: dailyStock,
                     abcGrade: 'D' as 'A' | 'B' | 'C' | 'D',
