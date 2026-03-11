@@ -829,7 +829,7 @@ ${sampleText}
                             name: name,
                             imageUrl: nameMetadata.get(name)?.image,
                             quantity: qty,
-                            cost: productByNameMap.get(name)?.cost || 0, // [FIXED] Use name-based map
+                            cost: productByNameMap.get(name) || 0, // [FIXED] Value is already the cost
                             abcGrade: 'A', // Default abcGrade
                             trend: trend // Add trend
                         };
