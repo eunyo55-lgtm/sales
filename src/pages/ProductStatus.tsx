@@ -475,14 +475,14 @@ export default function ProductStatus() {
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TREND} ${L_TREND}`}></th>
                 <th className={`px-4 py-2 sticky z-30 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
 
-                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : (totalStats.hqStock * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : (totalStats.currentStock * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : (totalStats.totalSales * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : (totalStats.fcSales * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : (totalStats.vfSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : Math.round(totalStats.hqStock * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : Math.round(totalStats.currentStock * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : Math.round(totalStats.totalSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : Math.round(totalStats.fcSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : Math.round(totalStats.vfSales * totalStats.avgCost).toLocaleString()}</th>
                 {uniqueDates.map(date => (
                   <th key={date} className="px-2 py-2 text-center text-xs bg-gray-100">
-                    {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : (totalStats.dailySales[date] * totalStats.avgCost).toLocaleString()) : '-'}
+                    {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : Math.round(totalStats.dailySales[date] * totalStats.avgCost).toLocaleString()) : '-'}
                   </th>
                 ))}
               </tr>

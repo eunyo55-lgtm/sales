@@ -73,7 +73,7 @@ export default function Dashboard() {
         }
 
         const avgCost = data?.avgCost || 0;
-        const totalAmount = value * avgCost;
+        const totalAmount = Math.round(value * avgCost);
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
@@ -141,7 +141,7 @@ export default function Dashboard() {
                                     <div>{(item.curr_qty || item.quantity || 0).toLocaleString()}건</div>
                                     {item.cost > 0 && (
                                         <div className="text-[10px] text-blue-500 font-normal">
-                                            {((item.curr_qty || item.quantity || 0) * item.cost).toLocaleString()}원
+                                            {Math.round((item.curr_qty || item.quantity || 0) * item.cost).toLocaleString()}원
                                         </div>
                                     )}
                                     {(showDiff || item.diff !== undefined) && (
