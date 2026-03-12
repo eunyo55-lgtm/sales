@@ -210,7 +210,13 @@ export default function ProductStatus() {
       totalSales: 0,
       fcSales: 0,
       vfSales: 0,
-      dailySales: {} as Record<string, number>
+      hqStockValue: 0,
+      currentStockValue: 0,
+      totalSalesValue: 0,
+      fcSalesValue: 0,
+      vfSalesValue: 0,
+      dailySales: {} as Record<string, number>,
+      dailySalesValue: {} as Record<string, number>
     };
     filteredGroups.forEach(g => {
       stats.hqStock += g.hqStock;
@@ -220,16 +226,23 @@ export default function ProductStatus() {
       stats.totalSales += g.totalSales;
       stats.fcSales += g.fcSales;
       stats.vfSales += g.vfSales;
-      Object.entries(g.dailySales).forEach(([date, qty]) => {
-        stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
+
+      g.children.forEach(child => {
+        const cost = child.cost || 0;
+        stats.hqStockValue += child.hqStock * cost;
+        stats.currentStockValue += child.coupangStock * cost;
+        stats.totalSalesValue += child.totalSales * cost;
+        stats.fcSalesValue += child.fcSales * cost;
+        stats.vfSalesValue += child.vfSales * cost;
+
+        Object.entries(child.dailySales).forEach(([date, qty]) => {
+          stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
+          stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + (qty * cost);
+        });
       });
     });
 
-    const totalQty = stats.totalSales;
-    const totalCostSum = filteredGroups.reduce((acc, g) => acc + (g.children[0]?.cost || 0) * g.totalSales, 0);
-    const avgCost = totalQty > 0 ? totalCostSum / totalQty : 0;
-
-    return { ...stats, avgCost };
+    return stats;
   }, [filteredGroups]);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
@@ -457,11 +470,11 @@ export default function ProductStatus() {
                 </th>
                 <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`} onClick={() => handleSort('name')}>상품명(원가) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
 
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사재고량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>쿠팡재고량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right font-bold select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>누적판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>FC판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>VF판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>{viewMode === 'qty' ? '본사재고량' : '본사재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>{viewMode === 'qty' ? '쿠팡재고량' : '쿠팡재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right font-bold select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>{viewMode === 'qty' ? '누적판매량' : '누적판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>{viewMode === 'qty' ? 'FC판매량' : 'FC판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right text-xs select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>{viewMode === 'qty' ? 'VF판매량' : 'VF판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
                 {uniqueDates.map(date => (
                   <th key={date} className={`px-2 py-3 hover:bg-gray-100 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
                     {formatDateHeader(date)}
@@ -475,14 +488,14 @@ export default function ProductStatus() {
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TREND} ${L_TREND}`}></th>
                 <th className={`px-4 py-2 sticky z-30 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
 
-                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : Math.round(totalStats.hqStock * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : Math.round(totalStats.currentStock * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : Math.round(totalStats.totalSales * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : Math.round(totalStats.fcSales * totalStats.avgCost).toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : Math.round(totalStats.vfSales * totalStats.avgCost).toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : totalStats.currentStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-xs bg-gray-100/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : totalStats.vfSalesValue.toLocaleString()}</th>
                 {uniqueDates.map(date => (
                   <th key={date} className="px-2 py-2 text-center text-xs bg-gray-100">
-                    {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : Math.round(totalStats.dailySales[date] * totalStats.avgCost).toLocaleString()) : '-'}
+                    {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : totalStats.dailySalesValue[date].toLocaleString()) : '-'}
                   </th>
                 ))}
               </tr>
@@ -520,14 +533,24 @@ export default function ProductStatus() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50 whitespace-nowrap">{viewMode === 'qty' ? group.hqStock.toLocaleString() : (group.hqStock * (group.children[0]?.cost || 0)).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50 whitespace-nowrap">{viewMode === 'qty' ? group.currentStock.toLocaleString() : (group.currentStock * (group.children[0]?.cost || 0)).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono whitespace-nowrap">{viewMode === 'qty' ? group.totalSales.toLocaleString() : (group.totalSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? group.fcSales.toLocaleString() : (group.fcSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? group.vfSales.toLocaleString() : (group.vfSales * (group.children[0]?.cost || 0)).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-blue-50 whitespace-nowrap">
+                        {viewMode === 'qty' ? group.hqStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-900 font-mono bg-green-50 whitespace-nowrap">
+                        {viewMode === 'qty' ? group.currentStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right font-bold text-blue-600 font-mono whitespace-nowrap">
+                        {viewMode === 'qty' ? group.totalSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">
+                        {viewMode === 'qty' ? group.fcSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.fcSales * (c.cost || 0)), 0).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-xs whitespace-nowrap">
+                        {viewMode === 'qty' ? group.vfSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.vfSales * (c.cost || 0)), 0).toLocaleString()}
+                      </td>
                       {uniqueDates.map(date => (
                         <td key={date} className={`px-2 py-2 text-center text-xs min-w-[50px] ${group.dailySales[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
-                          {group.dailySales[date] ? (viewMode === 'qty' ? group.dailySales[date].toLocaleString() : (group.dailySales[date] * (group.children[0]?.cost || 0)).toLocaleString()) : '-'}
+                          {group.dailySales[date] ? (viewMode === 'qty' ? group.dailySales[date].toLocaleString() : group.children.reduce((acc, c) => acc + ((c.dailySales[date] || 0) * (c.cost || 0)), 0).toLocaleString()) : '-'}
                         </td>
                       ))}
                     </tr>

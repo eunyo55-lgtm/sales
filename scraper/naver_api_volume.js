@@ -92,7 +92,12 @@ async function syncNaverVolume() {
     console.log(`[NaverAPI] 총 ${uniqueKeywords.length}개의 키워드 데이터 조회를 시도합니다...`);
 
     const results = [];
-    const today = new Date().toISOString().split('T')[0];
+    const getKSTDateString = () => {
+        const d = new Date();
+        const kstTime = d.getTime() + (9 * 60 * 60 * 1000);
+        return new Date(kstTime).toISOString().split('T')[0];
+    };
+    const today = getKSTDateString();
 
     // Naver Keyword Tool API allows up to 5 hintKeywords per request
     const BATCH_SIZE = 5;

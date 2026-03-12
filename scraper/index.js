@@ -75,7 +75,12 @@ async function scrapeKeywords() {
         'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
     });
 
-    const today = new Date().toISOString().split('T')[0];
+    const getKSTDateString = () => {
+        const d = new Date();
+        const kstTime = d.getTime() + (9 * 60 * 60 * 1000);
+        return new Date(kstTime).toISOString().split('T')[0];
+    };
+    const today = getKSTDateString();
     const results = [];
 
     // 3. 메인 접속으로 사람 인증(쿠키) 통과

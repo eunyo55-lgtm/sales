@@ -44,6 +44,7 @@ export const api = {
     _rawProductsPromise: null as Promise<any[]> | null,
     _rawDailySalesPromise: null as Promise<any[]> | null,
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
+    _excludedKeywords: ["부자재", "사은품", "우일신", "일상화보", "매장", "수선 재발송"],
 
     async _fetchRPCParallel<T>(rpcName: string, params: object) {
         const BATCH_SIZE = 1000;
@@ -135,7 +136,8 @@ export const api = {
         );
         this._rawProductsPromise = promise;
         try {
-            return await promise;
+            const allProducts = await promise;
+            return allProducts.filter(p => !this._excludedKeywords.some(kw => p.name.includes(kw)));
         } catch (e) {
             this._rawProductsPromise = null;
             throw e;

@@ -95,48 +95,84 @@ async function scrapeNaverVolume() {
             await new Promise(r => setTimeout(r, 2000)); // Give it a moment to load the GNB
         }
 
-        // Once logged in and brand selected, force go to the keyword planner URL
-        console.log('[NaverScraper] 키워드 도구 페이지로 이동 중...');
+        // Once logged in and brand selected, try to land on the keyword planner
+        console.log('[NaverScraper] 키워드 도구 페이지로 이동을 시도합니다...');
         try {
             await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+            await new Promise(r => setTimeout(r, 2000));
         } catch (e) {
-            console.log('[NaverScraper] 직접 이동이 지연되어 메뉴 클릭으로 시도합니다.');
+            console.log('[NaverScraper] 직접 이동 중 지연이 발생했습니다. 브라우저 상태를 확인합니다.');
         }
     }
 
-    // Double check we are on the right page. If not, try to click the Tools menu.
-    if (!page.url().includes('keyword-planner')) {
-        console.log('[NaverScraper] 키워드 도구로 이동을 재시도합니다...');
+    // Navigation check and retry loop
+    console.log(`[NaverScraper] 현재 접속 주소: ${page.url()}`);
+
+    // Attempt to navigate to the keyword planner if not already there
+    for (let navRetry = 0; navRetry < 3 && !page.url().includes('keyword-planner'); navRetry++) {
+        console.log(`[NaverScraper] 키워드 도구 진입 시도 중... (${navRetry + 1}/3)`);
+
         try {
-            // Find "도구" menu using title attribute
-            const toolMenuSelector = 'a[title="도구"]';
-            await page.waitForSelector(toolMenuSelector, { timeout: 10000 });
-            await page.click(toolMenuSelector);
-            console.log('[NaverScraper] [도구] 메뉴를 클릭했습니다.');
+            // Find "도구" menu - try by text, title or data-id
+            const toolMenuElement = await page.evaluateHandle(() => {
+                const elements = Array.from(document.querySelectorAll('a, button, span, li, .nav-item-text'));
+                return elements.find(el => {
+                    const txt = el.textContent.trim();
+                    return txt === '도구' || el.getAttribute('title') === '도구' || el.getAttribute('data-id') === 'tool-gnb';
+                });
+            });
 
-            await new Promise(r => setTimeout(r, 1500));
+            if (toolMenuElement.asElement()) {
+                console.log('[NaverScraper] [도구] 메뉴를 찾았습니다. 클릭 시도...');
+                await toolMenuElement.asElement().click();
+                await new Promise(r => setTimeout(r, 2000));
 
-            // Find "키워드 도구" sub-menu
-            const plannerMenuSelector = 'a[title="키워드 도구"], a[href*="keyword-planner"]';
-            await page.waitForSelector(plannerMenuSelector, { timeout: 5000 });
-            await page.click(plannerMenuSelector);
-            console.log('[NaverScraper] [키워드 도구] 메뉴를 클릭했습니다.');
+                // Find "키워드 도구" sub-menu
+                const plannerMenuElement = await page.evaluateHandle(() => {
+                    const elements = Array.from(document.querySelectorAll('a, button, span, li'));
+                    return elements.find(el => {
+                        const txt = el.textContent.trim();
+                        return txt === '키워드 도구' ||
+                            el.getAttribute('title') === '키워드 도구' ||
+                            (el.getAttribute('href') && el.getAttribute('href').includes('keyword-planner'));
+                    });
+                });
+
+                if (plannerMenuElement.asElement()) {
+                    console.log('[NaverScraper] [키워드 도구] 서브메뉴 클릭...');
+                    await plannerMenuElement.asElement().click();
+                    await new Promise(r => setTimeout(r, 4000));
+                } else {
+                    console.log('[NaverScraper] [키워드 도구] 메뉴를 찾지 못했습니다.');
+                }
+            } else {
+                console.log('[NaverScraper] [도구] 메뉴를 찾지 못했습니다. 주소 직접 이동을 재시도합니다.');
+                await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => { });
+                await new Promise(r => setTimeout(r, 2000));
+            }
         } catch (e) {
-            console.log('[NaverScraper] 자동 메뉴 클릭 실패. 직접 [도구] -> [키워드 도구]를 클릭해 주세요.');
-            await page.goto(NAVER_AD_URL, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => { });
+            console.log(`[NaverScraper] 내비게이션 도중 오류: ${e.message}`);
         }
     }
 
-    // Wait for the user to reach the keyword planner page if still not there
-    console.log('[NaverScraper] 키워드 도구 화면이 나타날 때까지 대기합니다...');
-    try {
-        await page.waitForFunction(() => window.location.href.includes('keyword-planner'), { timeout: 60000 });
-    } catch (e) {
-        console.log('[NaverScraper] 경고: 아직 키워드 도구 페이지가 아닙니다. 브라우저에서 직접 이동해 주세요.');
+    // Final wait/check for the keyword planner page
+    if (!page.url().includes('keyword-planner')) {
+        console.log('[NaverScraper] 자동 이동 실패. *** 브라우저에서 직접 [도구] -> [키워드 도구]를 클릭해 주세요! ***');
+        console.log('[NaverScraper] (클릭 시 자동으로 작동이 시작됩니다)');
+        try {
+            await page.waitForFunction(() => window.location.href.includes('keyword-planner'), { timeout: 60000 });
+            console.log('[NaverScraper] 키워드 도구 진입 확인 완료.');
+        } catch (e) {
+            console.error('[NaverScraper] 오류: 키워드 도구 페이지 진입에 실패했습니다.');
+            await browser.close();
+            process.exit(1);
+        }
     }
 
-    // Wait for the input field to appear
-    console.log('[NaverScraper] 키워드 입력창 로드 대기 중...');
+    console.log('[NaverScraper] 키워드 도구 진입 완료! 수집을 준비합니다.');
+
+    // Wait for the input field to appear (can be on main page or in an iframe)
+    console.log('[NaverScraper] 키워드 입력창 대기 중...');
     const inputSelector = 'textarea.input_keyword';
     try {
         await page.waitForSelector(inputSelector, { timeout: 30000 });
@@ -146,7 +182,12 @@ async function scrapeNaverVolume() {
     }
 
     const results = [];
-    const today = new Date().toISOString().split('T')[0];
+    const getKSTDateString = () => {
+        const d = new Date();
+        const kstTime = d.getTime() + (9 * 60 * 60 * 1000);
+        return new Date(kstTime).toISOString().split('T')[0];
+    };
+    const today = getKSTDateString();
 
     // Helper function to find the correct frame
     const getTargetFrame = async () => {

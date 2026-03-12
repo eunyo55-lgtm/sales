@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase';
 import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+const getKSTDateString = (dateObj: Date = new Date()) => {
+    const kstTime = dateObj.getTime() + (9 * 60 * 60 * 1000);
+    return new Date(kstTime).toISOString().split('T')[0];
+};
+
 export default function KeywordRanking({ showKeywordManager, setShowKeywordManager }: {
     showKeywordManager: boolean;
     setShowKeywordManager: (val: boolean) => void;
@@ -77,7 +82,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
             // Fetch rankings (last 30 days)
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+            const dateStr = getKSTDateString(thirtyDaysAgo);
 
             const { data: rankData, error: rankError } = await supabase
                 .from('keyword_rankings')
@@ -183,7 +188,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
         const diff = (d.getDay() + 2) % 7;
         const weekStart = new Date(d);
         weekStart.setDate(d.getDate() - diff);
-        return weekStart.toISOString().split('T')[0];
+        return getKSTDateString(weekStart);
     };
 
     const currentWeekKey = getWeekKey(new Date());
