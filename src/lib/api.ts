@@ -1207,11 +1207,21 @@ ${sampleText}
      */
     async uploadCoupangOrders(orders: CoupangOrderRow[], onProgress?: (progress: number) => void) {
         if (orders.length === 0) return;
+
+        // Deduplicate data to prevent "ON CONFLICT DO UPDATE command cannot affect row a second time"
+        const uniqueOrders = Array.from(
+            orders.reduce((map, order) => {
+                const key = `${order.date}_${order.barcode}`;
+                map.set(key, order);
+                return map;
+            }, new Map<string, CoupangOrderRow>()).values()
+        );
+
         const CHUNK_SIZE = 500;
-        const total = orders.length;
+        const total = uniqueOrders.length;
         let processed = 0;
         for (let i = 0; i < total; i += CHUNK_SIZE) {
-            const chunk = orders.slice(i, i + CHUNK_SIZE);
+            const chunk = uniqueOrders.slice(i, i + CHUNK_SIZE);
             const { error } = await supabase
                 .from('coupang_orders')
                 .upsert(

@@ -10,10 +10,7 @@ import KeywordRanking from './pages/KeywordRanking';
 import { DataUploader } from './components/DataUploader';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply'>(() => {
-    const saved = localStorage.getItem('activeTab');
-    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply') || 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showKeywordManager, setShowKeywordManager] = useState(() => {
     const saved = localStorage.getItem('showKeywordManager');
