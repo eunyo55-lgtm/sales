@@ -1208,20 +1208,29 @@ ${sampleText}
     async uploadCoupangOrders(orders: CoupangOrderRow[], onProgress?: (progress: number) => void) {
         if (orders.length === 0) return;
 
-        // Deduplicate data to prevent "ON CONFLICT DO UPDATE command cannot affect row a second time"
-        const uniqueOrders = Array.from(
+        // Aggregate data: sum quantities for rows with the same (date, barcode)
+        const aggregatedOrders = Array.from(
             orders.reduce((map, order) => {
                 const key = `${order.date}_${order.barcode}`;
-                map.set(key, order);
+                const existing = map.get(key);
+                if (existing) {
+                    existing.orderQty += order.orderQty;
+                    existing.confirmedQty += order.confirmedQty;
+                    existing.receivedQty += (order.receivedQty || 0);
+                    // Update unitCost to the latest one (usually same for the same SKU/Date)
+                    existing.unitCost = order.unitCost;
+                } else {
+                    map.set(key, { ...order });
+                }
                 return map;
             }, new Map<string, CoupangOrderRow>()).values()
         );
 
         const CHUNK_SIZE = 500;
-        const total = uniqueOrders.length;
+        const total = aggregatedOrders.length;
         let processed = 0;
         for (let i = 0; i < total; i += CHUNK_SIZE) {
-            const chunk = uniqueOrders.slice(i, i + CHUNK_SIZE);
+            const chunk = aggregatedOrders.slice(i, i + CHUNK_SIZE);
             const { error } = await supabase
                 .from('coupang_orders')
                 .upsert(
