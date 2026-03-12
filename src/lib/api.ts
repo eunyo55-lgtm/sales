@@ -1282,7 +1282,8 @@ ${sampleText}
         const { data, error } = await supabase
             .from('coupang_orders')
             .select('*')
-            .order('order_date', { ascending: false });
+            .order('order_date', { ascending: false })
+            .limit(10000);
         if (error) throw error;
         return data || [];
     }
