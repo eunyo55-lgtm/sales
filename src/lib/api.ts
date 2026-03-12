@@ -1228,7 +1228,8 @@ ${sampleText}
         const { data: existingData, error: fetchError } = await supabase
             .from('coupang_orders')
             .select('order_date, barcode, order_qty, confirmed_qty, received_qty')
-            .in('order_date', dateRange);
+            .in('order_date', dateRange)
+            .limit(10000); // Increase limit to prevent missing data during merge
 
         if (fetchError) throw fetchError;
 

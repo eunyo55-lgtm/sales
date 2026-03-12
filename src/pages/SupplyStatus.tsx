@@ -18,6 +18,10 @@ export default function SupplyStatus() {
 
     useEffect(() => {
         loadData();
+
+        const handleRefresh = () => loadData();
+        window.addEventListener('refresh-order-data', handleRefresh);
+        return () => window.removeEventListener('refresh-order-data', handleRefresh);
     }, []);
 
     const loadData = async () => {

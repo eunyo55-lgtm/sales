@@ -73,6 +73,7 @@ export function DataUploader() {
             await api.uploadIncomingStock(data, (p) => setProgress(p));
 
             setStatus({ type: 'success', message: `✅ 입고 예정(공급 중) 데이터 ${data.length}건 업데이트 완료!` });
+            window.dispatchEvent(new CustomEvent('refresh-order-data'));
         } catch (error: any) {
             console.error(error);
             setStatus({ type: 'error', message: `오류 발생: ${error.message || '파일 처리 실패'}` });
@@ -170,6 +171,8 @@ export function DataUploader() {
                             setStatus({ type: 'success', message: `${data.length}건 발주 데이터 파싱 완료. 업로드 중...` });
                             await api.uploadCoupangOrders(data, (p) => setProgress(p));
                             setStatus({ type: 'success', message: `✅ 쿠팡 발주서 ${data.length}건 등록 완료!` });
+                            // Trigger data refresh without manual browser refresh
+                            window.dispatchEvent(new CustomEvent('refresh-order-data'));
                         } catch (err: any) {
                             setStatus({ type: 'error', message: err.message });
                         } finally {
