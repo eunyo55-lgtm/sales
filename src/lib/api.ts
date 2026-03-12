@@ -100,6 +100,7 @@ export const api = {
                 if (filterBuilder) q = filterBuilder(q);
                 q = q.range(i + (c * BATCH_SIZE), i + (c * BATCH_SIZE) + BATCH_SIZE - 1);
                 if (order) q = q.order(order);
+                else q = q.order('created_at', { ascending: false }); // Default stable sort
                 batchPromises.push(q);
             }
 
@@ -1223,15 +1224,14 @@ ${sampleText}
             return map;
         }, new Map<string, CoupangOrderRow>());
 
-        // 2. Fetch existing records from DB for these dates to perform additive update
+        // 2. Fetch all existing records from DB for these dates to perform additive update using parallel pagination
         const dateRange = Array.from(new Set(orders.map(o => o.date)));
-        const { data: existingData, error: fetchError } = await supabase
-            .from('coupang_orders')
-            .select('order_date, barcode, order_qty, confirmed_qty, received_qty')
-            .in('order_date', dateRange)
-            .limit(10000); // Increase limit to prevent missing data during merge
-
-        if (fetchError) throw fetchError;
+        const existingData = await this._fetchAllParallel<any>(
+            'coupang_orders',
+            'order_date, barcode, order_qty, confirmed_qty, received_qty',
+            'order_date',
+            (q) => q.in('order_date', dateRange)
+        );
 
         const existingMap = new Map<string, any>();
         existingData?.forEach(row => {
@@ -1280,12 +1280,30 @@ ${sampleText}
     },
 
     async getCoupangOrderStats() {
-        const { data, error } = await supabase
-            .from('coupang_orders')
-            .select('*')
-            .order('order_date', { ascending: false })
-            .limit(10000);
-        if (error) throw error;
-        return data || [];
+        // Sequential fetch is safer for high row counts and ensures stable order
+        const BATCH_SIZE = 1000;
+        const allData: any[] = [];
+        let i = 0;
+        let isDone = false;
+
+        while (!isDone) {
+            const { data, error } = await supabase
+                .from('coupang_orders')
+                .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost')
+                .order('order_date', { ascending: false })
+                .order('id', { ascending: false }) // Stable sort tie-breaker
+                .range(i, i + BATCH_SIZE - 1);
+
+            if (error) throw error;
+            if (data && data.length > 0) {
+                allData.push(...data);
+            }
+            if (!data || data.length < BATCH_SIZE) {
+                isDone = true;
+            }
+            i += BATCH_SIZE;
+            if (i > 100000) break; // Safety
+        }
+        return allData;
     }
 };
