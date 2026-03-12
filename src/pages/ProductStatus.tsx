@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import type { ProductStats } from '../lib/api';
+// Trigger Vercel Build - 2026-03-12 Deployment Sync
 import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, HelpCircle, X, TrendingUp } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { isRedDay } from '../lib/dateUtils';
