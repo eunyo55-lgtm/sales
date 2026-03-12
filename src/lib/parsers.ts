@@ -66,12 +66,24 @@ export const parseProductMaster = async (file: File): Promise<ProductMaster[]> =
                     return isNaN(num) ? 0 : Math.round(num);
                 };
 
+                const sanitizeString = (val: any) => {
+                    if (!val) return '';
+                    // Remove HTML tags and common Excel/MSO artifacts
+                    return String(val)
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/mso-number-format:[^;]+;/g, '') // Remove Excel mso tags
+                        .replace(/white-space:[^;]+;/g, '') // Remove CSS white-space tags
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                };
+
                 const products: ProductMaster[] = jsonData.slice(1).map((row: any) => {
                     return {
                         barcode: row['K'] ? String(row['K']).replace(/\s+/g, '') : '',
-                        name: row['C'] || 'Unknown Product',
-                        option: row['D'] ? String(row['D']).trim() : '옵션없음', // Parse Column D
-                        season: row['E'] ? String(row['E']).trim() : '정보없음',
+                        name: sanitizeString(row['C']) || 'Unknown Product',
+                        option: row['D'] ? sanitizeString(row['D']) : '옵션없음', // Parse Column D
+                        season: row['E'] ? sanitizeString(row['E']) : '정보없음',
                         imageUrl: row['Q'] || '',
                         hqStock: safeParseInt(row['U']),
                         cost: safeParseInt(row['M']), // New: Cost from Column M (0-indexed 12)

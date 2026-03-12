@@ -137,7 +137,19 @@ export const api = {
         this._rawProductsPromise = promise;
         try {
             const allProducts = await promise;
-            return allProducts.filter(p => !this._excludedKeywords.some(kw => p.name.includes(kw)));
+            return allProducts.filter(p => {
+                if (!p.name || !p.barcode) return false;
+                
+                // 1. User-specified excluded keywords
+                const isExcluded = this._excludedKeywords.some(kw => p.name.includes(kw));
+                if (isExcluded) return false;
+
+                // 2. Filter out items with HTML/CSS contamination (e.g. barcode 'S99742')
+                const isMalformed = (p.season && (p.season.includes('<td') || p.season.includes('white-space'))) ||
+                                    (p.name && (p.name.includes('<td') || p.name.includes('white-space')));
+                
+                return !isMalformed;
+            });
         } catch (e) {
             this._rawProductsPromise = null;
             throw e;
