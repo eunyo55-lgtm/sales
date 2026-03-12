@@ -82,49 +82,6 @@ export function DataUploader() {
         }
     };
 
-    const handleHistoricalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const yearStr = window.prompt("업로드할 엑셀 데이터의 연도를 입력해주세요.\n(예: 2024)");
-        if (!yearStr) {
-            e.target.value = '';
-            return; // User cancelled or entered empty
-        }
-
-        const year = parseInt(yearStr.trim(), 10);
-        if (isNaN(year) || year < 2000 || year > 2100) {
-            alert("유효한 연도를 입력해주세요. (예: 2024)");
-            e.target.value = '';
-            return;
-        }
-
-        setIsUploading(true);
-        setStatus({ type: null, message: '' });
-        setProgress(0);
-
-        try {
-            const { parseHistoricalSales } = await import('../lib/parsers');
-            const data = await parseHistoricalSales(file, year);
-
-            if (data.length === 0) {
-                setStatus({ type: 'error', message: '데이터를 읽지 못했습니다. 파일 양식을 확인해주세요.' });
-                return;
-            }
-
-            setStatus({ type: 'success', message: `${year}년 데이터 파싱 완료. 서버 업로드 중...` });
-
-            await api.uploadHistoricalSales(data, (p) => setProgress(p));
-
-            setStatus({ type: 'success', message: `✅ ${year}년 과거 데이터 ${data.length}건 무사히 등록되었습니다!` });
-        } catch (error: any) {
-            console.error(error);
-            setStatus({ type: 'error', message: `오류 발생: ${error.message || '파일 처리 실패'}` });
-        } finally {
-            setIsUploading(false);
-            e.target.value = '';
-        }
-    };
 
     return (
         <div className="flex items-center space-x-3">
