@@ -99,17 +99,6 @@ function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('keyword')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'keyword'
-                ? 'bg-rose-50 text-rose-600'
-                : 'text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              <span className="text-xl">📊</span>
-              <span className="font-medium">키워드 랭킹</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('supply')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'supply'
                 ? 'bg-emerald-50 text-emerald-600'
@@ -118,6 +107,17 @@ function App() {
             >
               <TrendingUp size={20} className={activeTab === 'supply' ? 'text-emerald-600' : 'text-gray-500'} />
               <span className="font-medium">공급관리</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('keyword')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'keyword'
+                ? 'bg-rose-50 text-rose-600'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <span className="text-xl">📊</span>
+              <span className="font-medium">키워드 랭킹</span>
             </button>
           </nav>
 
