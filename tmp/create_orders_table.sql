@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS coupang_orders (
     confirmed_qty INTEGER DEFAULT 0,
     received_qty INTEGER DEFAULT 0,
     unit_cost NUMERIC DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (order_date, barcode)
 );
 
 -- 인덱스 추가

@@ -1224,7 +1224,7 @@ ${sampleText}
                         unit_cost: o.unitCost,
                         created_at: new Date().toISOString()
                     })),
-                    { onConflict: 'order_date, barcode, order_qty, confirmed_qty' }
+                    { onConflict: 'order_date, barcode' }
                 );
             if (error) throw error;
             processed += chunk.length;
