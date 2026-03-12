@@ -232,6 +232,41 @@ export function DataUploader() {
                     <span>과거 데이터 등록</span>
                 </label>
             </div>
+
+            <div className="relative">
+                <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setIsUploading(true);
+                        setProgress(0);
+                        try {
+                            const { parseCoupangOrder } = await import('../lib/parsers');
+                            const data = await parseCoupangOrder(file);
+                            setStatus({ type: 'success', message: `${data.length}건 발주 데이터 파싱 완료. 업로드 중...` });
+                            await api.uploadCoupangOrders(data, (p) => setProgress(p));
+                            setStatus({ type: 'success', message: `✅ 쿠팡 발주서 ${data.length}건 등록 완료!` });
+                        } catch (err: any) {
+                            setStatus({ type: 'error', message: err.message });
+                        } finally {
+                            setIsUploading(false);
+                            e.target.value = '';
+                        }
+                    }}
+                    className="hidden"
+                    id="upload-orders"
+                    disabled={isUploading}
+                />
+                <label
+                    htmlFor="upload-orders"
+                    className={`flex items-center space-x-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <Upload size={16} />
+                    <span>쿠팡 발주서 등록</span>
+                </label>
+            </div>
         </div>
     );
 }

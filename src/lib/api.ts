@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ProductMaster, CoupangSalesRow, IncomingStockRow, HistoricalSalesRow } from './parsers';
+import type { ProductMaster, CoupangSalesRow, IncomingStockRow, HistoricalSalesRow, CoupangOrderRow } from './parsers';
 
 export interface ProductStats {
     barcode: string;
@@ -1200,5 +1200,44 @@ ${sampleText}
             throw new Error(`Google Chat 알림 전송 실패: ${response.statusText} `);
         }
         return true;
+    },
+
+    /**
+     * Upload Coupang Order Data
+     */
+    async uploadCoupangOrders(orders: CoupangOrderRow[], onProgress?: (progress: number) => void) {
+        if (orders.length === 0) return;
+        const CHUNK_SIZE = 500;
+        const total = orders.length;
+        let processed = 0;
+        for (let i = 0; i < total; i += CHUNK_SIZE) {
+            const chunk = orders.slice(i, i + CHUNK_SIZE);
+            const { error } = await supabase
+                .from('coupang_orders')
+                .upsert(
+                    chunk.map(o => ({
+                        order_date: o.date,
+                        barcode: o.barcode,
+                        order_qty: o.orderQty,
+                        confirmed_qty: o.confirmedQty,
+                        received_qty: o.receivedQty,
+                        unit_cost: o.unitCost,
+                        created_at: new Date().toISOString()
+                    })),
+                    { onConflict: 'order_date, barcode, order_qty, confirmed_qty' }
+                );
+            if (error) throw error;
+            processed += chunk.length;
+            if (onProgress) onProgress(Math.round((processed / total) * 100));
+        }
+    },
+
+    async getCoupangOrderStats() {
+        const { data, error } = await supabase
+            .from('coupang_orders')
+            .select('*')
+            .order('order_date', { ascending: false });
+        if (error) throw error;
+        return data || [];
     }
 };

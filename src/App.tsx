@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, Archive, Lightbulb, Menu } from 'lucide-react';
+import { LayoutDashboard, Package, Archive, Lightbulb, Menu, TrendingUp } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ProductStatus from './pages/ProductStatus';
 import InventoryStatus from './pages/InventoryStatus';
 import SmartOrder from './pages/SmartOrder';
 import Insights from './pages/Insights';
+import SupplyStatus from './pages/SupplyStatus';
 import KeywordRanking from './pages/KeywordRanking';
 import { DataUploader } from './components/DataUploader';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword'>(() => {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply'>(() => {
     const saved = localStorage.getItem('activeTab');
-    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword') || 'dashboard';
+    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply') || 'dashboard';
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showKeywordManager, setShowKeywordManager] = useState(() => {
@@ -107,6 +108,17 @@ function App() {
               <span className="text-xl">📊</span>
               <span className="font-medium">키워드 랭킹</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('supply')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'supply'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <TrendingUp size={20} className={activeTab === 'supply' ? 'text-emerald-600' : 'text-gray-500'} />
+              <span className="font-medium">공급관리</span>
+            </button>
           </nav>
 
           <div className="w-full p-4 border-t border-gray-200 bg-gray-50">
@@ -135,6 +147,7 @@ function App() {
               {activeTab === 'smartorder' && '스마트 발주 추천'}
               {activeTab === 'insights' && '악성 재고 & 프로모션 인사이트'}
               {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
+              {activeTab === 'supply' && '쿠팡 발주 대비 공급/입고 현황'}
             </h2>
           </div>
           <DataUploader />
@@ -152,6 +165,7 @@ function App() {
               setShowKeywordManager={setShowKeywordManager}
             />
           )}
+          {activeTab === 'supply' && <SupplyStatus />}
         </div>
       </main>
     </div>

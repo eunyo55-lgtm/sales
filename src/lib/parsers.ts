@@ -34,6 +34,15 @@ export interface HistoricalSalesRow {
     salesQty: number;
 }
 
+export interface CoupangOrderRow {
+    date: string;       // H: 입고예정일
+    barcode: string;    // F: 바코드
+    orderQty: number;   // J: 발주수량
+    confirmedQty: number; // K: 확정수량
+    receivedQty: number;  // L: 입고수량
+    unitCost: number;     // R: 쿠팡매입가
+}
+
 // --- Parsers ---
 
 /**
@@ -294,6 +303,48 @@ export const parseHistoricalSales = async (file: File, targetYear: number): Prom
             }
         };
         reader.onerror = (error) => reject(error);
+        reader.readAsArrayBuffer(file);
+    });
+};
+
+/**
+ * Parses Coupang Order/Supply File
+ */
+export const parseCoupangOrder = async (file: File): Promise<CoupangOrderRow[]> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 'A' });
+                const parseDate = (val: any) => {
+                    if (!val) return '';
+                    let dStr = '';
+                    if (typeof val === 'number') {
+                        const p = XLSX.SSF.parse_date_code(val);
+                        dStr = `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+                    } else {
+                        dStr = String(val).trim().replace(/\./g, '-');
+                    }
+                    if (dStr.length < 8) return '';
+                    const d = new Date(dStr);
+                    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+                };
+                const safe = (v: any) => isNaN(Number(String(v).replace(/,/g, ''))) ? 0 : Math.round(Number(String(v).replace(/,/g, '')));
+                const orders: CoupangOrderRow[] = (jsonData as any[]).slice(1).map((r: any) => ({
+                    barcode: r['F'] ? String(r['F']).replace(/\s+/g, '') : '',
+                    date: parseDate(r['H']),
+                    orderQty: safe(r['J']),
+                    confirmedQty: safe(r['K']),
+                    receivedQty: safe(r['L']),
+                    unitCost: safe(r['R']),
+                })).filter(o => o.barcode && o.date);
+                resolve(orders);
+            } catch (err) { reject(err); }
+        };
+        reader.onerror = (err) => reject(err);
         reader.readAsArrayBuffer(file);
     });
 };
