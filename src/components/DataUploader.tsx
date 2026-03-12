@@ -157,6 +157,7 @@ export function DataUploader() {
                 </div>
             )}
 
+            {/* 1. 상품 마스터 등록 */}
             <div className="relative">
                 <input
                     type="file"
@@ -176,6 +177,7 @@ export function DataUploader() {
                 </label>
             </div>
 
+            {/* 2. 쿠팡 판매데이터 등록 */}
             <div className="relative">
                 <input
                     type="file"
@@ -195,44 +197,7 @@ export function DataUploader() {
                 </label>
             </div>
 
-            {/* New: Incoming Stock Upload */}
-            <div className="relative">
-                <input
-                    type="file"
-                    accept=".xlsx, .xls, .csv"
-                    multiple
-                    onChange={handleIncomingUpload}
-                    className="hidden"
-                    id="upload-incoming"
-                    disabled={isUploading}
-                />
-                <label
-                    htmlFor="upload-incoming"
-                    className={`flex items-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    <FileUp size={16} />
-                    <span>공급 중 수량 등록</span>
-                </label>
-            </div>
-            {/* New: Historical Stock Upload */}
-            <div className="relative">
-                <input
-                    type="file"
-                    accept=".xlsx, .xls, .csv"
-                    onChange={handleHistoricalUpload}
-                    className="hidden"
-                    id="upload-historical"
-                    disabled={isUploading}
-                />
-                <label
-                    htmlFor="upload-historical"
-                    className={`flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    <FileUp size={16} className="text-gray-500" />
-                    <span>과거 데이터 등록</span>
-                </label>
-            </div>
-
+            {/* 3. 쿠팡 발주서 등록 */}
             <div className="relative">
                 <input
                     type="file"
@@ -265,6 +230,26 @@ export function DataUploader() {
                 >
                     <Upload size={16} />
                     <span>쿠팡 발주서 등록</span>
+                </label>
+            </div>
+
+            {/* 4. 공급 중 수량 등록 */}
+            <div className="relative">
+                <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    multiple
+                    onChange={handleIncomingUpload}
+                    className="hidden"
+                    id="upload-incoming"
+                    disabled={isUploading}
+                />
+                <label
+                    htmlFor="upload-incoming"
+                    className={`flex items-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <FileUp size={16} />
+                    <span>공급 중 수량 등록</span>
                 </label>
             </div>
         </div>
