@@ -1208,43 +1208,70 @@ ${sampleText}
     async uploadCoupangOrders(orders: CoupangOrderRow[], onProgress?: (progress: number) => void) {
         if (orders.length === 0) return;
 
-        // Aggregate data: sum quantities for rows with the same (date, barcode)
-        const aggregatedOrders = Array.from(
-            orders.reduce((map, order) => {
-                const key = `${order.date}_${order.barcode}`;
-                const existing = map.get(key);
-                if (existing) {
-                    existing.orderQty += order.orderQty;
-                    existing.confirmedQty += order.confirmedQty;
-                    existing.receivedQty += (order.receivedQty || 0);
-                    // Update unitCost to the latest one (usually same for the same SKU/Date)
-                    existing.unitCost = order.unitCost;
-                } else {
-                    map.set(key, { ...order });
-                }
-                return map;
-            }, new Map<string, CoupangOrderRow>()).values()
-        );
+        // 1. Aggregate input data (sum within the current batch)
+        const batchAggregated = orders.reduce((map, order) => {
+            const key = `${order.date}_${order.barcode}`;
+            const existing = map.get(key);
+            if (existing) {
+                existing.orderQty += order.orderQty;
+                existing.confirmedQty += order.confirmedQty;
+                existing.receivedQty += (order.receivedQty || 0);
+                existing.unitCost = order.unitCost;
+            } else {
+                map.set(key, { ...order });
+            }
+            return map;
+        }, new Map<string, CoupangOrderRow>());
+
+        // 2. Fetch existing records from DB for these dates to perform additive update
+        const dateRange = Array.from(new Set(orders.map(o => o.date)));
+        const { data: existingData, error: fetchError } = await supabase
+            .from('coupang_orders')
+            .select('order_date, barcode, order_qty, confirmed_qty, received_qty')
+            .in('order_date', dateRange);
+
+        if (fetchError) throw fetchError;
+
+        const existingMap = new Map<string, any>();
+        existingData?.forEach(row => {
+            existingMap.set(`${row.order_date}_${row.barcode}`, row);
+        });
+
+        // 3. Merge batch data with existing DB data
+        const finalOrders = Array.from(batchAggregated.values()).map(order => {
+            const key = `${order.date}_${order.barcode}`;
+            const existing = existingMap.get(key);
+            if (existing) {
+                return {
+                    order_date: order.date,
+                    barcode: order.barcode,
+                    order_qty: order.orderQty + (existing.order_qty || 0),
+                    confirmed_qty: order.confirmedQty + (existing.confirmed_qty || 0),
+                    received_qty: (order.receivedQty || 0) + (existing.received_qty || 0),
+                    unit_cost: order.unitCost,
+                    created_at: new Date().toISOString()
+                };
+            }
+            return {
+                order_date: order.date,
+                barcode: order.barcode,
+                order_qty: order.orderQty,
+                confirmed_qty: order.confirmedQty,
+                received_qty: order.receivedQty || 0,
+                unit_cost: order.unitCost,
+                created_at: new Date().toISOString()
+            };
+        });
 
         const CHUNK_SIZE = 500;
-        const total = aggregatedOrders.length;
+        const total = finalOrders.length;
         let processed = 0;
         for (let i = 0; i < total; i += CHUNK_SIZE) {
-            const chunk = aggregatedOrders.slice(i, i + CHUNK_SIZE);
+            const chunk = finalOrders.slice(i, i + CHUNK_SIZE);
             const { error } = await supabase
                 .from('coupang_orders')
-                .upsert(
-                    chunk.map(o => ({
-                        order_date: o.date,
-                        barcode: o.barcode,
-                        order_qty: o.orderQty,
-                        confirmed_qty: o.confirmedQty,
-                        received_qty: o.receivedQty,
-                        unit_cost: o.unitCost,
-                        created_at: new Date().toISOString()
-                    })),
-                    { onConflict: 'order_date, barcode' }
-                );
+                .upsert(chunk, { onConflict: 'order_date, barcode' });
+            
             if (error) throw error;
             processed += chunk.length;
             if (onProgress) onProgress(Math.round((processed / total) * 100));
