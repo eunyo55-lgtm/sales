@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import React from 'react';
 import { api, type ProductStats } from '../lib/api';
-import { TrendingUp, Package, CheckCircle, Truck, Calendar, BarChart2, Search, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { TrendingUp, Package, CheckCircle, Truck, Calendar, BarChart2, Search, ChevronDown, ChevronRight, ArrowUpDown, Clock } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function SortIcon({ currentSort, targetKey }: { currentSort: { key: string, direction: 'asc' | 'desc' }, targetKey: string }) {
-    if (currentSort.key !== targetKey) return <ChevronUp size={12} className="text-gray-300 opacity-50" />;
-    return currentSort.direction === 'asc' 
-        ? <ChevronUp size={12} className="text-blue-500" /> 
-        : <ChevronDown size={12} className="text-blue-500" />;
+    const isActive = currentSort.key === targetKey;
+    return (
+        <ArrowUpDown 
+            size={12} 
+            className={`transition-colors ${isActive ? 'text-blue-600' : 'text-gray-300 opacity-50 hover:opacity-100'}`} 
+        />
+    );
 }
 
 export default function SupplyStatus() {
@@ -16,13 +19,14 @@ export default function SupplyStatus() {
     const [products, setProducts] = useState<ProductStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
+    const [productPeriod, setProductPeriod] = useState<'week' | 'month' | 'all'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [visibleCount, setVisibleCount] = useState(10);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     
     // Sorting States
     const [summarySort, setSummarySort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'key', direction: 'desc' });
-    const [productSort, setProductSort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'supplyRate', direction: 'asc' });
+    const [productSort, setProductSort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'unpaidQty', direction: 'desc' });
 
     useEffect(() => {
         loadData();
@@ -87,16 +91,24 @@ export default function SupplyStatus() {
                     receivedQty: 0,
                     orderAmount: 0,
                     confirmedAmount: 0,
-                    receivedAmount: 0
+                    receivedAmount: 0,
+                    unpaidQty: 0,
+                    unpaidAmount: 0
                 };
             }
+
+            const amount = (o.order_qty || 0) * (o.unit_cost || 0);
+            const confAmount = (o.confirmed_qty || 0) * (o.unit_cost || 0);
+            const recvAmount = (o.received_qty || 0) * (o.unit_cost || 0);
 
             groups[key].orderQty += (o.order_qty || 0);
             groups[key].confirmedQty += (o.confirmed_qty || 0);
             groups[key].receivedQty += (o.received_qty || 0);
-            groups[key].orderAmount += ((o.order_qty || 0) * (o.unit_cost || 0));
-            groups[key].confirmedAmount += ((o.confirmed_qty || 0) * (o.unit_cost || 0));
-            groups[key].receivedAmount += ((o.received_qty || 0) * (o.unit_cost || 0));
+            groups[key].orderAmount += amount;
+            groups[key].confirmedAmount += confAmount;
+            groups[key].receivedAmount += recvAmount;
+            groups[key].unpaidQty += ((o.order_qty || 0) - (o.confirmed_qty || 0));
+            groups[key].unpaidAmount += (amount - confAmount);
         });
 
         let result = Object.values(groups).map((g: any) => ({
@@ -129,7 +141,21 @@ export default function SupplyStatus() {
     const groupedPerformance = useMemo(() => {
         const nameGroups: Record<string, any> = {};
         
-        orders.forEach(o => {
+        // Filter orders based on productPeriod
+        let filteredOrders = orders;
+        if (productPeriod !== 'all') {
+            const latestDateStr = orders.length > 0 ? orders.reduce((max, o) => o.order_date > max ? o.order_date : max, orders[0].order_date) : '';
+            if (latestDateStr) {
+                const refDate = new Date(latestDateStr);
+                const days = productPeriod === 'week' ? 7 : 30;
+                const threshold = new Date(refDate);
+                threshold.setDate(refDate.getDate() - days);
+                const thresholdStr = threshold.toISOString().split('T')[0];
+                filteredOrders = orders.filter(o => o.order_date >= thresholdStr);
+            }
+        }
+
+        filteredOrders.forEach(o => {
             const meta = barcodeMap.get((o.barcode || '').trim());
             const name = meta?.name || o.barcode || 'Unknown';
             const option = meta?.option || '-';
@@ -140,9 +166,11 @@ export default function SupplyStatus() {
                     orderQty: 0,
                     confirmedQty: 0,
                     receivedQty: 0,
+                    unpaidQty: 0,
                     orderAmount: 0,
                     confirmedAmount: 0,
                     receivedAmount: 0,
+                    unpaidAmount: 0,
                     children: {} as Record<string, any>
                 };
             }
@@ -158,6 +186,8 @@ export default function SupplyStatus() {
             g.orderAmount += amount;
             g.confirmedAmount += confAmount;
             g.receivedAmount += recvAmount;
+            g.unpaidQty += ((o.order_qty || 0) - (o.confirmed_qty || 0));
+            g.unpaidAmount += (amount - confAmount);
 
             if (!g.children[o.barcode]) {
                 g.children[o.barcode] = {
@@ -166,9 +196,11 @@ export default function SupplyStatus() {
                     orderQty: 0,
                     confirmedQty: 0,
                     receivedQty: 0,
+                    unpaidQty: 0,
                     orderAmount: 0,
                     confirmedAmount: 0,
-                    receivedAmount: 0
+                    receivedAmount: 0,
+                    unpaidAmount: 0
                 };
             }
 
@@ -179,6 +211,8 @@ export default function SupplyStatus() {
             c.orderAmount += amount;
             c.confirmedAmount += confAmount;
             c.receivedAmount += recvAmount;
+            c.unpaidQty += ((o.order_qty || 0) - (o.confirmed_qty || 0));
+            c.unpaidAmount += (amount - confAmount);
         });
 
         let result = Object.values(nameGroups)
@@ -208,7 +242,7 @@ export default function SupplyStatus() {
         });
 
         return result;
-    }, [orders, barcodeMap, searchTerm, productSort]);
+    }, [orders, barcodeMap, searchTerm, productSort, productPeriod]);
 
     const visibleGroups = useMemo(() => groupedPerformance.slice(0, visibleCount), [groupedPerformance, visibleCount]);
 
@@ -351,6 +385,12 @@ export default function SupplyStatus() {
                                         <SortIcon currentSort={summarySort} targetKey="receivedQty" />
                                     </div>
                                 </th>
+                                <th className="px-4 py-3 font-semibold text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>미납수량</span>
+                                        <SortIcon currentSort={summarySort} targetKey="unpaidQty" />
+                                    </div>
+                                </th>
                                 <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('orderAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>발주액</span>
@@ -367,6 +407,12 @@ export default function SupplyStatus() {
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>입고액</span>
                                         <SortIcon currentSort={summarySort} targetKey="receivedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-blue-600 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>미납액</span>
+                                        <SortIcon currentSort={summarySort} targetKey="unpaidAmount" />
                                     </div>
                                 </th>
                                 <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('supplyRate')}>
@@ -390,9 +436,11 @@ export default function SupplyStatus() {
                                     <td className="px-4 py-3">{item.orderQty.toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.confirmedQty.toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.receivedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-blue-600 font-bold">{item.unpaidQty.toLocaleString()}</td>
                                     <td className="px-4 py-3 text-right">{item.orderAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-right">{item.confirmedAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-right">{item.receivedAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right text-blue-600 font-bold">{item.unpaidAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-center">
                                         <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.supplyRate >= 90 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                                             {item.supplyRate.toFixed(1)}%
@@ -418,15 +466,37 @@ export default function SupplyStatus() {
                             <TrendingUp size={18} className="mr-2 text-rose-500" />
                             공급 부진 품목 분석 (제품별 그룹)
                         </h3>
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                            <input 
-                                type="text"
-                                placeholder="제품명, 바코드 검색..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                            />
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setProductPeriod('week')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'week' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    주간
+                                </button>
+                                <button
+                                    onClick={() => setProductPeriod('month')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    월간
+                                </button>
+                                <button
+                                    onClick={() => setProductPeriod('all')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    누적
+                                </button>
+                            </div>
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                <input 
+                                    type="text"
+                                    placeholder="제품명, 바코드 검색..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -459,6 +529,12 @@ export default function SupplyStatus() {
                                         <SortIcon currentSort={productSort} targetKey="receivedQty" />
                                     </div>
                                 </th>
+                                <th className="px-4 py-3 font-semibold text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>미납수량</span>
+                                        <SortIcon currentSort={productSort} targetKey="unpaidQty" />
+                                    </div>
+                                </th>
                                 <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('orderAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>발주액</span>
@@ -475,6 +551,12 @@ export default function SupplyStatus() {
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>입고액</span>
                                         <SortIcon currentSort={productSort} targetKey="receivedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-blue-600 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>미납액</span>
+                                        <SortIcon currentSort={productSort} targetKey="unpaidAmount" />
                                     </div>
                                 </th>
                                 <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('supplyRate')}>
@@ -505,9 +587,11 @@ export default function SupplyStatus() {
                                         <td className="px-4 py-3">{g.orderQty.toLocaleString()}</td>
                                         <td className="px-4 py-3">{g.confirmedQty.toLocaleString()}</td>
                                         <td className="px-4 py-3">{g.receivedQty.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-blue-600 font-bold">{g.unpaidQty.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right">{g.orderAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-right">{g.confirmedAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-right">{g.receivedAmount.toLocaleString()}원</td>
+                                        <td className="px-4 py-3 text-right text-blue-600 font-bold">{g.unpaidAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded-md text-xs font-bold ${g.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
                                                 {g.supplyRate.toFixed(1)}%
@@ -531,9 +615,11 @@ export default function SupplyStatus() {
                                             <td className="px-4 py-2 text-gray-500">{c.orderQty.toLocaleString()}</td>
                                             <td className="px-4 py-2 text-gray-500">{c.confirmedQty.toLocaleString()}</td>
                                             <td className="px-4 py-2 text-gray-500">{c.receivedQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-blue-500 font-medium">{c.unpaidQty.toLocaleString()}</td>
                                             <td className="px-4 py-2 text-right text-gray-400">{c.orderAmount.toLocaleString()}원</td>
                                             <td className="px-4 py-2 text-right text-gray-400">{c.confirmedAmount.toLocaleString()}원</td>
                                             <td className="px-4 py-2 text-right text-gray-400">{c.receivedAmount.toLocaleString()}원</td>
+                                            <td className="px-4 py-2 text-right text-blue-400 font-medium">{c.unpaidAmount.toLocaleString()}원</td>
                                             <td className="px-4 py-2 text-center text-gray-500">{c.supplyRate.toFixed(1)}%</td>
                                             <td className="px-4 py-2 text-center text-gray-500">{c.receiveRate.toFixed(1)}%</td>
                                         </tr>
