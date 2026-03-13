@@ -17,7 +17,6 @@ export default function SupplyStatus() {
     const [orders, setOrders] = useState<OrderStat[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
-    const [centerFilter, setCenterFilter] = useState<'ALL' | 'FC' | 'VF164'>('ALL');
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -40,17 +39,12 @@ export default function SupplyStatus() {
         }
     };
 
-    // Filtered orders based on center
-    const filteredOrders = useMemo(() => {
-        return orders.filter(o => centerFilter === 'ALL' || o.center === centerFilter);
-    }, [orders, centerFilter]);
-
     const aggregatedData = useMemo(() => {
-        if (!filteredOrders.length) return [];
+        if (!orders.length) return [];
 
         const groups: Record<string, any> = {};
 
-        filteredOrders.forEach(o => {
+        orders.forEach(o => {
             let key = '';
             const d = new Date(o.order_date);
             
@@ -87,7 +81,7 @@ export default function SupplyStatus() {
         });
 
         return Object.values(groups).sort((a: any, b: any) => a.key.localeCompare(b.key)); // ASC for chart
-    }, [filteredOrders, viewType]);
+    }, [orders, viewType]);
 
     // Descending for table
     const tableData = useMemo(() => [...aggregatedData].reverse(), [aggregatedData]);
@@ -96,7 +90,7 @@ export default function SupplyStatus() {
     const productPerformance = useMemo(() => {
         const stats: Record<string, any> = {};
         
-        filteredOrders.forEach(o => {
+        orders.forEach(o => {
             if (!stats[o.barcode]) {
                 stats[o.barcode] = {
                     barcode: o.barcode,
@@ -120,7 +114,7 @@ export default function SupplyStatus() {
             }))
             .filter(s => s.barcode.includes(searchTerm))
             .sort((a, b) => a.supplyRate - b.supplyRate); // Worst first
-    }, [filteredOrders, searchTerm]);
+    }, [orders, searchTerm]);
 
     if (loading) return <div className="p-8 text-center text-gray-500">데이터를 불러오는 중...</div>;
 
@@ -143,27 +137,6 @@ export default function SupplyStatus() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-200">
-                        <button
-                            onClick={() => setCenterFilter('ALL')}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${centerFilter === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            전체
-                        </button>
-                        <button
-                            onClick={() => setCenterFilter('FC')}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${centerFilter === 'FC' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            FC 전용
-                        </button>
-                        <button
-                            onClick={() => setCenterFilter('VF164')}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${centerFilter === 'VF164' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            VF164 전용
-                        </button>
-                    </div>
-
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button
                             onClick={() => setViewType('weekly')}
