@@ -1209,7 +1209,7 @@ ${sampleText}
     async uploadCoupangOrders(orders: CoupangOrderRow[], onProgress?: (progress: number) => void) {
         if (orders.length === 0) return;
 
-        // 1. Aggregate input data (sum within the current batch)
+        // 1. Aggregate input data (sum within the current batch to handle duplicates in the file)
         const batchAggregated = orders.reduce((map, order) => {
             const key = `${order.date}_${order.barcode}_${order.center}`;
             const existing = map.get(key);
@@ -1224,47 +1224,19 @@ ${sampleText}
             return map;
         }, new Map<string, CoupangOrderRow>());
 
-        // 2. Fetch all existing records from DB for these dates to perform additive update using parallel pagination
-        const dateRange = Array.from(new Set(orders.map(o => o.date)));
-        const existingData = await this._fetchAllParallel<any>(
-            'coupang_orders',
-            'order_date, barcode, order_qty, confirmed_qty, received_qty, center',
-            'order_date',
-            (q) => q.in('order_date', dateRange)
-        );
-
-        const existingMap = new Map<string, any>();
-        existingData?.forEach(row => {
-            existingMap.set(`${row.order_date}_${row.barcode}_${row.center}`, row);
-        });
-
-        // 3. Merge batch data with existing DB data
-        const finalOrders = Array.from(batchAggregated.values()).map(order => {
-            const key = `${order.date}_${order.barcode}_${order.center}`;
-            const existing = existingMap.get(key);
-            if (existing) {
-                return {
-                    order_date: order.date,
-                    barcode: order.barcode,
-                    center: order.center,
-                    order_qty: order.orderQty + (existing.order_qty || 0),
-                    confirmed_qty: order.confirmedQty + (existing.confirmed_qty || 0),
-                    received_qty: (order.receivedQty || 0) + (existing.received_qty || 0),
-                    unit_cost: order.unitCost,
-                    created_at: new Date().toISOString()
-                };
-            }
-            return {
-                order_date: order.date,
-                barcode: order.barcode,
-                center: order.center,
-                order_qty: order.orderQty,
-                confirmed_qty: order.confirmedQty,
-                received_qty: order.receivedQty || 0,
-                unit_cost: order.unitCost,
-                created_at: new Date().toISOString()
-            };
-        });
+        // 2. Prepare payload for upsert
+        // We no longer fetch existing data from the DB to "add" it. 
+        // Upsert will naturally replace rows with the same (order_date, barcode, center).
+        const finalOrders = Array.from(batchAggregated.values()).map(order => ({
+            order_date: order.date,
+            barcode: order.barcode,
+            center: order.center,
+            order_qty: order.orderQty,
+            confirmed_qty: order.confirmedQty,
+            received_qty: order.receivedQty || 0,
+            unit_cost: order.unitCost,
+            created_at: new Date().toISOString()
+        }));
 
         const CHUNK_SIZE = 500;
         const total = finalOrders.length;

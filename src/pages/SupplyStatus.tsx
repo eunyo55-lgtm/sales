@@ -1,25 +1,28 @@
 import { useState, useEffect, useMemo } from 'react';
-import { api } from '../lib/api';
-import { TrendingUp, Package, CheckCircle, Truck, Calendar, BarChart2, Search } from 'lucide-react';
+import React from 'react';
+import { api, type ProductStats } from '../lib/api';
+import { TrendingUp, Package, CheckCircle, Truck, Calendar, BarChart2, Search, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-interface OrderStat {
-    order_date: string;
-    barcode: string;
-    order_qty: number;
-    confirmed_qty: number;
-    received_qty: number;
-    unit_cost: number;
-    center: string;
+function SortIcon({ currentSort, targetKey }: { currentSort: { key: string, direction: 'asc' | 'desc' }, targetKey: string }) {
+    if (currentSort.key !== targetKey) return <ChevronUp size={12} className="text-gray-300 opacity-50" />;
+    return currentSort.direction === 'asc' 
+        ? <ChevronUp size={12} className="text-blue-500" /> 
+        : <ChevronDown size={12} className="text-blue-500" />;
 }
 
 export default function SupplyStatus() {
-    const [orders, setOrders] = useState<OrderStat[]>([]);
+    const [orders, setOrders] = useState<any[]>([]);
+    const [products, setProducts] = useState<ProductStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
     const [searchTerm, setSearchTerm] = useState('');
-
     const [visibleCount, setVisibleCount] = useState(10);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    
+    // Sorting States
+    const [summarySort, setSummarySort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'key', direction: 'desc' });
+    const [productSort, setProductSort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'supplyRate', direction: 'asc' });
 
     useEffect(() => {
         loadData();
@@ -32,14 +35,28 @@ export default function SupplyStatus() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const data = await api.getCoupangOrderStats();
-            setOrders(data);
+            const [orderData, productData] = await Promise.all([
+                api.getCoupangOrderStats(),
+                api.getProductStats()
+            ]);
+            setOrders(orderData || []);
+            setProducts(productData || []);
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
         }
     };
+
+    const barcodeMap = useMemo(() => {
+        const map = new Map<string, { name: string, option?: string }>();
+        products.forEach(p => {
+            if (p.barcode) {
+                map.set(p.barcode.trim(), { name: p.name, option: p.option });
+            }
+        });
+        return map;
+    }, [products]);
 
     const aggregatedData = useMemo(() => {
         if (!orders.length) return [];
@@ -74,28 +91,78 @@ export default function SupplyStatus() {
                 };
             }
 
-            groups[key].orderQty += o.order_qty;
-            groups[key].confirmedQty += o.confirmed_qty;
-            groups[key].receivedQty += o.received_qty;
-            groups[key].orderAmount += (o.order_qty * o.unit_cost);
-            groups[key].confirmedAmount += (o.confirmed_qty * o.unit_cost);
-            groups[key].receivedAmount += (o.received_qty * o.unit_cost);
+            groups[key].orderQty += (o.order_qty || 0);
+            groups[key].confirmedQty += (o.confirmed_qty || 0);
+            groups[key].receivedQty += (o.received_qty || 0);
+            groups[key].orderAmount += ((o.order_qty || 0) * (o.unit_cost || 0));
+            groups[key].confirmedAmount += ((o.confirmed_qty || 0) * (o.unit_cost || 0));
+            groups[key].receivedAmount += ((o.received_qty || 0) * (o.unit_cost || 0));
         });
 
-        return Object.values(groups).sort((a: any, b: any) => a.key.localeCompare(b.key)); // ASC for chart
-    }, [orders, viewType]);
+        let result = Object.values(groups).map((g: any) => ({
+            ...g,
+            supplyRate: g.orderQty > 0 ? (g.confirmedQty / g.orderQty) * 100 : 0,
+            receiveRate: g.confirmedQty > 0 ? (g.receivedQty / g.confirmedQty) * 100 : 0
+        }));
 
-    // Descending for table
-    const tableData = useMemo(() => [...aggregatedData].reverse(), [aggregatedData]);
+        // Apply sorting
+        result.sort((a: any, b: any) => {
+            const valA = a[summarySort.key];
+            const valB = b[summarySort.key];
+            if (typeof valA === 'string') {
+                return summarySort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return summarySort.direction === 'asc' ? valA - valB : valB - valA;
+        });
 
-    // Product performance analysis
-    const productPerformance = useMemo(() => {
-        const stats: Record<string, any> = {};
+        return result;
+    }, [orders, viewType, summarySort]);
+
+    // Trend chart should use time-sequential data
+    const sortedAggregatedData = useMemo(() => {
+        return [...aggregatedData].sort((a, b) => a.key.localeCompare(b.key));
+    }, [aggregatedData]);
+
+    const tableData = useMemo(() => aggregatedData, [aggregatedData]);
+
+    // Product performance analysis grouped by NAME
+    const groupedPerformance = useMemo(() => {
+        const nameGroups: Record<string, any> = {};
         
         orders.forEach(o => {
-            if (!stats[o.barcode]) {
-                stats[o.barcode] = {
+            const meta = barcodeMap.get((o.barcode || '').trim());
+            const name = meta?.name || o.barcode || 'Unknown';
+            const option = meta?.option || '-';
+
+            if (!nameGroups[name]) {
+                nameGroups[name] = {
+                    name,
+                    orderQty: 0,
+                    confirmedQty: 0,
+                    receivedQty: 0,
+                    orderAmount: 0,
+                    confirmedAmount: 0,
+                    receivedAmount: 0,
+                    children: {} as Record<string, any>
+                };
+            }
+
+            const g = nameGroups[name];
+            const amount = (o.order_qty || 0) * (o.unit_cost || 0);
+            const confAmount = (o.confirmed_qty || 0) * (o.unit_cost || 0);
+            const recvAmount = (o.received_qty || 0) * (o.unit_cost || 0);
+
+            g.orderQty += (o.order_qty || 0);
+            g.confirmedQty += (o.confirmed_qty || 0);
+            g.receivedQty += (o.received_qty || 0);
+            g.orderAmount += amount;
+            g.confirmedAmount += confAmount;
+            g.receivedAmount += recvAmount;
+
+            if (!g.children[o.barcode]) {
+                g.children[o.barcode] = {
                     barcode: o.barcode,
+                    option,
                     orderQty: 0,
                     confirmedQty: 0,
                     receivedQty: 0,
@@ -104,25 +171,70 @@ export default function SupplyStatus() {
                     receivedAmount: 0
                 };
             }
-            stats[o.barcode].orderQty += o.order_qty;
-            stats[o.barcode].confirmedQty += o.confirmed_qty;
-            stats[o.barcode].receivedQty += o.received_qty;
-            stats[o.barcode].orderAmount += (o.order_qty * o.unit_cost);
-            stats[o.barcode].confirmedAmount += (o.confirmed_qty * o.unit_cost);
-            stats[o.barcode].receivedAmount += (o.received_qty * o.unit_cost);
+
+            const c = g.children[o.barcode];
+            c.orderQty += (o.order_qty || 0);
+            c.confirmedQty += (o.confirmed_qty || 0);
+            c.receivedQty += (o.received_qty || 0);
+            c.orderAmount += amount;
+            c.confirmedAmount += confAmount;
+            c.receivedAmount += recvAmount;
         });
 
-        return Object.values(stats)
-            .map((s: any) => ({
-                ...s,
-                supplyRate: s.orderQty > 0 ? (s.confirmedQty / s.orderQty) * 100 : 0,
-                receiveRate: s.confirmedQty > 0 ? (s.receivedQty / s.confirmedQty) * 100 : 0
+        let result = Object.values(nameGroups)
+            .map((g: any) => ({
+                ...g,
+                supplyRate: g.orderQty > 0 ? (g.confirmedQty / g.orderQty) * 100 : 0,
+                receiveRate: g.confirmedQty > 0 ? (g.receivedQty / g.confirmedQty) * 100 : 0,
+                children: Object.values(g.children).map((c: any) => ({
+                    ...c,
+                    supplyRate: c.orderQty > 0 ? (c.confirmedQty / c.orderQty) * 100 : 0,
+                    receiveRate: c.confirmedQty > 0 ? (c.receivedQty / c.confirmedQty) * 100 : 0
+                }))
             }))
-            .filter(s => s.barcode.includes(searchTerm))
-            .sort((a, b) => a.supplyRate - b.supplyRate); // Worst first
-    }, [orders, searchTerm]);
+            .filter(g => 
+                g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                g.children.some((c: any) => (c.barcode || '').includes(searchTerm))
+            );
 
-    const visibleProducts = useMemo(() => productPerformance.slice(0, visibleCount), [productPerformance, visibleCount]);
+        // Apply sorting
+        result.sort((a: any, b: any) => {
+            const valA = a[productSort.key];
+            const valB = b[productSort.key];
+            if (typeof valA === 'string') {
+                return productSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return productSort.direction === 'asc' ? valA - valB : valB - valA;
+        });
+
+        return result;
+    }, [orders, barcodeMap, searchTerm, productSort]);
+
+    const visibleGroups = useMemo(() => groupedPerformance.slice(0, visibleCount), [groupedPerformance, visibleCount]);
+
+    const toggleGroup = (name: string) => {
+        const newExpanded = new Set(expandedGroups);
+        if (newExpanded.has(name)) {
+            newExpanded.delete(name);
+        } else {
+            newExpanded.add(name);
+        }
+        setExpandedGroups(newExpanded);
+    };
+
+    const handleSortSummary = (key: string) => {
+        setSummarySort(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const handleSortProduct = (key: string) => {
+        setProductSort(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
 
     if (loading) return <div className="p-8 text-center text-gray-500">데이터를 불러오는 중...</div>;
 
@@ -186,7 +298,7 @@ export default function SupplyStatus() {
                 </div>
                 <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={aggregatedData}>
+                        <LineChart data={sortedAggregatedData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                             <XAxis dataKey="key" tick={{fontSize: 10}} tickMargin={10} />
                             <YAxis tick={{fontSize: 10}} width={40} />
@@ -215,15 +327,60 @@ export default function SupplyStatus() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50/50 border-b border-gray-100">
                             <tr>
-                                <th className="px-4 py-3 font-semibold text-gray-600">기간</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">발주수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">공급수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">입고수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">발주액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">확정액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">입고액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">공급률</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">입고율</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('key')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>기간</span>
+                                        <SortIcon currentSort={summarySort} targetKey="key" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('orderQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>발주수량</span>
+                                        <SortIcon currentSort={summarySort} targetKey="orderQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('confirmedQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>공급수량</span>
+                                        <SortIcon currentSort={summarySort} targetKey="confirmedQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receivedQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>입고수량</span>
+                                        <SortIcon currentSort={summarySort} targetKey="receivedQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('orderAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>발주액</span>
+                                        <SortIcon currentSort={summarySort} targetKey="orderAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('confirmedAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>확정액</span>
+                                        <SortIcon currentSort={summarySort} targetKey="confirmedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receivedAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>입고액</span>
+                                        <SortIcon currentSort={summarySort} targetKey="receivedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('supplyRate')}>
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span>공급률</span>
+                                        <SortIcon currentSort={summarySort} targetKey="supplyRate" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receiveRate')}>
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span>입고율</span>
+                                        <SortIcon currentSort={summarySort} targetKey="receiveRate" />
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -237,13 +394,13 @@ export default function SupplyStatus() {
                                     <td className="px-4 py-3 text-right">{item.confirmedAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-right">{item.receivedAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.orderQty > 0 && item.confirmedQty/item.orderQty >= 0.9 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
-                                            {item.orderQty > 0 ? ((item.confirmedQty / item.orderQty) * 100).toFixed(1) : 0}%
+                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.supplyRate >= 90 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                            {item.supplyRate.toFixed(1)}%
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.confirmedQty > 0 && item.receivedQty/item.confirmedQty >= 0.95 ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
-                                            {item.confirmedQty > 0 ? ((item.receivedQty / item.confirmedQty) * 100).toFixed(1) : 0}%
+                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.receiveRate >= 95 ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
+                                            {item.receiveRate.toFixed(1)}%
                                         </span>
                                     </td>
                                 </tr>
@@ -253,19 +410,19 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
-            {/* Product Performance Section (Moved below chart) */}
+            {/* Product Performance Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <h3 className="font-bold text-gray-900 flex items-center">
                             <TrendingUp size={18} className="mr-2 text-rose-500" />
-                            공급 부진 품목 분석
+                            공급 부진 품목 분석 (제품별 그룹)
                         </h3>
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
                                 type="text"
-                                placeholder="바코드 검색..."
+                                placeholder="제품명, 바코드 검색..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
@@ -274,58 +431,131 @@ export default function SupplyStatus() {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                    <table className="w-full text-left text-sm border-separate border-spacing-0">
+                        <thead className="bg-gray-50/50 border-b border-gray-100 sticky top-0 z-10">
                             <tr>
-                                <th className="px-4 py-3 font-semibold text-gray-600">바코드</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">발주수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">공급수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600">입고수량</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">발주액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">확정액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">입고액</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">공급률</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">입고율</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 w-10"></th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 min-w-[200px] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('name')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>제품명 / 바코드</span>
+                                        <SortIcon currentSort={productSort} targetKey="name" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('orderQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>발주수량</span>
+                                        <SortIcon currentSort={productSort} targetKey="orderQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('confirmedQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>공급수량</span>
+                                        <SortIcon currentSort={productSort} targetKey="confirmedQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receivedQty')}>
+                                    <div className="flex items-center space-x-1">
+                                        <span>입고수량</span>
+                                        <SortIcon currentSort={productSort} targetKey="receivedQty" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('orderAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>발주액</span>
+                                        <SortIcon currentSort={productSort} targetKey="orderAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('confirmedAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>확정액</span>
+                                        <SortIcon currentSort={productSort} targetKey="confirmedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receivedAmount')}>
+                                    <div className="flex items-center justify-end space-x-1">
+                                        <span>입고액</span>
+                                        <SortIcon currentSort={productSort} targetKey="receivedAmount" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('supplyRate')}>
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span>공급률</span>
+                                        <SortIcon currentSort={productSort} targetKey="supplyRate" />
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receiveRate')}>
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span>입고율</span>
+                                        <SortIcon currentSort={productSort} targetKey="receiveRate" />
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {visibleProducts.map((p) => (
-                                <tr key={p.barcode} className="hover:bg-red-50/30 transition-colors">
-                                    <td className="px-4 py-3 font-medium text-gray-900">{p.barcode}</td>
-                                    <td className="px-4 py-3">{p.orderQty.toLocaleString()}</td>
-                                    <td className="px-4 py-3">{p.confirmedQty.toLocaleString()}</td>
-                                    <td className="px-4 py-3">{p.receivedQty.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-right">{p.orderAmount.toLocaleString()}원</td>
-                                    <td className="px-4 py-3 text-right">{p.confirmedAmount.toLocaleString()}원</td>
-                                    <td className="px-4 py-3 text-right">{p.receivedAmount.toLocaleString()}원</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${p.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                                            {p.supplyRate.toFixed(1)}%
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs font-bold">
-                                            {p.receiveRate.toFixed(1)}%
-                                        </span>
-                                    </td>
-                                </tr>
+                            {visibleGroups.map((g) => (
+                                <React.Fragment key={g.name}>
+                                    <tr 
+                                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${expandedGroups.has(g.name) ? 'bg-blue-50/30 font-bold' : ''}`}
+                                        onClick={() => toggleGroup(g.name)}
+                                    >
+                                        <td className="px-4 py-3 text-center">
+                                            {expandedGroups.has(g.name) ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                        </td>
+                                        <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
+                                        <td className="px-4 py-3">{g.orderQty.toLocaleString()}</td>
+                                        <td className="px-4 py-3">{g.confirmedQty.toLocaleString()}</td>
+                                        <td className="px-4 py-3">{g.receivedQty.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right">{g.orderAmount.toLocaleString()}원</td>
+                                        <td className="px-4 py-3 text-right">{g.confirmedAmount.toLocaleString()}원</td>
+                                        <td className="px-4 py-3 text-right">{g.receivedAmount.toLocaleString()}원</td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded-md text-xs font-bold ${g.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                                                {g.supplyRate.toFixed(1)}%
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs font-bold">
+                                                {g.receiveRate.toFixed(1)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {expandedGroups.has(g.name) && g.children.map((c: any) => (
+                                        <tr key={c.barcode} className="bg-gray-50/50 text-[11px] border-b border-gray-100/50">
+                                            <td className="px-4 py-2"></td>
+                                            <td className="px-4 py-2 pl-8">
+                                                <div className="flex flex-col">
+                                                    <span className="text-gray-400 font-mono">{c.barcode}</span>
+                                                    <span className="text-gray-600 font-medium">{c.option}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2 text-gray-500">{c.orderQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-gray-500">{c.confirmedQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-gray-500">{c.receivedQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-right text-gray-400">{c.orderAmount.toLocaleString()}원</td>
+                                            <td className="px-4 py-2 text-right text-gray-400">{c.confirmedAmount.toLocaleString()}원</td>
+                                            <td className="px-4 py-2 text-right text-gray-400">{c.receivedAmount.toLocaleString()}원</td>
+                                            <td className="px-4 py-2 text-center text-gray-500">{c.supplyRate.toFixed(1)}%</td>
+                                            <td className="px-4 py-2 text-center text-gray-500">{c.receiveRate.toFixed(1)}%</td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
                             ))}
-                            {productPerformance.length === 0 && (
+                            {groupedPerformance.length === 0 && (
                                 <tr>
-                                    <td colSpan={9} className="px-4 py-10 text-center text-gray-400">데이터가 없습니다.</td>
+                                    <td colSpan={10} className="px-4 py-10 text-center text-gray-400">데이터가 없습니다.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
 
-                {visibleCount < productPerformance.length && (
+                {visibleCount < groupedPerformance.length && (
                     <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
                         <button 
                             onClick={() => setVisibleCount(prev => prev + 10)}
                             className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
                         >
-                            품목 더보기 ({visibleCount} / {productPerformance.length})
+                            품목 더보기 ({visibleCount} / {groupedPerformance.length})
                         </button>
                     </div>
                 )}
