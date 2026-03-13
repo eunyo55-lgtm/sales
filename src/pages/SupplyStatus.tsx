@@ -19,6 +19,8 @@ export default function SupplyStatus() {
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [visibleCount, setVisibleCount] = useState(10);
+
     useEffect(() => {
         loadData();
 
@@ -97,13 +99,17 @@ export default function SupplyStatus() {
                     orderQty: 0,
                     confirmedQty: 0,
                     receivedQty: 0,
-                    orderAmount: 0
+                    orderAmount: 0,
+                    confirmedAmount: 0,
+                    receivedAmount: 0
                 };
             }
             stats[o.barcode].orderQty += o.order_qty;
             stats[o.barcode].confirmedQty += o.confirmed_qty;
             stats[o.barcode].receivedQty += o.received_qty;
             stats[o.barcode].orderAmount += (o.order_qty * o.unit_cost);
+            stats[o.barcode].confirmedAmount += (o.confirmed_qty * o.unit_cost);
+            stats[o.barcode].receivedAmount += (o.received_qty * o.unit_cost);
         });
 
         return Object.values(stats)
@@ -115,6 +121,8 @@ export default function SupplyStatus() {
             .filter(s => s.barcode.includes(searchTerm))
             .sort((a, b) => a.supplyRate - b.supplyRate); // Worst first
     }, [orders, searchTerm]);
+
+    const visibleProducts = useMemo(() => productPerformance.slice(0, visibleCount), [productPerformance, visibleCount]);
 
     if (loading) return <div className="p-8 text-center text-gray-500">데이터를 불러오는 중...</div>;
 
@@ -195,76 +203,65 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left: Summary Table */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                        <h3 className="font-bold text-gray-900 flex items-center">
-                            <Calendar size={18} className="mr-2 text-gray-500" />
-                            기간별 요약 데이터
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-white border-b border-gray-100">
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">기간</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">발주액</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">공급률</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">입고율</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {tableData.map((item) => (
-                                    <tr key={item.key} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <span className="font-medium text-gray-900">{item.key}</span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-semibold text-gray-900">{item.orderAmount.toLocaleString()}원</div>
-                                            <div className="text-[10px] text-gray-400">수량: {item.orderQty.toLocaleString()}개</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col items-center">
-                                                <span className={`text-sm font-bold ${item.confirmedQty / item.orderQty >= 0.9 ? 'text-emerald-600' : 'text-orange-500'}`}>
-                                                    {((item.confirmedQty / item.orderQty) * 100).toFixed(1)}%
-                                                </span>
-                                                <div className="w-16 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                                                    <div 
-                                                        className={`h-full ${item.confirmedQty / item.orderQty >= 0.9 ? 'bg-emerald-500' : 'bg-orange-500'}`} 
-                                                        style={{ width: `${Math.min(100, (item.confirmedQty / item.orderQty) * 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col items-center">
-                                                <span className={`text-sm font-bold ${item.receivedQty / (item.confirmedQty || 1) >= 0.95 ? 'text-blue-600' : 'text-gray-500'}`}>
-                                                    {((item.receivedQty / (item.confirmedQty || 1)) * 100).toFixed(1)}%
-                                                </span>
-                                                <div className="w-16 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-blue-500" 
-                                                        style={{ width: `${Math.min(100, (item.receivedQty / (item.confirmedQty || 1)) * 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+            {/* Summary Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 flex items-center">
+                        <Calendar size={18} className="mr-2 text-gray-500" />
+                        기간별 요약 데이터
+                    </h3>
                 </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-4 py-3 font-semibold text-gray-600">기간</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">발주수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">공급수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">입고수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">발주액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">확정액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">입고액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">공급률</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">입고율</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {tableData.map((item) => (
+                                <tr key={item.key} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{item.key}</td>
+                                    <td className="px-4 py-3">{item.orderQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3">{item.confirmedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3">{item.receivedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right">{item.orderAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right">{item.confirmedAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right">{item.receivedAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.orderQty > 0 && item.confirmedQty/item.orderQty >= 0.9 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                            {item.orderQty > 0 ? ((item.confirmedQty / item.orderQty) * 100).toFixed(1) : 0}%
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.confirmedQty > 0 && item.receivedQty/item.confirmedQty >= 0.95 ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
+                                            {item.confirmedQty > 0 ? ((item.receivedQty / item.confirmedQty) * 100).toFixed(1) : 0}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                {/* Right: Item Performance Analysis */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                        <h3 className="font-bold text-gray-900 flex items-center mb-3">
+            {/* Product Performance Section (Moved below chart) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <h3 className="font-bold text-gray-900 flex items-center">
                             <TrendingUp size={18} className="mr-2 text-rose-500" />
-                            공급 부진 품목 (Top 50)
+                            공급 부진 품목 분석
                         </h3>
-                        <div className="relative">
+                        <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
                                 type="text"
@@ -275,35 +272,63 @@ export default function SupplyStatus() {
                             />
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto max-h-[500px]">
-                        <div className="divide-y divide-gray-50">
-                            {productPerformance.slice(0, 50).map((p: any) => (
-                                <div key={p.barcode} className="px-6 py-4 hover:bg-red-50 transition-colors">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="text-xs font-bold text-gray-800 break-all">{p.barcode}</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${p.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                                            공급 {p.supplyRate.toFixed(1)}%
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50/50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-4 py-3 font-semibold text-gray-600">바코드</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">발주수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">공급수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600">입고수량</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">발주액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">확정액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right">입고액</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">공급률</th>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center">입고율</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {visibleProducts.map((p) => (
+                                <tr key={p.barcode} className="hover:bg-red-50/30 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-gray-900">{p.barcode}</td>
+                                    <td className="px-4 py-3">{p.orderQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3">{p.confirmedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3">{p.receivedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right">{p.orderAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right">{p.confirmedAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right">{p.receivedAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${p.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                                            {p.supplyRate.toFixed(1)}%
                                         </span>
-                                    </div>
-                                    <div className="flex items-center text-[10px] text-gray-500 space-x-3">
-                                        <span>발주: {p.orderQty}</span>
-                                        <span>확정: {p.confirmedQty}</span>
-                                        <span>미공급: {Math.max(0, p.orderQty - p.confirmedQty)}</span>
-                                    </div>
-                                    <div className="mt-2 w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full ${p.supplyRate < 50 ? 'bg-red-500' : 'bg-orange-500'}`}
-                                            style={{ width: `${p.supplyRate}%` }}
-                                        />
-                                    </div>
-                                </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs font-bold">
+                                            {p.receiveRate.toFixed(1)}%
+                                        </span>
+                                    </td>
+                                </tr>
                             ))}
                             {productPerformance.length === 0 && (
-                                <div className="p-10 text-center text-xs text-gray-400">데이터가 없습니다.</div>
+                                <tr>
+                                    <td colSpan={9} className="px-4 py-10 text-center text-gray-400">데이터가 없습니다.</td>
+                                </tr>
                             )}
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
+
+                {visibleCount < productPerformance.length && (
+                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                        <button 
+                            onClick={() => setVisibleCount(prev => prev + 10)}
+                            className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                        >
+                            품목 더보기 ({visibleCount} / {productPerformance.length})
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
