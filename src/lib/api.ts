@@ -1211,7 +1211,7 @@ ${sampleText}
 
         // 1. Aggregate input data (sum within the current batch)
         const batchAggregated = orders.reduce((map, order) => {
-            const key = `${order.date}_${order.barcode}`;
+            const key = `${order.date}_${order.barcode}_${order.center}`;
             const existing = map.get(key);
             if (existing) {
                 existing.orderQty += order.orderQty;
@@ -1228,24 +1228,25 @@ ${sampleText}
         const dateRange = Array.from(new Set(orders.map(o => o.date)));
         const existingData = await this._fetchAllParallel<any>(
             'coupang_orders',
-            'order_date, barcode, order_qty, confirmed_qty, received_qty',
+            'order_date, barcode, order_qty, confirmed_qty, received_qty, center',
             'order_date',
             (q) => q.in('order_date', dateRange)
         );
 
         const existingMap = new Map<string, any>();
         existingData?.forEach(row => {
-            existingMap.set(`${row.order_date}_${row.barcode}`, row);
+            existingMap.set(`${row.order_date}_${row.barcode}_${row.center}`, row);
         });
 
         // 3. Merge batch data with existing DB data
         const finalOrders = Array.from(batchAggregated.values()).map(order => {
-            const key = `${order.date}_${order.barcode}`;
+            const key = `${order.date}_${order.barcode}_${order.center}`;
             const existing = existingMap.get(key);
             if (existing) {
                 return {
                     order_date: order.date,
                     barcode: order.barcode,
+                    center: order.center,
                     order_qty: order.orderQty + (existing.order_qty || 0),
                     confirmed_qty: order.confirmedQty + (existing.confirmed_qty || 0),
                     received_qty: (order.receivedQty || 0) + (existing.received_qty || 0),
@@ -1256,6 +1257,7 @@ ${sampleText}
             return {
                 order_date: order.date,
                 barcode: order.barcode,
+                center: order.center,
                 order_qty: order.orderQty,
                 confirmed_qty: order.confirmedQty,
                 received_qty: order.receivedQty || 0,
@@ -1271,7 +1273,7 @@ ${sampleText}
             const chunk = finalOrders.slice(i, i + CHUNK_SIZE);
             const { error } = await supabase
                 .from('coupang_orders')
-                .upsert(chunk, { onConflict: 'order_date, barcode' });
+                .upsert(chunk, { onConflict: 'order_date, barcode, center' });
             
             if (error) throw error;
             processed += chunk.length;
@@ -1289,7 +1291,7 @@ ${sampleText}
         while (!isDone) {
             const { data, error } = await supabase
                 .from('coupang_orders')
-                .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost')
+                .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
                 .order('order_date', { ascending: false })
                 .order('id', { ascending: false }) // Stable sort tie-breaker
                 .range(i, i + BATCH_SIZE - 1);

@@ -41,6 +41,7 @@ export interface CoupangOrderRow {
     confirmedQty: number; // K: 확정수량
     receivedQty: number;  // L: 입고수량
     unitCost: number;     // R: 쿠팡매입가
+    center: string;       // [NEW] Center info (FC or VF164)
 }
 
 // --- Parsers ---
@@ -333,6 +334,14 @@ export const parseCoupangOrder = async (file: File): Promise<CoupangOrderRow[]> 
                     return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
                 };
                 const safe = (v: any) => isNaN(Number(String(v).replace(/,/g, ''))) ? 0 : Math.round(Number(String(v).replace(/,/g, '')));
+
+                // Try to find center from keywords in some columns (A: 발주번호, B: 센터명)
+                const detectCenter = (row: any) => {
+                    const cName = String(row['B'] || '').toUpperCase();
+                    if (cName.includes('VF') || cName.includes('VENDOR')) return 'VF164';
+                    return 'FC';
+                };
+
                 const orders: CoupangOrderRow[] = (jsonData as any[]).slice(1).map((r: any) => ({
                     barcode: r['F'] ? String(r['F']).replace(/\s+/g, '') : '',
                     date: parseDate(r['H']),
@@ -340,6 +349,7 @@ export const parseCoupangOrder = async (file: File): Promise<CoupangOrderRow[]> 
                     confirmedQty: safe(r['K']),
                     receivedQty: safe(r['L']),
                     unitCost: safe(r['R']),
+                    center: detectCenter(r)
                 })).filter(o => o.barcode && o.date);
                 resolve(orders);
             } catch (err) { reject(err); }
