@@ -595,7 +595,7 @@ export default function InventoryStatus() {
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
                 <TrendingUp size={20} className="text-blue-500 mr-2" />
-                <span className="text-blue-600 mr-2">{selectedGroupForChart}</span> 누적 판매 추이 (올해 1월 1일 ~)
+                <span className="text-blue-600 mr-2">{selectedGroupForChart}</span> 일별 재고 추이 (올해 1월 1일 ~)
               </h3>
               <button
                 onClick={() => setChartModalOpen(false)}
@@ -611,7 +611,7 @@ export default function InventoryStatus() {
 
                 let latestDateStr = '';
                 group.children.forEach(c => {
-                  Object.keys(c.dailySales).forEach(d => {
+                  Object.keys(c.dailyStock).forEach(d => {
                     if (d > latestDateStr) latestDateStr = d;
                   });
                 });
@@ -626,11 +626,11 @@ export default function InventoryStatus() {
                   const dStr = d.toISOString().split('T')[0];
                   let dailyTotal = 0;
                   group.children.forEach(c => {
-                    dailyTotal += c.dailySales[dStr] || 0;
+                    dailyTotal += c.dailyStock[dStr] || 0;
                   });
                   chartData.push({
                     date: dStr.substring(5).replace('-', '/'),
-                    sales: dailyTotal
+                    stock: dailyTotal
                   });
                 }
 
@@ -651,13 +651,13 @@ export default function InventoryStatus() {
                       />
                       <Tooltip
                         contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        formatter={(value: any) => [`${value}건`, '판매량']}
+                        formatter={(value: any) => [`${value.toLocaleString()}개`, '재고량']}
                         labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
                         itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
                       />
                       <Line
                         type="monotone"
-                        dataKey="sales"
+                        dataKey="stock"
                         stroke="#10b981"
                         strokeWidth={3}
                         dot={false}
