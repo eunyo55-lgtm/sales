@@ -5,6 +5,7 @@ import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, Copy, X, Trend
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LineChart, Line
 } from 'recharts';
+import { isRedDay } from '../lib/dateUtils';
 
 
 interface InventoryGroup {
@@ -18,6 +19,7 @@ interface InventoryGroup {
   sales7Days: number;
   prevSales7Days: number; // sales 8-14 days ago
   totalSales: number; // [NEW] Cumulative sales 1/1 ~ recently
+  dailyStock: Record<string, number>; // [NEW] Daily stock
   trend: 'up' | 'down' | 'flat';
   minDaysOfInventory: number; // Worst case in group
   children: (ProductStats & {
@@ -105,6 +107,7 @@ export default function InventoryStatus() {
           sales7Days: 0,
           prevSales7Days: 0,
           totalSales: 0,
+          dailyStock: {},
           trend: 'flat',
           minDaysOfInventory: 9999,
           children: []
@@ -120,6 +123,10 @@ export default function InventoryStatus() {
       g.sales7Days += p.sales7Days;
       g.prevSales7Days += prevSales7Days;
       g.totalSales += p.totalSales;
+
+      Object.entries(p.dailyStock || {}).forEach(([date, stock]) => {
+        g.dailyStock[date] = (g.dailyStock[date] || 0) + stock;
+      });
 
       if (p.daysOfInventory < g.minDaysOfInventory) g.minDaysOfInventory = p.daysOfInventory;
 
@@ -137,6 +144,12 @@ export default function InventoryStatus() {
     return Array.from(groups.values());
   }, [products]);
 
+  const uniqueDates = useMemo(() => {
+    const dates = new Set<string>();
+    products.forEach(p => Object.keys(p.dailyStock || {}).forEach(d => dates.add(d)));
+    return Array.from(dates).sort();
+  }, [products]);
+
   // 2. Filter & Sort
   const filteredGroups = useMemo(() => {
     let result = groupedData.filter(g => {
@@ -149,9 +162,9 @@ export default function InventoryStatus() {
     if (sortConfig) {
       result.sort((a, b) => {
         // @ts-ignore
-        const aVal = a[sortConfig.key];
+        const aVal = uniqueDates.includes(sortConfig.key) ? (a.dailyStock[sortConfig.key] || 0) : a[sortConfig.key];
         // @ts-ignore
-        const bVal = b[sortConfig.key];
+        const bVal = uniqueDates.includes(sortConfig.key) ? (b.dailyStock[sortConfig.key] || 0) : b[sortConfig.key];
 
         if (aVal === undefined || bVal === undefined) return 0;
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -181,6 +194,12 @@ export default function InventoryStatus() {
       direction = 'asc';
     }
     setSortConfig({ key, direction });
+  };
+
+  const formatDateHeader = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    return dateStr;
   };
 
   // Toast State
@@ -247,6 +266,7 @@ export default function InventoryStatus() {
       vfStock: 0,
       sales7Days: 0,
       totalSales: 0,
+      dailyStock: {} as Record<string, number>,
     };
     filteredGroups.forEach(g => {
       stats.hqStock += g.hqStock;
@@ -255,6 +275,10 @@ export default function InventoryStatus() {
       stats.vfStock += (g.vfStock || 0);
       stats.sales7Days += g.sales7Days;
       stats.totalSales += g.totalSales;
+
+      Object.entries(g.dailyStock).forEach(([date, qty]) => {
+        stats.dailyStock[date] = (stats.dailyStock[date] || 0) + qty;
+      });
     });
     return stats;
   }, [filteredGroups]);
@@ -407,6 +431,11 @@ export default function InventoryStatus() {
                     <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('minDaysOfInventory', '소진 예상'); }} />
                   </div>
                 </th>
+                {uniqueDates.map(date => (
+                  <th key={date} className={`px-2 py-3 hover:bg-gray-100 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
+                    {formatDateHeader(date)}
+                  </th>
+                ))}
               </tr>
               <tr className="bg-gray-100 font-bold border-b border-gray-200">
                 <th className={`px-2 py-2 sticky z-20 bg-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></th>
@@ -422,6 +451,11 @@ export default function InventoryStatus() {
                 <th className="px-4 py-2 bg-gray-100"></th>
                 <th className="px-4 py-2 text-right bg-blue-50/50 text-blue-600">{totalStats.totalSales.toLocaleString()}</th>
                 <th className="px-4 py-2 bg-gray-100"></th>
+                {uniqueDates.map(date => (
+                  <th key={date} className="px-2 py-2 text-center text-xs bg-gray-100">
+                    {totalStats.dailyStock[date] ? totalStats.dailyStock[date].toLocaleString() : '-'}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -486,6 +520,11 @@ export default function InventoryStatus() {
                       <td className="px-4 py-2 text-right whitespace-nowrap">
                         {BurnRateBadge}
                       </td>
+                      {uniqueDates.map(date => (
+                        <td key={date} className={`px-2 py-2 text-center text-xs min-w-[50px] ${g.dailyStock[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
+                          {g.dailyStock[date] ? g.dailyStock[date].toLocaleString() : '-'}
+                        </td>
+                      ))}
                     </tr>
 
                     {/* Children Rows */}
@@ -521,6 +560,11 @@ export default function InventoryStatus() {
                           <td className="px-4 py-1.5 text-right font-medium text-blue-500 whitespace-nowrap">{child.totalSales.toLocaleString()}</td>
 
                           <td className="px-4 py-1.5 text-right text-red-400 whitespace-nowrap">{child.daysOfInventory > 365 ? '1년+' : `${child.daysOfInventory.toFixed(1)}일`}</td>
+                          {uniqueDates.map(date => (
+                            <td key={date} className={`px-2 py-1.5 text-center min-w-[50px] ${child.dailyStock && child.dailyStock[date] ? 'text-gray-700' : 'text-gray-200'}`}>
+                              {child.dailyStock && child.dailyStock[date] ? child.dailyStock[date].toLocaleString() : '-'}
+                            </td>
+                          ))}
                         </tr>
                       );
                     })}
@@ -528,7 +572,7 @@ export default function InventoryStatus() {
                 );
               })}
               {filteredGroups.length === 0 && (
-                <tr><td colSpan={9} className="px-6 py-10 text-center text-gray-400 bg-white">
+                <tr><td colSpan={10 + uniqueDates.length} className="px-6 py-10 text-center text-gray-400 bg-white">
                   데이터가 없습니다.
                 </td></tr>
               )}
