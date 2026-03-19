@@ -17,6 +17,7 @@ interface InventoryGroup {
   sales14Days: number;
   sales7Days: number;
   prevSales7Days: number; // sales 8-14 days ago
+  totalSales: number; // [NEW] Cumulative sales 1/1 ~ recently
   trend: 'up' | 'down' | 'flat';
   minDaysOfInventory: number; // Worst case in group
   children: (ProductStats & {
@@ -103,6 +104,7 @@ export default function InventoryStatus() {
           sales14Days: 0,
           sales7Days: 0,
           prevSales7Days: 0,
+          totalSales: 0,
           trend: 'flat',
           minDaysOfInventory: 9999,
           children: []
@@ -117,6 +119,7 @@ export default function InventoryStatus() {
       g.sales14Days += p.sales14Days;
       g.sales7Days += p.sales7Days;
       g.prevSales7Days += prevSales7Days;
+      g.totalSales += p.totalSales;
 
       if (p.daysOfInventory < g.minDaysOfInventory) g.minDaysOfInventory = p.daysOfInventory;
 
@@ -243,6 +246,7 @@ export default function InventoryStatus() {
       fcStock: 0,
       vfStock: 0,
       sales7Days: 0,
+      totalSales: 0,
     };
     filteredGroups.forEach(g => {
       stats.hqStock += g.hqStock;
@@ -250,6 +254,7 @@ export default function InventoryStatus() {
       stats.fcStock += (g.fcStock || 0);
       stats.vfStock += (g.vfStock || 0);
       stats.sales7Days += g.sales7Days;
+      stats.totalSales += g.totalSales;
     });
     return stats;
   }, [filteredGroups]);
@@ -389,6 +394,13 @@ export default function InventoryStatus() {
                   </div>
                 </th>
 
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 font-bold text-blue-600 whitespace-nowrap">
+                  <div className="flex items-center justify-end">
+                    <span onClick={() => handleSort('totalSales')}>누적 판매 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
+                    <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('totalSales', '누적 판매'); }} />
+                  </div>
+                </th>
+
                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-red-600 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('minDaysOfInventory')}>소진 예상 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
@@ -408,6 +420,7 @@ export default function InventoryStatus() {
 
                 <th className="px-4 py-2 text-right bg-gray-100">{totalStats.sales7Days.toLocaleString()}</th>
                 <th className="px-4 py-2 bg-gray-100"></th>
+                <th className="px-4 py-2 text-right bg-blue-50/50 text-blue-600">{totalStats.totalSales.toLocaleString()}</th>
                 <th className="px-4 py-2 bg-gray-100"></th>
               </tr>
             </thead>
@@ -468,7 +481,9 @@ export default function InventoryStatus() {
                         {TrendIcon}
                       </td>
 
-                      <td className="px-4 py-2 text-center whitespace-nowrap">
+                      <td className="px-4 py-2 text-right font-bold text-blue-600 whitespace-nowrap">{g.totalSales.toLocaleString()}</td>
+
+                      <td className="px-4 py-2 text-right whitespace-nowrap">
                         {BurnRateBadge}
                       </td>
                     </tr>
@@ -503,6 +518,8 @@ export default function InventoryStatus() {
                             {ChildTrend}
                           </td>
 
+                          <td className="px-4 py-1.5 text-right font-medium text-blue-500 whitespace-nowrap">{child.totalSales.toLocaleString()}</td>
+
                           <td className="px-4 py-1.5 text-right text-red-400 whitespace-nowrap">{child.daysOfInventory > 365 ? '1년+' : `${child.daysOfInventory.toFixed(1)}일`}</td>
                         </tr>
                       );
@@ -511,7 +528,7 @@ export default function InventoryStatus() {
                 );
               })}
               {filteredGroups.length === 0 && (
-                <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-400 bg-white">
+                <tr><td colSpan={9} className="px-6 py-10 text-center text-gray-400 bg-white">
                   데이터가 없습니다.
                 </td></tr>
               )}
