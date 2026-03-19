@@ -670,18 +670,9 @@ export default function ProductStatus() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                       <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} stroke="#cbd5e1" minTickGap={20} />
                       <YAxis
-                        yAxisId="left"
                         tick={{ fontSize: 12 }}
                         tickMargin={10}
-                        stroke="#10b981"
-                        allowDecimals={false}
-                      />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fontSize: 12 }}
-                        tickMargin={10}
-                        stroke="#8b5cf6"
+                        stroke="#475569"
                         allowDecimals={false}
                       />
                       <Tooltip
@@ -695,7 +686,6 @@ export default function ProductStatus() {
                       />
                       <Legend verticalAlign="top" height={36} />
                       <Line
-                        yAxisId="left"
                         type="monotone"
                         dataKey="sales"
                         name="판매량"
@@ -706,7 +696,6 @@ export default function ProductStatus() {
                         animationDuration={1000}
                       />
                       <Line
-                        yAxisId="right"
                         type="monotone"
                         dataKey="stock"
                         name="재고량"
