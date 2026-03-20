@@ -1080,6 +1080,9 @@ ${sampleText}
                 const trendYesterday = qtyYesterday - qtyYesterdayPrev;
                 const trendWeek = qty7d - prevSales7Days;
                 const trendMonth = qty30d - (qty60d - qty30d);
+                
+                const qtyWeek = Number(st.qty_week || 0);
+                const qtyWeekPrev = Number(st.qty_week_prev_week || 0);
 
                 let trend: 'hot' | 'cold' | 'up' | 'down' | 'flat' = 'flat';
 
@@ -1110,6 +1113,8 @@ ${sampleText}
                     sales7Days: qty7d,
                     salesYesterday: qtyYesterday,
                     sales30Days: qty30d,
+                    salesWeekly: qtyWeek, // [NEW] Friday-Thursday
+                    salesWeeklyPrev: qtyWeekPrev, // [NEW] Friday-Thursday
                     trends: {
                         yesterday: trendYesterday,
                         week: trendWeek,

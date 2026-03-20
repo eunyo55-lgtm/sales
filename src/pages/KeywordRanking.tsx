@@ -557,21 +557,23 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                 {/* NEW COLUMNS: Sales data */}
                                                 {(() => {
-                                                    const pStats = productStats.find(p => p.barcode === kw.barcode);
-                                                    const salesLastWeek = pStats ? pStats.prevSales7Days : 0;
-                                                    const salesThisWeek = pStats ? pStats.sales7Days : 0;
+                                                    const pStats = productStats.find(p => p.name === kw.products?.name);
+                                                    const hasProduct = !!kw.products?.name;
+                                                    
+                                                    const salesLastWeek = pStats ? pStats.salesWeeklyPrev : 0;
+                                                    const salesThisWeek = pStats ? pStats.salesWeekly : 0;
                                                     const wow = salesThisWeek - salesLastWeek;
 
                                                     return (
                                                         <>
                                                             <td className="py-3 px-3 text-center border-x border-gray-100 text-gray-500 text-xs bg-white">
-                                                                {kw.barcode ? salesLastWeek.toLocaleString() : '-'}
+                                                                {hasProduct ? salesLastWeek.toLocaleString() : '-'}
                                                             </td>
                                                             <td className="py-3 px-3 text-center border-r border-gray-100 font-bold text-gray-800 text-sm bg-white">
-                                                                {kw.barcode ? salesThisWeek.toLocaleString() : '-'}
+                                                                {hasProduct ? salesThisWeek.toLocaleString() : '-'}
                                                             </td>
                                                             <td className="py-3 px-3 text-center border-r border-gray-100 bg-white">
-                                                                {kw.barcode ? (
+                                                                {hasProduct ? (
                                                                     wow > 0 ? (
                                                                         <span className="text-red-500 text-[11px] font-bold">▲{wow.toLocaleString()}</span>
                                                                     ) : wow < 0 ? (
