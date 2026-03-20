@@ -18,6 +18,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const [keywordSearchVolumes, setKeywordSearchVolumes] = useState<any[]>([]);
     const [productStats, setProductStats] = useState<any[]>([]);
     const [loadingStats, setLoadingStats] = useState(false);
+    const [anchorDate, setAnchorDate] = useState<string>(getKSTDateString());
     const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
 
     // Form state
@@ -105,10 +106,11 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
             if (svError) throw svError;
             setKeywordSearchVolumes(svData || []);
 
-            // [OPTIMIZED] Fetch only 20 days of Sales Data for Keyword Ranking to ensure fast load (70s -> 2s)
+            // [OPTIMIZED] Fetch targeted stats only for keywords (Instant load)
             setLoadingStats(true);
-            const statsRes = await api.getProductStats(20);
-            setProductStats(statsRes || []);
+            const res = await api.getProductStatsForKeywords(kwData, 20);
+            setProductStats(res.stats || []);
+            setAnchorDate(res.anchorDate);
             setLoadingStats(false);
 
             if (kwData && kwData.length > 0 && !selectedKeywordId) {
@@ -200,8 +202,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
         return getKSTDateString(weekStart);
     };
 
-    const currentWeekKey = getWeekKey(new Date());
-    const prevWeekDateObj = new Date();
+    const currentWeekKey = getWeekKey(anchorDate);
+    const prevWeekDateObj = new Date(anchorDate);
     prevWeekDateObj.setDate(prevWeekDateObj.getDate() - 7);
     const lastWeekKey = getWeekKey(prevWeekDateObj);
 

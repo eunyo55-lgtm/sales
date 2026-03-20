@@ -1000,6 +1000,92 @@ ${sampleText}
     },
 
     /**
+     * Optimized fetcher for Keyword Ranking tab
+     * Only fetches stats for products currently linked to keywords
+     */
+    async getProductStatsForKeywords(keywords: any[], historyDays: number = 20): Promise<{ stats: ProductStats[], anchorDate: string }> {
+        const productIds = Array.from(new Set(keywords.map(k => k.product_id).filter(id => !!id)));
+        if (productIds.length === 0) return { stats: [], anchorDate: new Date().toISOString().split('T')[0] };
+
+        // 1. Fetch relevant products only
+        const { data: products } = await supabase.from('products')
+            .select('barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock, fc_stock, vf_stock, cost')
+            .in('id', productIds);
+        
+        if (!products || products.length === 0) return { stats: [], anchorDate: new Date().toISOString().split('T')[0] };
+        const barcodes = products.map(p => p.barcode?.trim()).filter(b => !!b);
+
+        // 2. Fetch recent sales for these barcodes only
+        const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
+        const anchorDateStr = latestData?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
+        
+        const startD = new Date(anchorDateStr);
+        startD.setDate(startD.getDate() - historyDays);
+        const startDate = startD.toISOString().split('T')[0];
+
+        // targeted fetch
+        const { data: rawDailySales } = await supabase.from('daily_sales')
+            .select('date, quantity, barcode, stock')
+            .in('barcode', barcodes)
+            .gte('date', startDate);
+
+        // 3. Aggregate
+        const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
+        rawDailySales?.forEach((row: any) => {
+            const b = row.barcode.trim();
+            if (!rawDailyMap.has(b)) rawDailyMap.set(b, { sales: {}, stock: {} });
+            const d = rawDailyMap.get(b)!;
+            d.sales[row.date] = row.quantity;
+            d.stock[row.date] = row.stock;
+        });
+
+        const result = products.map(p => {
+            const b = p.barcode.trim();
+            const rawD = rawDailyMap.get(b) || { sales: {}, stock: {} };
+            const q7d = Object.entries(rawD.sales)
+                .filter(([date]) => date > startDate) // simple sum for trends
+                .reduce((sum, [_, qty]) => sum + Number(qty), 0);
+
+            return {
+                barcode: b,
+                name: p.name,
+                option: p.option_value,
+                season: p.season || '정보없음',
+                imageUrl: p.image_url,
+                hqStock: Number(p.hq_stock || 0),
+                coupangStock: Number(p.current_stock || 0),
+                fcStock: Number(p.fc_stock || 0),
+                vfStock: Number(p.vf_stock || 0),
+                incomingStock: Number(p.incoming_stock || 0),
+                safetyStock: Number(p.safety_stock || 10),
+                totalSales: q7d, // Use recent sum for targeted stats
+                fcSales: 0,
+                vfSales: 0,
+                sales14Days: q7d,
+                sales7Days: q7d,
+                salesYesterday: 0,
+                sales30Days: q7d,
+                salesWeekly: 0, 
+                salesWeeklyPrev: 0,
+                trends: { yesterday: 0, week: 0, month: 0 },
+                avgDailySales: q7d / 7,
+                daysOfInventory: 0,
+                cost: Number(p.cost || 0),
+                dailySales: rawD.sales,
+                dailyStock: rawD.stock,
+                abcGrade: 'D' as 'A' | 'B' | 'C' | 'D',
+                prevSales7Days: 0,
+                trend: 'flat' as const
+            };
+        });
+
+        const res = { stats: result, anchorDate: anchorDateStr };
+        // We'll skip caching the object for simplicity of the map types, 
+        // given the targeted call is extremely fast anyway.
+        return res;
+    },
+
+    /**
      * Fetch Product List with Sales & Inventory Data
      * Optionally takes the number of historical days to fetch (defaults to full year since Jan 1st if not specified)
      */
