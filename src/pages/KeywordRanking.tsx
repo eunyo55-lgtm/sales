@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/api';
 import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList } from 'lucide-react';
@@ -205,6 +205,41 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const latestSvDate = allSvDates.find(d => getWeekKey(d) === currentWeekKey) || '';
     const prevSvDate = allSvDates.find(d => getWeekKey(d) === lastWeekKey) || '';
 
+    // [Aggregation] Group stats by product name to aggregate across options
+    const groupedStats = useMemo(() => {
+        const groups = new Map<string, {
+            name: string;
+            dailySales: Record<string, number>;
+        }>();
+        
+        productStats.forEach(p => {
+            const name = (p.name || "").trim().toLowerCase();
+            if (!name) return;
+            if (!groups.has(name)) {
+                groups.set(name, { name: p.name, dailySales: {} });
+            }
+            const g = groups.get(name)!;
+            Object.entries(p.dailySales || {}).forEach(([date, qty]) => {
+                g.dailySales[date] = (g.dailySales[date] || 0) + Number(qty);
+            });
+        });
+        return groups;
+    }, [productStats]);
+
+    // [New] Frontend Week Calculation
+    const getWeeklySales = (dailySales: Record<string, number>, weekKey: string) => {
+        if (!weekKey) return 0;
+        const start = new Date(weekKey);
+        let sum = 0;
+        for (let j = 0; j < 7; j++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + j);
+            const dStr = getKSTDateString(d);
+            sum += (dailySales[dStr] || 0);
+        }
+        return sum;
+    };
+
     // Sorting logic
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -227,13 +262,15 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
             aValue = a.products?.name?.toLowerCase() || '';
             bValue = b.products?.name?.toLowerCase() || '';
         } else if (sortConfig.key === 'salesLastWeek' || sortConfig.key === 'salesThisWeek' || sortConfig.key === 'salesWoW') {
-            const aStats = productStats.filter(p => p.name === a.products?.name);
-            const aLast = aStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0);
-            const aThis = aStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0);
+            const aName = (a.products?.name || "").trim().toLowerCase();
+            const aG = groupedStats.get(aName);
+            const aLast = aG ? getWeeklySales(aG.dailySales, lastWeekKey) : 0;
+            const aThis = aG ? getWeeklySales(aG.dailySales, currentWeekKey) : 0;
 
-            const bStats = productStats.filter(p => p.name === b.products?.name);
-            const bLast = bStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0);
-            const bThis = bStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0);
+            const bName = (b.products?.name || "").trim().toLowerCase();
+            const bG = groupedStats.get(bName);
+            const bLast = bG ? getWeeklySales(bG.dailySales, lastWeekKey) : 0;
+            const bThis = bG ? getWeeklySales(bG.dailySales, currentWeekKey) : 0;
 
             if (sortConfig.key === 'salesLastWeek') {
                 aValue = aLast;
@@ -604,13 +641,14 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                     </div>
                                                 </td>
 
-                                                {/* NEW COLUMNS: Sales data */}
+                                                {/* NEW COLUMNS: Sales data (Calculated from aggregated product stats) */}
                                                 {(() => {
-                                                    const matchingStats = productStats.filter(p => p.name === kw.products?.name);
-                                                    const hasProduct = !!kw.products?.name;
+                                                    const prodName = (kw.products?.name || "").trim().toLowerCase();
+                                                    const g = groupedStats.get(prodName);
+                                                    const hasProduct = !!prodName && !!g;
                                                     
-                                                    const salesLastWeek = hasProduct ? matchingStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0) : 0;
-                                                    const salesThisWeek = hasProduct ? matchingStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0) : 0;
+                                                    const salesLastWeek = hasProduct ? getWeeklySales(g.dailySales, lastWeekKey) : 0;
+                                                    const salesThisWeek = hasProduct ? getWeeklySales(g.dailySales, currentWeekKey) : 0;
                                                     const wow = salesThisWeek - salesLastWeek;
 
                                                     return (
