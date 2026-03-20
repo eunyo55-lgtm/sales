@@ -355,17 +355,6 @@ export default function InventoryStatus() {
           </div>
         )}
 
-        {/* Top Bar */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-none">
-          <div className="flex items-center space-x-4">
-            <h3 className="font-semibold text-gray-800 flex items-center">
-              재고 흐름 모니터링
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                (상위 {visibleCount}개 / 전체 {filteredGroups.length}개)
-              </span>
-            </h3>
-          </div>
-        </div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-b border-gray-100 flex-none bg-gray-50/30">
@@ -411,8 +400,14 @@ export default function InventoryStatus() {
           </div>
         </div>
 
-        {/* Controls Bar (Search + Dropdowns) */}
-        <div className="p-4 bg-white border-b border-gray-100 flex flex-wrap gap-4 items-center justify-end shadow-sm sticky top-0 z-40 relative">
+        {/* Controls Bar */}
+        <div className="p-6 border-b border-gray-100 flex flex-wrap gap-4 items-center justify-between shadow-sm sticky top-0 z-40 bg-gray-50/50 flex-none relative">
+          <h3 className="font-semibold text-gray-800 flex flex-wrap items-center">
+            재고 흐름 모니터링
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              (상위 {visibleCount}개 / 전체 {filteredGroups.length}개)
+            </span>
+          </h3>
           <div className="flex items-center space-x-3">
             <select
               value={selectedSeason}
