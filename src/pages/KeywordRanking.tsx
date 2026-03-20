@@ -226,6 +226,25 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
         } else if (sortConfig.key === 'product') {
             aValue = a.products?.name?.toLowerCase() || '';
             bValue = b.products?.name?.toLowerCase() || '';
+        } else if (sortConfig.key === 'salesLastWeek' || sortConfig.key === 'salesThisWeek' || sortConfig.key === 'salesWoW') {
+            const aStats = productStats.filter(p => p.name === a.products?.name);
+            const aLast = aStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0);
+            const aThis = aStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0);
+
+            const bStats = productStats.filter(p => p.name === b.products?.name);
+            const bLast = bStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0);
+            const bThis = bStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0);
+
+            if (sortConfig.key === 'salesLastWeek') {
+                aValue = aLast;
+                bValue = bLast;
+            } else if (sortConfig.key === 'salesThisWeek') {
+                aValue = aThis;
+                bValue = bThis;
+            } else if (sortConfig.key === 'salesWoW') {
+                aValue = aThis - aLast;
+                bValue = bThis - bLast;
+            }
         } else if (sortConfig.key === 'views_latest' || sortConfig.key === 'views_prev' || sortConfig.key === 'trend') {
             const aLatest = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
             const aPrev = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
@@ -457,14 +476,32 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
-                                        <th className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px]">
-                                            판매량(지난주)
+                                        <th 
+                                            className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none"
+                                            onClick={() => handleSort('salesLastWeek')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                판매량(지난주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesLastWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
                                         </th>
-                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px]">
-                                            판매량(이번주)
+                                        <th 
+                                            className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none"
+                                            onClick={() => handleSort('salesThisWeek')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                판매량(이번주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesThisWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
                                         </th>
-                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[80px] w-[80px]">
-                                            전주대비
+                                        <th 
+                                            className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[80px] w-[80px] cursor-pointer hover:bg-gray-100 transition-colors group select-none"
+                                            onClick={() => handleSort('salesWoW')}
+                                        >
+                                            <div className="flex items-center justify-center">
+                                                전주대비
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesWoW' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                                            </div>
                                         </th>
                                         <th
                                             className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
@@ -569,11 +606,11 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                 {/* NEW COLUMNS: Sales data */}
                                                 {(() => {
-                                                    const pStats = productStats.find(p => p.name === kw.products?.name);
+                                                    const matchingStats = productStats.filter(p => p.name === kw.products?.name);
                                                     const hasProduct = !!kw.products?.name;
                                                     
-                                                    const salesLastWeek = pStats ? pStats.salesWeeklyPrev : 0;
-                                                    const salesThisWeek = pStats ? pStats.salesWeekly : 0;
+                                                    const salesLastWeek = hasProduct ? matchingStats.reduce((sum, p) => sum + (p.salesWeeklyPrev || 0), 0) : 0;
+                                                    const salesThisWeek = hasProduct ? matchingStats.reduce((sum, p) => sum + (p.salesWeekly || 0), 0) : 0;
                                                     const wow = salesThisWeek - salesLastWeek;
 
                                                     return (
