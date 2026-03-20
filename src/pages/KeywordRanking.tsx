@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -15,6 +16,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
     const [searchVolumes, setSearchVolumes] = useState<any[]>([]);
+    const [productStats, setProductStats] = useState<any[]>([]); // [NEW]
 
     // Form state
     const [newCategory, setNewCategory] = useState('');
@@ -79,10 +81,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
             // Products list is now fetched dynamically on search to improve load time
 
-            // Fetch rankings (last 30 days)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const dateStr = getKSTDateString(thirtyDaysAgo);
+            // Fetch rankings (last 90 days instead of 30)
+            const startDateObj = new Date();
+            startDateObj.setDate(startDateObj.getDate() - 90);
+            const dateStr = getKSTDateString(startDateObj);
 
             const { data: rankData, error: rankError } = await supabase
                 .from('keyword_rankings')
@@ -101,6 +103,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
             if (svError) throw svError;
             setSearchVolumes(svData || []);
+
+            // [NEW] Fetch Product Stats for Sales Data
+            const statsRes = await api.getProductStats();
+            setProductStats(statsRes || []);
 
             if (kwData && kwData.length > 0 && !selectedKeywordId) {
                 setSelectedKeywordId(kwData[0].id);
@@ -173,9 +179,9 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
 
 
-    // Extract unique dates for table columns (last 7 days of data)
+    // Extract unique dates for table columns (show all available days)
     const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    const displayDates = allUniqueDates.slice(-7);
+    const displayDates = allUniqueDates;
 
     // Get unique search volume dates
     const allSvDates = Array.from(new Set(searchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -448,6 +454,15 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
+                                        <th className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
+                                            판매량(지난주)
+                                        </th>
+                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
+                                            판매량(이번주)
+                                        </th>
+                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
+                                            전주대비
+                                        </th>
                                         <th
                                             className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
                                             onClick={() => handleSort('views_prev')}
@@ -528,7 +543,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         openChartModal(kw);
                                                     }}
                                                 >
-                                                    <div className="flex items-center">
+                                                    <div className="flex items-center min-w-[120px]">
                                                         {kw.products?.image_url && (
                                                             <img
                                                                 src={kw.products.image_url}
@@ -536,9 +551,39 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                                 className="w-8 h-8 rounded object-cover mr-2 bg-gray-100 border border-gray-200"
                                                             />
                                                         )}
-                                                        <span>{kw.products?.name || '-'}</span>
+                                                        <span className="truncate">{kw.products?.name || '-'}</span>
                                                     </div>
                                                 </td>
+
+                                                {/* NEW COLUMNS: Sales data */}
+                                                {(() => {
+                                                    const pStats = productStats.find(p => p.barcode === kw.barcode);
+                                                    const salesLastWeek = pStats ? pStats.prevSales7Days : 0;
+                                                    const salesThisWeek = pStats ? pStats.sales7Days : 0;
+                                                    const wow = salesThisWeek - salesLastWeek;
+
+                                                    return (
+                                                        <>
+                                                            <td className="py-3 px-3 text-center border-x border-gray-100 text-gray-500 text-xs bg-white">
+                                                                {kw.barcode ? salesLastWeek.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center border-r border-gray-100 font-bold text-gray-800 text-sm bg-white">
+                                                                {kw.barcode ? salesThisWeek.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center border-r border-gray-100 bg-white">
+                                                                {kw.barcode ? (
+                                                                    wow > 0 ? (
+                                                                        <span className="text-red-500 text-[11px] font-bold">▲{wow.toLocaleString()}</span>
+                                                                    ) : wow < 0 ? (
+                                                                        <span className="text-blue-500 text-[11px] font-bold">▼{Math.abs(wow).toLocaleString()}</span>
+                                                                    ) : (
+                                                                        <div className="flex justify-center"><Minus className="w-3 h-3 text-gray-300" /></div>
+                                                                    )
+                                                                ) : <span className="text-gray-300">-</span>}
+                                                            </td>
+                                                        </>
+                                                    );
+                                                })()}
 
                                                 {/* Search Volume Columns (Moved next to Product Name) */}
                                                 {(() => {
@@ -605,28 +650,25 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         }
                                                     }
                                                     return (
-                                                        <td key={date} className="py-3 px-3 text-center border-l border-gray-100/50">
-                                                            {pos > 0 ? (
-                                                                <div className="flex flex-col items-center justify-center space-y-1">
-                                                                    <div className="flex items-center space-x-1.5">
-                                                                        <span className="font-semibold text-gray-800 text-sm">{pos}위</span>
-                                                                        {dodElement}
-                                                                    </div>
-                                                                    {(r?.rating > 0 || r?.review_count > 0) && (
-                                                                        <div className="flex items-center text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
-                                                                            <span className="text-yellow-500 mr-0.5">★</span>
-                                                                            <span>{r.rating || '-'}</span>
-                                                                            <span className="mx-1">|</span>
-                                                                            <span>({r.review_count || 0})</span>
+                                                            <td key={date} className="py-2 px-2 text-center border-l border-gray-100/50 hover:bg-gray-100/50 transition-colors">
+                                                                {pos > 0 ? (
+                                                                    <div className="flex flex-col items-center justify-center space-y-0.5 min-w-[40px]">
+                                                                        <div className="flex items-center space-x-1">
+                                                                            <span className="font-semibold text-gray-800 text-sm">{pos}</span>
+                                                                            {dodElement}
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-300 font-normal">-</span>
-                                                            )}
-                                                        </td>
-                                                    )
-                                                })}
+                                                                        {(r?.rating > 0 || r?.review_count > 0) && (
+                                                                            <div className="flex items-center text-[9px] text-gray-400">
+                                                                                <span className="text-yellow-400 mr-[1px]">★</span>{r.rating || '-'} ({r.review_count || 0})
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center min-w-[40px] h-full text-gray-200">-</div>
+                                                                )}
+                                                            </td>
+                                                        )
+                                                    })}
 
 
 
