@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, Archive, Lightbulb, Menu, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Package, Archive, Menu, TrendingUp } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ProductStatus from './pages/ProductStatus';
 import InventoryStatus from './pages/InventoryStatus';
 import SmartOrder from './pages/SmartOrder';
-import Insights from './pages/Insights';
 import SupplyStatus from './pages/SupplyStatus';
 import KeywordRanking from './pages/KeywordRanking';
 import { DataUploader } from './components/DataUploader';
@@ -92,17 +91,6 @@ function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('insights')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'insights'
-                ? 'bg-purple-50 text-purple-600'
-                : 'text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              <Lightbulb size={20} className={activeTab === 'insights' ? 'text-purple-600' : 'text-gray-500'} />
-              <span className="font-medium">인사이트</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('supply')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'supply'
                 ? 'bg-emerald-50 text-emerald-600'
@@ -149,7 +137,6 @@ function App() {
               {activeTab === 'products' && '상품 판매 현황'}
               {activeTab === 'inventory' && '재고 관리 현황'}
               {activeTab === 'smartorder' && '스마트 발주 추천'}
-              {activeTab === 'insights' && '악성 재고 & 프로모션 인사이트'}
               {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
               {activeTab === 'supply' && '쿠팡 발주 대비 공급/입고 현황'}
             </h2>
@@ -162,7 +149,6 @@ function App() {
           {activeTab === 'products' && <ProductStatus />}
           {activeTab === 'inventory' && <InventoryStatus />}
           {activeTab === 'smartorder' && <SmartOrder />}
-          {activeTab === 'insights' && <Insights />}
           {activeTab === 'keyword' && (
             <KeywordRanking
               showKeywordManager={showKeywordManager}

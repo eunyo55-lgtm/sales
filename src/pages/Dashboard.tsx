@@ -53,7 +53,7 @@ export default function Dashboard() {
 
     const { metrics, trends, rankings, anchorDate } = data;
 
-    const StatCard = ({ title, value, sub, icon: Icon, colorClass, yoyValue }: any) => {
+    const StatCard = ({ title, value, amount, sub, icon: Icon, colorClass, yoyValue }: any) => {
         let yoyEl = null;
         if (yoyValue !== undefined && yoyValue !== null) {
             const diff = value - yoyValue;
@@ -73,7 +73,7 @@ export default function Dashboard() {
         }
 
         const avgCost = data?.avgCost || 0;
-        const totalAmount = Math.round(value * avgCost);
+        const totalAmount = amount !== undefined ? amount : Math.round(value * avgCost);
 
         return (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
@@ -167,6 +167,7 @@ export default function Dashboard() {
                 <StatCard
                     title="최신 일자 판매량"
                     value={metrics.yesterday}
+                    amount={metrics.yesterdayAmount}
                     yoyValue={metrics.yesterdayPrevYear}
                     sub={anchorDate ? `${anchorDate} 기준 (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
                     icon={TrendingUp}
@@ -175,6 +176,7 @@ export default function Dashboard() {
                 <StatCard
                     title="주간 판매량 (금~목)"
                     value={metrics.weekly}
+                    amount={metrics.weeklyAmount}
                     yoyValue={metrics.weeklyPrevYear}
                     sub={`FC: ${metrics.fcWeekly?.toLocaleString() || 0} / VF: ${metrics.vfWeekly?.toLocaleString() || 0}`}
                     icon={Calendar}
@@ -183,6 +185,7 @@ export default function Dashboard() {
                 <StatCard
                     title="연간 판매량 (올해)"
                     value={metrics.yearly}
+                    amount={metrics.yearlyAmount}
                     yoyValue={metrics.yearlyPrevYear}
                     sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적`}
                     icon={Trophy}

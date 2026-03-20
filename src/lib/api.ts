@@ -808,11 +808,25 @@ ${sampleText}
             // Call RPC for individual product sales stats for rankings - PAGINATED
             const salesStats = await this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr });
 
+            const exactAmounts = {
+                yesterday: 0,
+                weekly: 0,
+                monthly: 0,
+                yearly: 0
+            };
+
             salesStats?.forEach((s: any) => {
                 const product = productMap.get(s.barcode);
                 if (!product) return;
 
                 const productName = product.name;
+                const cost = productByNameMap.get(productName) || 0;
+
+                exactAmounts.yesterday += (s.qty_yesterday || 0) * cost;
+                exactAmounts.weekly += (s.qty_week || 0) * cost;
+                exactAmounts.monthly += (s.qty_month || 0) * cost;
+                exactAmounts.yearly += (s.qty_year || 0) * cost;
+
                 if (!nameMetadata.has(productName)) {
                     nameMetadata.set(productName, { image: product.image_url });
                 }
@@ -934,16 +948,20 @@ ${sampleText}
                 anchorDate: anchorDateStr,
                 metrics: {
                     yesterday: metricsRes.data?.statYesterday || 0,
+                    yesterdayAmount: exactAmounts.yesterday,
                     fcYesterday: metricsRes.data?.fcYesterday || 0,
                     vfYesterday: metricsRes.data?.vfYesterday || 0,
                     yesterdayPrevYear: metricsRes.data?.statYesterdayPrevYear || 0,
                     weekly: metricsRes.data?.statWeekly || 0,
+                    weeklyAmount: exactAmounts.weekly,
                     fcWeekly: metricsRes.data?.fcWeekly || 0,
                     vfWeekly: metricsRes.data?.vfWeekly || 0,
                     weeklyPrevYear: metricsRes.data?.statWeeklyPrevYear || 0,
                     monthly: metricsRes.data?.statMonthly || 0,
+                    monthlyAmount: exactAmounts.monthly,
                     monthlyPrevYear: metricsRes.data?.statMonthlyPrevYear || 0,
                     yearly: metricsRes.data?.statYearly || 0,
+                    yearlyAmount: exactAmounts.yearly,
                     yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0
                 },
                 trends: {
