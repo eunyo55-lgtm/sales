@@ -90,16 +90,29 @@ async function scrapeKeywords() {
         await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     } catch (e) { }
 
-    // 4. 키워드별 순회
+    // 3.5. 키워드를 그룹화 (텍스트 기준)
+    const keywordGroups = {};
     for (const kw of keywords) {
-        console.log(`\n--- [키워드: "${kw.keyword}"] ---`);
-        let rankPosition = 0;
-        let found = false;
-        let naturalCount = 0;
+        if (!keywordGroups[kw.keyword]) {
+            keywordGroups[kw.keyword] = [];
+        }
+        keywordGroups[kw.keyword].push(kw);
+    }
+    const uniqueKeywords = Object.keys(keywordGroups);
 
-        for (let pageNum = 1; pageNum <= MAX_PAGES && !found; pageNum++) {
+    console.log(`[Scraper] 총 ${uniqueKeywords.length}개의 고유 키워드로 압축하여 검색합니다.`);
+
+    // 4. 고유 키워드별 순회
+    for (const keywordText of uniqueKeywords) {
+        const targetProducts = keywordGroups[keywordText]; // Array of target products for this keyword
+        console.log(`\n--- [키워드: "${keywordText}"] (추적 대상: ${targetProducts.length}개) ---`);
+        
+        let naturalCount = 0;
+        const foundTargets = new Set(); // Track found keyword IDs
+        
+        for (let pageNum = 1; pageNum <= MAX_PAGES && foundTargets.size < targetProducts.length; pageNum++) {
             console.log(` ${pageNum}페이지 검색 중...`);
-            const url = `https://www.coupang.com/np/search?component=&q=${encodeURIComponent(kw.keyword)}&channel=user&page=${pageNum}`;
+            const url = `https://www.coupang.com/np/search?component=&q=${encodeURIComponent(keywordText)}&channel=user&page=${pageNum}`;
 
             try {
                 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -189,21 +202,26 @@ async function scrapeKeywords() {
 
                     const { parsedProductId, parsedVendorItemId, rating, reviewCount } = extractedData;
 
-                    if (parsedProductId === kw.coupang_product_id || parsedVendorItemId === kw.coupang_product_id) {
-                        rankPosition = naturalCount;
-                        found = true;
+                    for (const kw of targetProducts) {
+                        if (foundTargets.has(kw.id)) continue;
 
-                        // 임시 저장
-                        results.push({
-                            keyword_id: kw.id,
-                            date: today,
-                            rank_position: rankPosition,
-                            rating: rating,
-                            review_count: reviewCount
-                        });
+                        if (parsedProductId === String(kw.coupang_product_id) || parsedVendorItemId === String(kw.coupang_product_id)) {
+                            foundTargets.add(kw.id);
 
-                        console.log(`   ⭐ [성공!] 우리 상품 발견 - 자연 노출 순위: ${rankPosition}위 (Page ${pageNum}) | 평점: ${rating}, 리뷰: ${reviewCount}`);
-                        break;
+                            results.push({
+                                keyword_id: kw.id,
+                                date: today,
+                                rank_position: naturalCount,
+                                rating: rating,
+                                review_count: reviewCount
+                            });
+
+                            console.log(`   ⭐ [성공!] 우리 상품 발견 (ID: ${kw.coupang_product_id}) - 자연 노출 순위: ${naturalCount}위 (Page ${pageNum}) | 평점: ${rating}, 리뷰: ${reviewCount}`);
+                        }
+                    }
+
+                    if (foundTargets.size >= targetProducts.length) {
+                        break; // All targets found on this page
                     }
                 }
             } catch (err) {
@@ -212,15 +230,18 @@ async function scrapeKeywords() {
             }
         }
 
-        if (!found) {
-            console.log(`   ❌ [실패] ${MAX_PAGES}페이지 이내에서 제품을 찾을 수 없습니다.`);
-            results.push({
-                keyword_id: kw.id,
-                date: today,
-                rank_position: 0,
-                rating: 0,
-                review_count: 0
-            });
+        // Handle targets that were not found
+        for (const kw of targetProducts) {
+            if (!foundTargets.has(kw.id)) {
+                console.log(`   ❌ [실패] ${MAX_PAGES}페이지 이내에서 제품(ID: ${kw.coupang_product_id})을 찾을 수 없습니다.`);
+                results.push({
+                    keyword_id: kw.id,
+                    date: today,
+                    rank_position: 0,
+                    rating: 0,
+                    review_count: 0
+                });
+            }
         }
     }
 

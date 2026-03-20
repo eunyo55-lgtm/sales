@@ -39,8 +39,8 @@ export const api = {
     // Cache Storage
     _dashboardCache: null as any,
     _dashboardPromise: null as Promise<any> | null,
-    _productStatsCache: null as ProductStats[] | null,
-    _productStatsPromise: null as Promise<ProductStats[]> | null,
+    _productStatsCache_Map: new Map<string, ProductStats[]>() as Map<string, ProductStats[]>,
+    _productStatsPromise_Map: new Map<string, Promise<ProductStats[]>>() as Map<string, Promise<ProductStats[]>>,
     _rawProductsPromise: null as Promise<any[]> | null,
     _rawDailySalesPromise: null as Promise<any[]> | null,
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
@@ -240,10 +240,9 @@ export const api = {
     clearCache() {
         this._dashboardCache = null;
         this._dashboardPromise = null;
-        this._productStatsCache = null;
-        this._productStatsPromise = null;
+        this._productStatsCache_Map.clear();
+        this._productStatsPromise_Map.clear();
         this._rawProductsPromise = null;
-        this._rawDailySalesPromise = null;
         this._rawDailySalesPromiseMap.clear();
     },
 
@@ -1002,20 +1001,31 @@ ${sampleText}
 
     /**
      * Fetch Product List with Sales & Inventory Data
-     * Used for 'Product Status' and 'Inventory Status' tabs
+     * Optionally takes the number of historical days to fetch (defaults to full year since Jan 1st if not specified)
      */
-    async getProductStats(): Promise<ProductStats[]> {
-        if (this._productStatsCache) {
-            console.log("[Cache] ProductStats HIT");
-            return this._productStatsCache;
+    async getProductStats(historyDays?: number): Promise<ProductStats[]> {
+        // Cache management: We cache based on historyDays
+        const cacheKey = historyDays ? `STATS_${historyDays}` : 'STATS_FULL';
+        
+        // Initialize _productStatsCache_Map if it doesn't exist
+        if (!this._productStatsCache_Map) {
+            this._productStatsCache_Map = new Map();
         }
-        if (this._productStatsPromise) {
-            console.log("[Promise Cache] ProductStats HIT");
-            return this._productStatsPromise;
+        if (!this._productStatsPromise_Map) {
+            this._productStatsPromise_Map = new Map();
+        }
+
+        if (this._productStatsCache_Map.has(cacheKey)) {
+            console.log(`[Cache] ProductStats HIT for ${cacheKey}`);
+            return this._productStatsCache_Map.get(cacheKey)!;
+        }
+        if (this._productStatsPromise_Map.has(cacheKey)) {
+            console.log(`[Promise Cache] ProductStats HIT for ${cacheKey}`);
+            return this._productStatsPromise_Map.get(cacheKey)!;
         }
 
         const promise = (async () => {
-            console.time("getProductStats");
+            console.time(`getProductStats(${historyDays || 'ALL'})`);
 
             const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
             const anchorDateStr = latestData ? latestData.date.substring(0, 10) : new Date().toISOString().split('T')[0];
@@ -1036,10 +1046,17 @@ ${sampleText}
                 if (s.barcode) statsMap.set(s.barcode.trim(), s);
             });
 
-            // 3. (NEW) Fetch all daily sales from start of year to ensure no dates are wiped
-            const currentYear = anchorDateStr.substring(0, 4);
-            const startOfYear = `${currentYear}-01-01`;
-            const rawDailySales = await this._getRawDailySales(startOfYear);
+            // 3. Fetch Daily Sales for recent history or since Jan 1st
+            let startDate: string;
+            if (historyDays) {
+                const startD = new Date(anchorDateStr);
+                startD.setDate(startD.getDate() - historyDays);
+                startDate = startD.toISOString().split('T')[0];
+            } else {
+                startDate = `${anchorDateStr.substring(0, 4)}-01-01`;
+            }
+            
+            const rawDailySales = await this._getRawDailySales(startDate);
             
             const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
             rawDailySales.forEach((row: any) => {
@@ -1049,8 +1066,8 @@ ${sampleText}
                     rawDailyMap.set(trimmed, { sales: {}, stock: {} });
                 }
                 const d = rawDailyMap.get(trimmed)!;
-                d.sales[row.date] = row.quantity || 0;
-                d.stock[row.date] = row.stock || 0;
+                d.sales[row.date] = row.quantity;
+                d.stock[row.date] = row.stock;
             });
 
             // 5. Merge
@@ -1156,16 +1173,16 @@ ${sampleText}
                 }
             });
 
-            this._productStatsCache = result; // Cache the result
-            console.timeEnd("getProductStats");
+            this._productStatsCache_Map.set(cacheKey, result);
+            console.timeEnd(`getProductStats(${historyDays || 'ALL'})`);
             return result;
         })();
 
-        this._productStatsPromise = promise;
+        this._productStatsPromise_Map.set(cacheKey, promise);
         try {
             return await promise;
         } finally {
-            this._productStatsPromise = null;
+            this._productStatsPromise_Map.delete(cacheKey);
         }
     },
     /**

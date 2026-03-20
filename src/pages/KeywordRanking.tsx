@@ -15,8 +15,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 }) {
     const [keywords, setKeywords] = useState<any[]>([]);
     const [rankings, setRankings] = useState<any[]>([]);
-    const [searchVolumes, setSearchVolumes] = useState<any[]>([]);
-    const [productStats, setProductStats] = useState<any[]>([]); // [NEW]
+    const [keywordSearchVolumes, setKeywordSearchVolumes] = useState<any[]>([]);
+    const [productStats, setProductStats] = useState<any[]>([]);
+    const [loadingStats, setLoadingStats] = useState(false);
+    const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
 
     // Form state
     const [newCategory, setNewCategory] = useState('');
@@ -32,7 +34,6 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const [showNaverSync, setShowNaverSync] = useState(false);
 
     // Dashboard state
-    const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'category', direction: 'asc' });
     const [editingCategory, setEditingCategory] = useState<{ id: string, value: string } | null>(null);
     const [chartModalOpen, setChartModalOpen] = useState(false);
@@ -102,11 +103,13 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                 .order('target_date', { ascending: false });
 
             if (svError) throw svError;
-            setSearchVolumes(svData || []);
+            setKeywordSearchVolumes(svData || []);
 
-            // [NEW] Fetch Product Stats for Sales Data
-            const statsRes = await api.getProductStats();
+            // [OPTIMIZED] Fetch only 20 days of Sales Data for Keyword Ranking to ensure fast load (70s -> 2s)
+            setLoadingStats(true);
+            const statsRes = await api.getProductStats(20);
             setProductStats(statsRes || []);
+            setLoadingStats(false);
 
             if (kwData && kwData.length > 0 && !selectedKeywordId) {
                 setSelectedKeywordId(kwData[0].id);
@@ -184,7 +187,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const displayDates = allUniqueDates;
 
     // Get unique search volume dates
-    const allSvDates = Array.from(new Set(searchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const allSvDates = Array.from(new Set(keywordSearchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     // Group into Friday-Thursday weeks to determine latest/prev dates
     const getWeekKey = (dateStr: string | Date) => {
@@ -283,10 +286,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                 bValue = bThis - bLast;
             }
         } else if (sortConfig.key === 'views_latest' || sortConfig.key === 'views_prev' || sortConfig.key === 'trend') {
-            const aLatest = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
-            const aPrev = searchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
-            const bLatest = searchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
-            const bPrev = searchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
+            const aLatest = keywordSearchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
+            const aPrev = keywordSearchVolumes.find(sv => sv.keyword === a.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
+            const bLatest = keywordSearchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === latestSvDate)?.total_volume || 0;
+            const bPrev = keywordSearchVolumes.find(sv => sv.keyword === b.keyword && sv.target_date === prevSvDate)?.total_volume || 0;
 
             if (sortConfig.key === 'views_latest') {
                 aValue = aLatest;
@@ -654,21 +657,30 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                     return (
                                                         <>
                                                             <td className="py-3 px-3 text-center border-x border-gray-100 text-gray-500 text-xs bg-white">
-                                                                {hasProduct ? salesLastWeek.toLocaleString() : '-'}
+                                                                {loadingStats ? (
+                                                                    <span className="inline-block animate-pulse">...</span>
+                                                                ) : (
+                                                                    hasProduct ? salesLastWeek.toLocaleString() : '-'
+                                                                )}
                                                             </td>
-                                                            <td className="py-3 px-3 text-center border-r border-gray-100 font-bold text-gray-800 text-sm bg-white">
-                                                                {hasProduct ? salesThisWeek.toLocaleString() : '-'}
+                                                            <td className="py-3 px-3 text-center border-r border-gray-100 text-gray-500 text-xs bg-white">
+                                                                {loadingStats ? (
+                                                                    <span className="inline-block animate-pulse">...</span>
+                                                                ) : (
+                                                                    hasProduct ? salesThisWeek.toLocaleString() : '-'
+                                                                )}
                                                             </td>
-                                                            <td className="py-3 px-3 text-center border-r border-gray-100 bg-white">
-                                                                {hasProduct ? (
-                                                                    wow > 0 ? (
-                                                                        <span className="text-red-500 text-[11px] font-bold">▲{wow.toLocaleString()}</span>
-                                                                    ) : wow < 0 ? (
-                                                                        <span className="text-blue-500 text-[11px] font-bold">▼{Math.abs(wow).toLocaleString()}</span>
-                                                                    ) : (
-                                                                        <div className="flex justify-center"><Minus className="w-3 h-3 text-gray-300" /></div>
-                                                                    )
-                                                                ) : <span className="text-gray-300">-</span>}
+                                                            <td className={`py-3 px-3 text-center border-r border-gray-100 text-xs font-medium bg-white ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                                {loadingStats ? (
+                                                                    <span className="inline-block animate-pulse">...</span>
+                                                                ) : (
+                                                                    hasProduct ? (
+                                                                        <div className="flex items-center justify-center">
+                                                                            {wow > 0 ? <TrendingUp size={12} className="mr-0.5" /> : wow < 0 ? <TrendingDown size={12} className="mr-0.5" /> : <Minus size={12} className="mr-0.5" />}
+                                                                            {Math.abs(wow).toLocaleString()}
+                                                                        </div>
+                                                                    ) : '-'
+                                                                )}
                                                             </td>
                                                         </>
                                                     );
@@ -678,8 +690,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                 {/* Search Volume Columns (Moved next to Product Name) */}
                                                 {(() => {
-                                                    const latestSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === latestSvDate);
-                                                    const prevSv = searchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === prevSvDate);
+                                                    const latestSv = keywordSearchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === latestSvDate);
+                                                    const prevSv = keywordSearchVolumes.find(sv => sv.keyword === kw.keyword && sv.target_date === prevSvDate);
 
                                                     const latestVol = latestSv?.total_volume || 0;
                                                     const prevVol = prevSv?.total_volume || 0;
