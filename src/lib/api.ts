@@ -1018,12 +1018,30 @@ ${sampleText}
                 if (s.barcode) statsMap.set(s.barcode.trim(), s);
             });
 
+            // 3. (NEW) Fetch all daily sales from start of year to ensure no dates are wiped
+            const currentYear = anchorDateStr.substring(0, 4);
+            const startOfYear = `${currentYear}-01-01`;
+            const rawDailySales = await this._getRawDailySales(startOfYear);
+            
+            const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
+            rawDailySales.forEach((row: any) => {
+                if (!row.barcode) return;
+                const trimmed = row.barcode.trim();
+                if (!rawDailyMap.has(trimmed)) {
+                    rawDailyMap.set(trimmed, { sales: {}, stock: {} });
+                }
+                const d = rawDailyMap.get(trimmed)!;
+                d.sales[row.date] = row.quantity || 0;
+                d.stock[row.date] = row.stock || 0;
+            });
+
             // 5. Merge
             const result = products.map(p => {
                 const trimmedBarcode = p.barcode.trim();
                 const st = statsMap.get(trimmedBarcode) || {};
-                const dailySales = st.daily_sales || {};
-                const dailyStock = st.daily_stock || {};
+                const rawD = rawDailyMap.get(trimmedBarcode) || { sales: {}, stock: {} };
+                const dailySales = rawD.sales;
+                const dailyStock = rawD.stock;
 
                 // Use Number() for BIGINT fields from RPC to prevent string concatenation in JS
                 const qty7d = Number(st.qty_7d || 0);

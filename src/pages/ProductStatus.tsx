@@ -69,8 +69,12 @@ export default function ProductStatus() {
 
   const groupedProducts: GroupedProduct[] = useMemo(() => {
     const groups = new Map<string, GroupedProduct>();
+    const VALID_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
 
     products.forEach(p => {
+      // Filter out invalid seasons
+      if (!p.season || !VALID_SEASONS.includes(p.season.trim())) return;
+
       const existing = groups.get(p.name);
       if (existing) {
         existing.totalSales += p.totalSales;
@@ -97,7 +101,7 @@ export default function ProductStatus() {
       } else {
         groups.set(p.name, {
           name: p.name,
-          season: p.season,
+          season: p.season.trim(),
           imageUrl: p.imageUrl,
           totalSales: p.totalSales,
           fcSales: p.fcSales,
@@ -116,11 +120,6 @@ export default function ProductStatus() {
     });
 
     // Re-evaluate Group ABC Grade (Take the best grade from children or calculate based on group total)
-    // Here we simply take the grade of the group leader (first item) or re-logic.
-    // Better: Re-calculate per group? No, individual item grade is more important.
-    // Let's assume the group grade is the grade of the main item (usually same barocde logic).
-    // Or just use 'A' if any child is 'A'.
-
     // Simple logic: Group inherits the best grade (A < B < C < D)
     for (const g of groups.values()) {
       if (g.children.some(c => c.abcGrade === 'A')) g.abcGrade = 'A';
@@ -143,10 +142,30 @@ export default function ProductStatus() {
   }, [groupedProducts]);
 
   const uniqueDates = useMemo(() => {
-    const dates = new Set<string>();
-    products.forEach(p => Object.keys(p.dailySales).forEach(d => dates.add(d)));
-    return Array.from(dates).sort();
-  }, [products]);
+    if (products.length === 0) return [];
+    
+    // Find absolute latest date among active products
+    let latestDateStr = '';
+    groupedProducts.forEach(p => {
+      Object.keys(p.dailySales).forEach(d => {
+        if (d > latestDateStr) latestDateStr = d;
+      });
+    });
+    
+    if (!latestDateStr) {
+      latestDateStr = new Date().toISOString().split('T')[0];
+    }
+    
+    const currentYear = latestDateStr.substring(0, 4);
+    const startDate = new Date(`${currentYear}-01-01`);
+    const endDate = new Date(latestDateStr);
+    
+    const dates = [];
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split('T')[0]);
+    }
+    return dates;
+  }, [groupedProducts, products.length]);
 
   const filteredGroups = groupedProducts.filter(g => {
     const matchSeason = selectedSeason === 'all' || g.season === selectedSeason;
@@ -285,14 +304,12 @@ export default function ProductStatus() {
   const W_TOGGLE = "w-10 min-w-[2.5rem]";
   const W_IMAGE = "w-12 min-w-[3rem]";
   const W_SEASON = 'w-24 min-w-[6rem]';
-  const W_TREND = "w-20 min-w-[5rem]";
   const W_NAME = "w-64 min-w-[16rem]";
 
   const L_TOGGLE = "left-0";
   const L_IMAGE = "left-[2.5rem]";
   const L_SEASON = 'left-[5.5rem]';
-  const L_TREND = 'left-[11.5rem]';
-  const L_NAME = 'left-[16.5rem]';
+  const L_NAME = 'left-[11.5rem]';
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
   return (
@@ -434,41 +451,6 @@ export default function ProductStatus() {
                 <th className={`px-2 py-3 bg-gray-50 sticky z-40 ${W_TOGGLE} ${L_TOGGLE}`}></th>
                 <th className={`px-2 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 ${W_IMAGE} ${L_IMAGE}`} onClick={() => handleSort('imageUrl')}>이미지</th>
                 <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 ${W_SEASON} ${L_SEASON}`} onClick={() => handleSort('season')}>시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 ${W_TREND} ${L_TREND}`} onClick={() => handleSort('trend')}>
-                  <div className="flex items-center">
-                    트렌드 <ArrowUpDown size={12} className="inline ml-1 opacity-50" />
-                    <div className="group relative ml-1" onClick={(e) => e.stopPropagation()}>
-                      <HelpCircle size={14} className="text-gray-400 hover:text-gray-600 cursor-help" />
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-                        <div className="font-bold mb-2 pb-1 border-b border-gray-600">트렌드 아이콘 기준</div>
-                        <div className="space-y-2">
-                          <div className="flex items-start">
-                            <span className="text-lg mr-2 shrink-0">🔥</span>
-                            <div>
-                              <div className="font-bold text-red-300 mb-0.5">급상승 (HOT)</div>
-                              <div className="text-gray-300 leading-tight">
-                                최근 7일 판매량이 전주 대비 <span className="text-white font-bold">50% 이상 증가</span>
-                                <br /><span className="text-gray-400 text-[10px]">(단, 최근 7일간 10개 이상 판매된 상품)</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            <span className="text-lg mr-2 shrink-0">❄️</span>
-                            <div>
-                              <div className="font-bold text-blue-300 mb-0.5">급하락 (COLD)</div>
-                              <div className="text-gray-300 leading-tight">
-                                최근 7일 판매량이 전주 대비 <span className="text-white font-bold">50% 이상 감소</span>
-                                <br /><span className="text-gray-400 text-[10px]">(단, 직전 7일간 10개 이상 판매된 상품)</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {/* Triangle Pointer */}
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-                      </div>
-                    </div>
-                  </div>
-                </th>
                 <th className={`px-4 py-3 hover:bg-gray-100 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`} onClick={() => handleSort('name')}>상품명(원가) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
 
                 <th className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>{viewMode === 'qty' ? '본사재고량' : '본사재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
@@ -486,7 +468,6 @@ export default function ProductStatus() {
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></th>
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_IMAGE} ${L_IMAGE}`}></th>
                 <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_SEASON} ${L_SEASON}`}></th>
-                <th className={`px-2 py-2 sticky z-30 bg-gray-100 ${W_TREND} ${L_TREND}`}></th>
                 <th className={`px-4 py-2 sticky z-30 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
 
                 <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
@@ -516,7 +497,6 @@ export default function ProductStatus() {
                         {group.imageUrl ? <img src={group.imageUrl} alt="" className="w-8 h-8 rounded mx-auto object-cover bg-gray-100 border border-gray-200" /> : <div className="w-8 h-8 rounded mx-auto bg-gray-100 border border-gray-200" />}
                       </td>
                       <td className={`px-4 py-2 text-gray-500 text-xs truncate sticky z-20 ${W_SEASON} ${L_SEASON} ${stickyBg} border-b border-gray-100`}>{group.season}</td>
-                      <td className={`px-4 py-2 text-gray-500 text-xs truncate sticky z-20 ${W_TREND} ${L_TREND} ${stickyBg} border-b border-gray-100`}>-</td>
                       <td className={`px-4 py-2 font-bold text-gray-900 text-sm whitespace-nowrap sticky z-20 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME} ${stickyBg} border-b border-gray-100`}>
                         <span
                           className="cursor-pointer hover:text-blue-600 hover:underline"
@@ -561,13 +541,6 @@ export default function ProductStatus() {
                         <td className={`px-2 py-1 sticky z-20 bg-gray-50 border-b border-gray-100 ${W_IMAGE} ${L_IMAGE}`}></td>
                         <td className={`px-4 py-1 text-gray-500 font-medium text-xs text-center sticky z-20 bg-gray-50 border-b border-gray-100 ${W_SEASON} ${L_SEASON}`}>
                           {child.season || '-'}
-                        </td>
-                        <td className={`px-4 py-1 text-gray-500 font-medium text-xs text-center sticky z-20 bg-gray-50 border-b border-gray-100 ${W_TREND} ${L_TREND}`}>
-                          {child.trend === 'hot' ? <span className="text-red-500 font-bold">🔥 급상승</span> :
-                            child.trend === 'cold' ? <span className="text-blue-500 font-bold">❄️ 급하락</span> :
-                              child.trend === 'up' ? <span className="text-red-400">▲ 상승</span> :
-                                child.trend === 'down' ? <span className="text-blue-400">▼ 하락</span> :
-                                  <span className="text-gray-300">-</span>}
                         </td>
                         <td className={`px-4 py-1 pl-8 text-xs whitespace-nowrap sticky z-20 bg-gray-50 border-b border-gray-100 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>
                           <div className="flex flex-col">
