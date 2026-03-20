@@ -40,7 +40,7 @@ function App() {
             <div className="flex items-start space-x-2">
               <span className="text-xl">🚀</span>
               <div>
-                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap leading-none pt-1">Coupang Manager V2</h1>
+                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap leading-none pt-1">Coupang Manager V2.1 (최신버전)</h1>
                 <p className="text-xs text-gray-400 font-normal mt-1">by OzKiz</p>
               </div>
             </div>
