@@ -10,6 +10,8 @@ import { isRedDay } from '../lib/dateUtils';
 
 interface InventoryGroup {
   name: string;
+  season?: string;
+  abcGrade?: string;
   imageUrl?: string;
   hqStock: number;
   coupangStock: number;
@@ -40,6 +42,8 @@ export default function InventoryStatus() {
   const [chartModalOpen, setChartModalOpen] = useState(false);
   const [selectedGroupForChart, setSelectedGroupForChart] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'qty' | 'amount'>('qty'); // [NEW] View Mode Toggle
+  const [selectedSeason, setSelectedSeason] = useState('all');
+  const [selectedGrade, setSelectedGrade] = useState('all');
 
   const openChartModal = (groupName: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,6 +106,8 @@ export default function InventoryStatus() {
       if (!groups.has(p.name)) {
         groups.set(p.name, {
           name: p.name,
+          season: p.season.trim(),
+          abcGrade: p.abcGrade,
           imageUrl: p.imageUrl,
           hqStock: 0,
           coupangStock: 0,
@@ -137,12 +143,18 @@ export default function InventoryStatus() {
       g.children.push(processedItem);
     });
 
-    // Calculate Group Trend
+    // Calculate Group Trend & Best Grade
     for (const g of groups.values()) {
       const diff = g.sales7Days - g.prevSales7Days;
       if (diff > 0) g.trend = 'up';
       else if (diff < 0) g.trend = 'down';
       else g.trend = 'flat';
+
+      // Best grade logic
+      if (g.children.some(c => c.abcGrade === 'A')) g.abcGrade = 'A';
+      else if (g.children.some(c => c.abcGrade === 'B')) g.abcGrade = 'B';
+      else if (g.children.some(c => c.abcGrade === 'C')) g.abcGrade = 'C';
+      else g.abcGrade = 'D';
     }
 
     return Array.from(groups.values());
@@ -174,10 +186,13 @@ export default function InventoryStatus() {
   // 2. Filter & Sort
   const filteredGroups = useMemo(() => {
     let result = groupedData.filter(g => {
+      const matchSeason = selectedSeason === 'all' || g.season === selectedSeason;
+      const matchGrade = selectedGrade === 'all' || g.abcGrade === selectedGrade;
       const matchSearch = g.name.toLowerCase().includes(search.toLowerCase()) ||
-        g.children.some(c => c.barcode.includes(search));
+        g.children.some(c => c.barcode.includes(search)) ||
+        (g.season && g.season.includes(search));
 
-      return matchSearch;
+      return matchSeason && matchGrade && matchSearch;
     });
 
     if (sortConfig) {
@@ -294,29 +309,29 @@ export default function InventoryStatus() {
       dailyStock: {} as Record<string, number>,
       dailyStockValue: {} as Record<string, number>,
     };
-    filteredGroups.forEach(g => {
-      stats.hqStock += g.hqStock;
-      stats.coupangStock += g.coupangStock;
-      stats.fcStock += (g.fcStock || 0);
-      stats.vfStock += (g.vfStock || 0);
-      stats.totalSales += g.totalSales;
+    
+    products.forEach(child => {
+      const cost = child.cost || 0;
+      stats.hqStock += child.hqStock;
+      stats.coupangStock += child.coupangStock;
+      stats.fcStock += (child.fcStock || 0);
+      stats.vfStock += (child.vfStock || 0);
+      stats.totalSales += child.totalSales;
 
-      g.children.forEach(child => {
-        const cost = child.cost || 0;
-        stats.hqStockValue += child.hqStock * cost;
-        stats.coupangStockValue += child.coupangStock * cost;
-        stats.fcStockValue += (child.fcStock || 0) * cost;
-        stats.vfStockValue += (child.vfStock || 0) * cost;
-        stats.totalSalesValue += child.totalSales * cost;
+      stats.hqStockValue += child.hqStock * cost;
+      stats.coupangStockValue += child.coupangStock * cost;
+      stats.fcStockValue += (child.fcStock || 0) * cost;
+      stats.vfStockValue += (child.vfStock || 0) * cost;
+      stats.totalSalesValue += child.totalSales * cost;
 
-        Object.entries(child.dailyStock || {}).forEach(([date, qty]) => {
-          stats.dailyStock[date] = (stats.dailyStock[date] || 0) + qty;
-          stats.dailyStockValue[date] = (stats.dailyStockValue[date] || 0) + (qty * cost);
-        });
+      Object.entries(child.dailyStock || {}).forEach(([date, qty]) => {
+        stats.dailyStock[date] = (stats.dailyStock[date] || 0) + qty;
+        stats.dailyStockValue[date] = (stats.dailyStockValue[date] || 0) + (qty * cost);
       });
     });
+    
     return stats;
-  }, [filteredGroups]);
+  }, [products]);
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
 
@@ -349,33 +364,6 @@ export default function InventoryStatus() {
                 (상위 {visibleCount}개 / 전체 {filteredGroups.length}개)
               </span>
             </h3>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="상품명, 바코드 검색..."
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 w-64"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="flex border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-              <button
-                onClick={() => setViewMode('qty')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'qty' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                수량보기
-              </button>
-              <button
-                onClick={() => setViewMode('amount')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'amount' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                금액보기
-              </button>
-            </div>
           </div>
         </div>
 
@@ -419,6 +407,58 @@ export default function InventoryStatus() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls Bar (Search + Dropdowns) */}
+        <div className="p-4 bg-white border-b border-gray-100 flex flex-wrap gap-4 items-center justify-end shadow-sm sticky top-0 z-40 relative">
+          <div className="flex items-center space-x-3">
+            <select
+              value={selectedSeason}
+              onChange={(e) => setSelectedSeason(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[position:right_12px_center] bg-no-repeat"
+            >
+              <option value="all">전체 시즌</option>
+              <option value="여름">여름</option>
+              <option value="사계절">사계절</option>
+              <option value="봄/가을">봄/가을</option>
+              <option value="겨울">겨울</option>
+            </select>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[position:right_12px_center] bg-no-repeat"
+            >
+              <option value="all">전체 등급</option>
+              <option value="A">A 등급</option>
+              <option value="B">B 등급</option>
+              <option value="C">C 등급</option>
+              <option value="D">D 등급</option>
+            </select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="상품명, 바코드, 시즌 검색..."
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 w-64"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+              <button
+                onClick={() => setViewMode('qty')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'qty' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                수량보기
+              </button>
+              <button
+                onClick={() => setViewMode('amount')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'amount' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                금액보기
+              </button>
             </div>
           </div>
         </div>

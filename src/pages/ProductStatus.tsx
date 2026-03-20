@@ -238,32 +238,31 @@ export default function ProductStatus() {
       dailySales: {} as Record<string, number>,
       dailySalesValue: {} as Record<string, number>
     };
-    filteredGroups.forEach(g => {
-      stats.hqStock += g.hqStock;
-      stats.currentStock += g.currentStock;
-      stats.fcStock += g.fcStock;
-      stats.vfStock += g.vfStock;
-      stats.totalSales += g.totalSales;
-      stats.fcSales += g.fcSales;
-      stats.vfSales += g.vfSales;
 
-      g.children.forEach(child => {
-        const cost = child.cost || 0;
-        stats.hqStockValue += child.hqStock * cost;
-        stats.currentStockValue += child.coupangStock * cost;
-        stats.totalSalesValue += child.totalSales * cost;
-        stats.fcSalesValue += child.fcSales * cost;
-        stats.vfSalesValue += child.vfSales * cost;
+    products.forEach(child => {
+      const cost = child.cost || 0;
+      stats.hqStock += child.hqStock;
+      stats.currentStock += child.coupangStock;
+      stats.fcStock += child.fcStock;
+      stats.vfStock += child.vfStock;
+      stats.totalSales += child.totalSales;
+      stats.fcSales += child.fcSales;
+      stats.vfSales += child.vfSales;
 
-        Object.entries(child.dailySales).forEach(([date, qty]) => {
-          stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
-          stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + (qty * cost);
-        });
+      stats.hqStockValue += child.hqStock * cost;
+      stats.currentStockValue += child.coupangStock * cost;
+      stats.totalSalesValue += child.totalSales * cost;
+      stats.fcSalesValue += child.fcSales * cost;
+      stats.vfSalesValue += child.vfSales * cost;
+
+      Object.entries(child.dailySales).forEach(([date, qty]) => {
+        stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
+        stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + (qty * cost);
       });
     });
 
     return stats;
-  }, [filteredGroups]);
+  }, [products]);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
 
