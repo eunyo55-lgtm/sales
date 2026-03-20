@@ -179,8 +179,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
 
 
-    // Extract unique dates for table columns (show all available days, latest first)
-    const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    // Extract unique dates for table columns (show all available days)
+    const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     const displayDates = allUniqueDates;
 
     // Get unique search volume dates
@@ -466,15 +466,6 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[80px] w-[80px]">
                                             전주대비
                                         </th>
-                                        <th className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
-                                            판매량(지난주)
-                                        </th>
-                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
-                                            판매량(이번주)
-                                        </th>
-                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
-                                            전주대비
-                                        </th>
                                         <th
                                             className="py-3 px-3 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none"
                                             onClick={() => handleSort('views_prev')}
@@ -608,37 +599,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                     );
                                                 })()}
 
-                                                {/* NEW COLUMNS: Sales data */}
-                                                {(() => {
-                                                    const pStats = productStats.find(p => p.name === kw.products?.name);
-                                                    const hasProduct = !!kw.products?.name;
-                                                    
-                                                    const salesLastWeek = pStats ? pStats.salesWeeklyPrev : 0;
-                                                    const salesThisWeek = pStats ? pStats.salesWeekly : 0;
-                                                    const wow = salesThisWeek - salesLastWeek;
 
-                                                    return (
-                                                        <>
-                                                            <td className="py-3 px-3 text-center border-x border-gray-100 text-gray-500 text-xs bg-white">
-                                                                {hasProduct ? salesLastWeek.toLocaleString() : '-'}
-                                                            </td>
-                                                            <td className="py-3 px-3 text-center border-r border-gray-100 font-bold text-gray-800 text-sm bg-white">
-                                                                {hasProduct ? salesThisWeek.toLocaleString() : '-'}
-                                                            </td>
-                                                            <td className="py-3 px-3 text-center border-r border-gray-100 bg-white">
-                                                                {hasProduct ? (
-                                                                    wow > 0 ? (
-                                                                        <span className="text-red-500 text-[11px] font-bold">▲{wow.toLocaleString()}</span>
-                                                                    ) : wow < 0 ? (
-                                                                        <span className="text-blue-500 text-[11px] font-bold">▼{Math.abs(wow).toLocaleString()}</span>
-                                                                    ) : (
-                                                                        <div className="flex justify-center"><Minus className="w-3 h-3 text-gray-300" /></div>
-                                                                    )
-                                                                ) : <span className="text-gray-300">-</span>}
-                                                            </td>
-                                                        </>
-                                                    );
-                                                })()}
 
                                                 {/* Search Volume Columns (Moved next to Product Name) */}
                                                 {(() => {
@@ -678,10 +639,18 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                     // Calculate DoD (Day over Day)
                                                     let prevPos = 0;
-                                                    if (index + 1 < displayDates.length) {
-                                                        const prevDate = displayDates[index + 1];
+                                                    if (index > 0) {
+                                                        const prevDate = displayDates[index - 1];
                                                         const prevR = kwRankings.find(rank => rank.date === prevDate);
                                                         if (prevR) prevPos = prevR.rank_position;
+                                                    } else {
+                                                        // For the first column, check the un-displayed previous date if available
+                                                        const prevDateIndex = allUniqueDates.indexOf(date) - 1;
+                                                        if (prevDateIndex >= 0) {
+                                                            const prevDate = allUniqueDates[prevDateIndex];
+                                                            const prevR = kwRankings.find(rank => rank.date === prevDate);
+                                                            if (prevR) prevPos = prevR.rank_position;
+                                                        }
                                                     }
 
                                                     let dodElement = null;
