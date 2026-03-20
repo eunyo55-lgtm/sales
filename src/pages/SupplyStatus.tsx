@@ -19,7 +19,7 @@ export default function SupplyStatus() {
     const [products, setProducts] = useState<ProductStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
-    const [productPeriod, setProductPeriod] = useState<'week' | 'month' | 'all'>('all');
+    const [productPeriod, setProductPeriod] = useState<'week' | 'month' | 'all'>('week');
     const [searchTerm, setSearchTerm] = useState('');
     const [visibleCount, setVisibleCount] = useState(10);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());

@@ -81,7 +81,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
             // Products list is now fetched dynamically on search to improve load time
 
-            // Fetch rankings (last 90 days instead of 30)
+            // Fetch rankings (last 90 days)
             const startDateObj = new Date();
             startDateObj.setDate(startDateObj.getDate() - 90);
             const dateStr = getKSTDateString(startDateObj);
@@ -179,8 +179,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
 
 
-    // Extract unique dates for table columns (show all available days)
-    const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    // Extract unique dates for table columns (show all available days, latest first)
+    const allUniqueDates = Array.from(new Set(rankings.map(r => r.date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     const displayDates = allUniqueDates;
 
     // Get unique search volume dates
@@ -428,7 +428,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                 <thead className="sticky top-0 z-20 shadow-sm">
                                     <tr className="text-gray-500 border-b border-gray-200 text-xs">
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[100px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
+                                            style={{ left: 0, width: 90, minWidth: 90, maxWidth: 90, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('category')}
                                         >
                                             <div className="flex items-center">
@@ -437,7 +438,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             </div>
                                         </th>
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[120px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
+                                            style={{ left: 90, width: 140, minWidth: 140, maxWidth: 140, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('keyword')}
                                         >
                                             <div className="flex items-center">
@@ -446,13 +448,23 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             </div>
                                         </th>
                                         <th
-                                            className="py-3 px-4 font-medium min-w-[150px] cursor-pointer hover:bg-gray-100 transition-colors group select-none relative bg-gray-50"
+                                            style={{ left: 230, width: 180, minWidth: 180, maxWidth: 180, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
                                             onClick={() => handleSort('product')}
                                         >
                                             <div className="flex items-center">
                                                 연결 상품명
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
+                                        </th>
+                                        <th className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px]">
+                                            판매량(지난주)
+                                        </th>
+                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[100px] w-[100px]">
+                                            판매량(이번주)
+                                        </th>
+                                        <th className="py-3 px-3 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium min-w-[80px] w-[80px]">
+                                            전주대비
                                         </th>
                                         <th className="py-3 px-3 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium">
                                             판매량(지난주)
@@ -513,7 +525,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 onClick={() => setSelectedKeywordId(kw.id)}
                                             >
                                                 <td
-                                                    className="py-3 px-4 text-xs font-semibold text-gray-700 bg-gray-50/50 cursor-pointer hover:bg-white"
+                                                    style={{ left: 0, width: 90, minWidth: 90, maxWidth: 90, zIndex: 10 }}
+                                                    className="py-3 px-2 text-xs font-semibold text-gray-700 bg-gray-50/50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
                                                     onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}
                                                 >
                                                     {editingCategory?.id === kw.id ? (
@@ -531,12 +544,20 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             onClick={e => e.stopPropagation()}
                                                         />
                                                     ) : (
-                                                        kw.category || <span className="text-gray-400 hover:text-blue-500 italic">+ 분류 추가</span>
+                                                        <div className="truncate w-full" title={kw.category || ''}>
+                                                            {kw.category || <span className="text-gray-400 hover:text-blue-500 italic">+ 분류 추가</span>}
+                                                        </div>
                                                     )}
                                                 </td>
-                                                <td className="py-3 px-4 font-medium text-blue-900">{kw.keyword}</td>
                                                 <td
-                                                    className="py-3 px-4 text-gray-600 text-xs cursor-pointer hover:text-blue-600 hover:underline"
+                                                    style={{ left: 90, width: 140, minWidth: 140, maxWidth: 140, zIndex: 10 }}
+                                                    className="py-3 px-2 font-medium text-blue-900 sticky bg-white shadow-[1px_0_0_#e5e7eb]"
+                                                >
+                                                    <div className="truncate w-full" title={kw.keyword}>{kw.keyword}</div>
+                                                </td>
+                                                <td
+                                                    style={{ left: 230, width: 180, minWidth: 180, maxWidth: 180, zIndex: 10 }}
+                                                    className="py-3 px-2 text-gray-600 text-xs cursor-pointer hover:text-blue-600 hover:underline sticky bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
                                                     title="클릭하여 순위 추이 보기"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -548,12 +569,44 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             <img
                                                                 src={kw.products.image_url}
                                                                 alt=""
-                                                                className="w-8 h-8 rounded object-cover mr-2 bg-gray-100 border border-gray-200"
+                                                                className="w-8 h-8 rounded object-cover mr-2 bg-gray-100 border border-gray-200 flex-shrink-0"
                                                             />
                                                         )}
                                                         <span className="truncate">{kw.products?.name || '-'}</span>
                                                     </div>
                                                 </td>
+
+                                                {/* NEW COLUMNS: Sales data */}
+                                                {(() => {
+                                                    const pStats = productStats.find(p => p.name === kw.products?.name);
+                                                    const hasProduct = !!kw.products?.name;
+                                                    
+                                                    const salesLastWeek = pStats ? pStats.salesWeeklyPrev : 0;
+                                                    const salesThisWeek = pStats ? pStats.salesWeekly : 0;
+                                                    const wow = salesThisWeek - salesLastWeek;
+
+                                                    return (
+                                                        <>
+                                                            <td className="py-3 px-3 text-center border-x border-gray-100 text-gray-500 text-xs bg-white">
+                                                                {hasProduct ? salesLastWeek.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center border-r border-gray-100 font-bold text-gray-800 text-sm bg-white">
+                                                                {hasProduct ? salesThisWeek.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td className="py-3 px-3 text-center border-r border-gray-100 bg-white">
+                                                                {hasProduct ? (
+                                                                    wow > 0 ? (
+                                                                        <span className="text-red-500 text-[11px] font-bold">▲{wow.toLocaleString()}</span>
+                                                                    ) : wow < 0 ? (
+                                                                        <span className="text-blue-500 text-[11px] font-bold">▼{Math.abs(wow).toLocaleString()}</span>
+                                                                    ) : (
+                                                                        <div className="flex justify-center"><Minus className="w-3 h-3 text-gray-300" /></div>
+                                                                    )
+                                                                ) : <span className="text-gray-300">-</span>}
+                                                            </td>
+                                                        </>
+                                                    );
+                                                })()}
 
                                                 {/* NEW COLUMNS: Sales data */}
                                                 {(() => {
@@ -625,18 +678,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                     // Calculate DoD (Day over Day)
                                                     let prevPos = 0;
-                                                    if (index > 0) {
-                                                        const prevDate = displayDates[index - 1];
+                                                    if (index + 1 < displayDates.length) {
+                                                        const prevDate = displayDates[index + 1];
                                                         const prevR = kwRankings.find(rank => rank.date === prevDate);
                                                         if (prevR) prevPos = prevR.rank_position;
-                                                    } else {
-                                                        // For the first column, check the un-displayed previous date if available
-                                                        const prevDateIndex = allUniqueDates.indexOf(date) - 1;
-                                                        if (prevDateIndex >= 0) {
-                                                            const prevDate = allUniqueDates[prevDateIndex];
-                                                            const prevR = kwRankings.find(rank => rank.date === prevDate);
-                                                            if (prevR) prevPos = prevR.rank_position;
-                                                        }
                                                     }
 
                                                     let dodElement = null;
