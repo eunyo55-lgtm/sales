@@ -206,9 +206,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     const prevWeekDateObj = new Date(anchorDate);
     prevWeekDateObj.setDate(prevWeekDateObj.getDate() - 7);
     const lastWeekKey = getWeekKey(prevWeekDateObj);
-
-    const latestSvDate = allSvDates.find(d => getWeekKey(d) === currentWeekKey) || '';
-    const prevSvDate = allSvDates.find(d => getWeekKey(d) === lastWeekKey) || '';
+    const latestSvDate = allSvDates[0] || '';
+    const prevSvDate = allSvDates[1] || '';
 
     // [Aggregation] Group stats by product name to aggregate across options
     const groupedStats = useMemo(() => {
