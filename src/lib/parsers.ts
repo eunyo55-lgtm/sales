@@ -119,7 +119,7 @@ export const parseProductMaster = async (file: File): Promise<ProductMaster[]> =
  * - M: Sales Qty (Sum needed)
  * - N: Current Stock (Use latest date's value)
  */
-export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> => {
+export const parseCoupangSales = async (file: File, targetYearOverride?: number): Promise<CoupangSalesRow[]> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -142,9 +142,42 @@ export const parseCoupangSales = async (file: File): Promise<CoupangSalesRow[]> 
 
                     if (!cellA || !cellI) continue;
 
-                    let dateStr = String(cellA.w || cellA.v).trim();
-                    if (dateStr.length === 8 && !dateStr.includes('-')) {
-                        dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+                    let dateStr = '';
+                    if (typeof cellA.v === 'number') {
+                        const p = XLSX.SSF.parse_date_code(cellA.v);
+                        if (p) {
+                            const y = targetYearOverride || p.y;
+                            dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+                        }
+                    } else {
+                        const rawVal = String(cellA.w || cellA.v).trim();
+                        if (rawVal.length === 8 && !rawVal.includes('-')) {
+                            const y = targetYearOverride || rawVal.substring(0, 4);
+                            dateStr = `${y}-${rawVal.substring(4, 6)}-rawVal.substring(6, 8)`;
+                        } else if (targetYearOverride) {
+                            if (rawVal.includes('-')) {
+                                const parts = rawVal.split('-');
+                                if (parts.length === 2) {
+                                    dateStr = `${targetYearOverride}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                } else if (parts.length === 3) {
+                                    dateStr = `${targetYearOverride}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                }
+                            } else if (rawVal.includes('/')) {
+                                const parts = rawVal.split('/');
+                                if (parts.length === 2) {
+                                    dateStr = `${targetYearOverride}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                } else if (parts.length === 3) {
+                                    dateStr = `${targetYearOverride}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                }
+                            } else {
+                                dateStr = rawVal;
+                            }
+                        } else {
+                            dateStr = rawVal;
+                            if (dateStr.length === 8 && !dateStr.includes('-')) {
+                                dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+                            }
+                        }
                     }
 
                     const centerRaw = String(cellF?.v || '').trim().toUpperCase();

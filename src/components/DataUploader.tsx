@@ -22,7 +22,7 @@ export function DataUploader() {
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'master' | 'sales') => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'master' | 'sales' | 'sales-2024') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -36,6 +36,11 @@ export function DataUploader() {
                 setStatus({ type: 'success', message: `${data.length}개 상품 데이터 파싱 완료. 서버 업로드 중...` });
                 await api.uploadProducts(data, (p) => setProgress(p));
                 setStatus({ type: 'success', message: `✅ 상품 마스터 ${data.length}건 업로드 완료!` });
+            } else if (type === 'sales-2024') {
+                const data = await parseCoupangSales(file, 2024);
+                setStatus({ type: 'success', message: `${data.length}개 과거 판매 데이터 파싱 완료. 서버 업로드 중...` });
+                await api.uploadSales(data, (p) => setProgress(p));
+                setStatus({ type: 'success', message: `✅ 24년 판매 데이터 ${data.length}건 업로드 완료!` });
             } else {
                 const data = await parseCoupangSales(file);
                 setStatus({ type: 'success', message: `${data.length}개 판매 데이터 파싱 완료. 서버 업로드 중...` });
@@ -152,6 +157,26 @@ export function DataUploader() {
                 >
                     <Upload size={16} />
                     <span>쿠팡 판매데이터 등록</span>
+                </label>
+            </div>
+
+            {/* 2-1. 24년 판매데이터 (과거) 전용 등록 */}
+            <div className="relative">
+                <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    multiple
+                    onChange={(e) => handleFileUpload(e, 'sales-2024')}
+                    className="hidden"
+                    id="upload-sales-2024"
+                    disabled={isUploading}
+                />
+                <label
+                    htmlFor="upload-sales-2024"
+                    className={`flex items-center space-x-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <FileUp size={16} />
+                    <span>24년 판매데이터 (일회성)</span>
                 </label>
             </div>
 
