@@ -594,7 +594,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             >
                                                 <td
                                                     style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }}
-                                                    className="py-3 px-2 text-xs font-semibold text-gray-700 bg-gray-50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                    className="py-3 px-2 text-xs font-normal text-gray-700 bg-gray-50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
                                                     onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}
                                                 >
                                                     {editingCategory?.id === kw.id ? (
@@ -658,7 +658,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         <>
                                                             <td 
                                                                 style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className="py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                                className={`py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesLastWeek >= 100 ? 'font-bold' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -668,7 +668,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className="py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                                className={`py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesThisWeek >= 100 ? 'font-bold' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -678,7 +678,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 10 }}
-                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-xs font-medium bg-white sticky shadow-[1px_0_0_#e5e7eb] ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
+                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && Math.abs(wow) >= 100 ? 'font-bold' : ''} ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -712,20 +712,34 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                                 style={{ left: 565, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
                                                                 className="py-3 px-2 text-center bg-green-50 border-x border-green-100 text-gray-500 text-xs sticky shadow-[1px_0_0_#e5e7eb]"
                                                             >
-                                                                {prevVol > 0 ? prevVol.toLocaleString() : '-'}
+                                                                <div className="flex flex-col items-center">
+                                                                    {prevVol > 0 ? prevVol.toLocaleString() : '-'}
+                                                                    {prevVol >= 10000 ? (
+                                                                        <span className="mt-0.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded leading-none">VVIP</span>
+                                                                    ) : prevVol >= 5000 ? (
+                                                                        <span className="mt-0.5 px-1 py-0.5 bg-green-100 text-green-600 text-[9px] font-bold rounded leading-none">VIP</span>
+                                                                    ) : null}
+                                                                </div>
                                                             </td>
                                                             <td 
                                                                 style={{ left: 650, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
                                                                 className="py-3 px-2 text-center bg-green-50 border-r border-green-100 font-medium text-xs sticky shadow-[1px_0_0_#e5e7eb]"
                                                             >
-                                                                {latestVol > 0 ? latestVol.toLocaleString() : '-'}
+                                                                <div className="flex flex-col items-center">
+                                                                    {latestVol > 0 ? latestVol.toLocaleString() : '-'}
+                                                                    {latestVol >= 10000 ? (
+                                                                        <span className="mt-0.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded leading-none">VVIP</span>
+                                                                    ) : latestVol >= 5000 ? (
+                                                                        <span className="mt-0.5 px-1 py-0.5 bg-green-100 text-green-600 text-[9px] font-bold rounded leading-none">VIP</span>
+                                                                    ) : null}
+                                                                </div>
                                                             </td>
                                                             <td 
                                                                 style={{ left: 735, width: 55, minWidth: 55, maxWidth: 55, zIndex: 10 }}
-                                                                className="py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-xs"
+                                                                className={`py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-xs ${Math.abs(trend) >= 100 ? 'font-bold' : ''}`}
                                                             >
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
-                                                                    <div className={`flex items-center justify-center text-xs font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                    <div className={`flex items-center justify-center text-xs ${Math.abs(trend) >= 100 ? 'font-bold' : ''} ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                                                         {trend > 0 ? '+' : ''}{trend.toLocaleString()}
                                                                     </div>
                                                                 ) : trend === 0 && latestVol > 0 ? (
