@@ -14,7 +14,7 @@ export default function Dashboard() {
     const [endDate, setEndDate] = useState<string>('');
     const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
-    const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'>('qty_0y');
+    const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
     const [sortDesc, setSortDesc] = useState(true);
     const [displayLimit, setDisplayLimit] = useState(10);
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
         }
     };
 
-    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend') => {
+    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y') => {
         if (sortKey === key) {
             setSortDesc(!sortDesc);
         } else {
@@ -69,8 +69,16 @@ export default function Dashboard() {
 
     const sortedRankings = useMemo(() => {
         const sorted = [...combinedRankings].sort((a, b) => {
-            const vA = a[sortKey] || 0;
-            const vB = b[sortKey] || 0;
+            let vA = 0;
+            let vB = 0;
+            if (sortKey.startsWith('amt_')) {
+                const qtyKey = sortKey.replace('amt_', 'qty_');
+                vA = (a[qtyKey] || 0) * (a.cost || 0);
+                vB = (b[qtyKey] || 0) * (b.cost || 0);
+            } else {
+                vA = a[sortKey] || 0;
+                vB = b[sortKey] || 0;
+            }
             return sortDesc ? vB - vA : vA - vB;
         });
         return sorted;
@@ -261,79 +269,100 @@ export default function Dashboard() {
                     <table className="w-full text-sm text-left whitespace-nowrap">
                         <thead className="text-xs text-gray-500 bg-gray-50">
                             <tr>
-                                <th className="px-4 py-3 text-center w-12">순위</th>
-                                <th className="px-4 py-3">상품명</th>
+                                <th className="px-4 py-3 text-center w-12 border-r border-gray-100">순위</th>
+                                <th className="px-4 py-3 border-r border-gray-100 min-w-[200px]">상품명</th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_2y')}>
-                                    24년 판매량(액) {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                    24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_1y')}>
-                                    25년 판매량(액) {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                    25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_0y')}>
-                                    26년 판매량(액) {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 border-r border-gray-100" onClick={() => handleSort('qty_0y')}>
+                                    26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_2y')}>
+                                    24년 판매액 {sortKey === 'amt_2y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_1y')}>
+                                    25년 판매액 {sortKey === 'amt_1y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-blue-600" onClick={() => handleSort('amt_0y')}>
+                                    26년 판매액 {sortKey === 'amt_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {loadingRankings ? (
-                                <tr><td colSpan={5} className="text-center py-10"><Loader2 className="animate-spin text-blue-500 mx-auto" size={24} /></td></tr>
+                                <tr><td colSpan={8} className="text-center py-10"><Loader2 className="animate-spin text-blue-500 mx-auto" size={24} /></td></tr>
                             ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
                                 const yoyDiff = item.qty_0y - item.qty_1y;
                                 
                                 return (
-                                <tr key={item.name} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-3 text-center font-medium text-gray-600">
+                                <tr key={item.name} className="hover:bg-gray-50 transition-colors border-b border-gray-50">
+                                    <td className="px-4 py-3 text-center font-medium text-gray-600 border-r border-gray-100">
                                         {idx + 1 <= 3 ? (
                                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
                                                 {idx + 1}
                                             </span>
                                         ) : idx + 1}
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center space-x-3">
+                                    <td className="px-4 py-3 border-r border-gray-100">
+                                        <div className="flex items-center space-x-4">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-8 h-8 rounded bg-gray-100 object-cover flex-none" />
+                                                <img src={item.imageUrl} alt="" className="w-16 h-16 rounded-md bg-gray-100 object-cover flex-none border border-gray-200" />
                                             ) : (
-                                                <div className="w-8 h-8 rounded bg-gray-100 flex-none" />
+                                                <div className="w-16 h-16 rounded-md bg-gray-100 flex-none border border-gray-200" />
                                             )}
-                                            <p className="font-medium text-gray-900 truncate max-w-xs">{item.name}</p>
+                                            <p className="font-semibold text-gray-800 break-words whitespace-normal leading-snug">{item.name}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-600">
-                                        <div className="font-bold">{(item.qty_2y || 0).toLocaleString()}건</div>
-                                        {item.cost > 0 && <div className="text-[10px] text-gray-400 mt-0.5">{(item.qty_2y * item.cost).toLocaleString()}원</div>}
+                                    <td className="px-4 py-3 text-right text-gray-600 font-medium">
+                                        {(item.qty_2y || 0).toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-600">
-                                        <div className="font-bold">{(item.qty_1y || 0).toLocaleString()}건</div>
-                                        {item.cost > 0 && <div className="text-[10px] text-gray-400 mt-0.5">{(item.qty_1y * item.cost).toLocaleString()}원</div>}
+                                    <td className="px-4 py-3 text-right text-gray-600 font-medium">
+                                        {(item.qty_1y || 0).toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right font-bold text-gray-900">
-                                        <div>{(item.qty_0y || 0).toLocaleString()}건</div>
-                                        {item.cost > 0 && <div className="text-[10px] text-blue-500 mt-0.5 font-normal">{(item.qty_0y * item.cost).toLocaleString()}원</div>}
+                                    <td className="px-4 py-3 text-right text-gray-900 font-bold border-r border-gray-100">
+                                        {(item.qty_0y || 0).toLocaleString()}건
                                         {yoyDiff !== 0 && (
-                                            <div className={`text-[10px] mt-1 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
+                                            <div className={`text-[11px] mt-0.5 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
                                                 {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}건
                                             </div>
                                         )}
                                     </td>
+                                    <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                                        {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() + '원' : '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                                        {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() + '원' : '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
+                                        {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
+                                    </td>
                                 </tr>
                             )}) : (
-                                <tr><td colSpan={5} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
+                                <tr><td colSpan={8} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
                             )}
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-gray-100 font-bold border-t border-gray-200">
-                                    <td colSpan={2} className="px-4 py-3 text-center text-gray-800">합계</td>
-                                    <td className="px-4 py-3 text-right text-gray-800">
-                                        <div>{totals.qty_2y.toLocaleString()}건</div>
-                                        {totals.amt_2y > 0 && <div className="text-[10px] text-gray-500 mt-0.5">{totals.amt_2y.toLocaleString()}원</div>}
+                                <tr className="bg-gray-100 font-bold border-t-2 border-gray-200">
+                                    <td colSpan={2} className="px-4 py-4 text-center text-gray-800 border-r border-gray-200">합계</td>
+                                    <td className="px-4 py-4 text-right text-gray-800">
+                                        {totals.qty_2y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-800">
-                                        <div>{totals.qty_1y.toLocaleString()}건</div>
-                                        {totals.amt_1y > 0 && <div className="text-[10px] text-gray-500 mt-0.5">{totals.amt_1y.toLocaleString()}원</div>}
+                                    <td className="px-4 py-4 text-right text-gray-800">
+                                        {totals.qty_1y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right text-blue-600">
-                                        <div>{totals.qty_0y.toLocaleString()}건</div>
-                                        {totals.amt_0y > 0 && <div className="text-[10px] mt-0.5 font-normal">{totals.amt_0y.toLocaleString()}원</div>}
+                                    <td className="px-4 py-4 text-right text-gray-900 border-r border-gray-200 text-base">
+                                        {totals.qty_0y.toLocaleString()}건
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-gray-600">
+                                        {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-gray-600">
+                                        {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
+                                    </td>
+                                    <td className="px-4 py-4 text-right text-blue-600 text-base">
+                                        {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
                                     </td>
                                 </tr>
                             )}
