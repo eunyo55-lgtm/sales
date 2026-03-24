@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/api';
-import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowUpDown, X, TrendingUp, TrendingDown, Minus, Menu, LayoutList, Flame } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const getKSTDateString = (dateObj: Date = new Date()) => {
@@ -714,11 +714,16 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             >
                                                                 <div className="flex flex-col items-center">
                                                                     {prevVol > 0 ? prevVol.toLocaleString() : '-'}
-                                                                    {prevVol >= 10000 ? (
-                                                                        <span className="mt-0.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded leading-none">VVIP</span>
-                                                                    ) : prevVol >= 5000 ? (
-                                                                        <span className="mt-0.5 px-1 py-0.5 bg-green-100 text-green-600 text-[9px] font-bold rounded leading-none">VIP</span>
-                                                                    ) : null}
+                                                                    <div className="flex items-center mt-0.5 min-h-[14px]">
+                                                                        {prevVol >= 10000 ? (
+                                                                            <>
+                                                                                <Flame size={12} className="text-red-500 fill-red-500" />
+                                                                                <Flame size={12} className="text-red-500 fill-red-500 -ml-1" />
+                                                                            </>
+                                                                        ) : prevVol >= 5000 ? (
+                                                                            <Flame size={12} className="text-orange-500 fill-orange-500" />
+                                                                        ) : null}
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td 
@@ -727,11 +732,16 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             >
                                                                 <div className="flex flex-col items-center">
                                                                     {latestVol > 0 ? latestVol.toLocaleString() : '-'}
-                                                                    {latestVol >= 10000 ? (
-                                                                        <span className="mt-0.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded leading-none">VVIP</span>
-                                                                    ) : latestVol >= 5000 ? (
-                                                                        <span className="mt-0.5 px-1 py-0.5 bg-green-100 text-green-600 text-[9px] font-bold rounded leading-none">VIP</span>
-                                                                    ) : null}
+                                                                    <div className="flex items-center mt-0.5 min-h-[14px]">
+                                                                        {latestVol >= 10000 ? (
+                                                                            <>
+                                                                                <Flame size={12} className="text-red-500 fill-red-500" />
+                                                                                <Flame size={12} className="text-red-500 fill-red-500 -ml-1" />
+                                                                            </>
+                                                                        ) : latestVol >= 5000 ? (
+                                                                            <Flame size={12} className="text-orange-500 fill-orange-500" />
+                                                                        ) : null}
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td 
