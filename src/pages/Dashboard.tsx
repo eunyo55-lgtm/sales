@@ -277,26 +277,27 @@ export default function Dashboard() {
                         )}
                         <ResponsiveContainer width="100%" height="100%" className="-ml-4">
                             <LineChart data={filteredDailyTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                            <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                            <XAxis
-                                dataKey="date"
-                                fontSize={12}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={({ x, y, payload }) => (
-                                    <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
-                                        {payload.value}
-                                    </text>
-                                )}
-                            />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                            <Legend />
-                            <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
-                            <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
-                        </LineChart>
-                    </ResponsiveContainer>
+                                <CartesianGrid stroke="#f0f0f0" vertical={false} />
+                                <XAxis
+                                    dataKey="date"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tick={({ x, y, payload }) => (
+                                        <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
+                                            {payload.value}
+                                        </text>
+                                    )}
+                                />
+                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                <Legend />
+                                <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                                <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
+                                <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
