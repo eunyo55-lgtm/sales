@@ -49,6 +49,24 @@ export default function Dashboard() {
         }
     };
 
+    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend') => {
+        if (sortKey === key) {
+            setSortDesc(!sortDesc);
+        } else {
+            setSortKey(key);
+            setSortDesc(true);
+        }
+    };
+
+    const sortedRankings = useMemo(() => {
+        const sorted = [...combinedRankings].sort((a, b) => {
+            const vA = a[sortKey] || 0;
+            const vB = b[sortKey] || 0;
+            return sortDesc ? vB - vA : vA - vB;
+        });
+        return sorted.slice(0, 10); // Show only top 10
+    }, [combinedRankings, sortKey, sortDesc]);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
@@ -113,24 +131,6 @@ export default function Dashboard() {
             </div>
         );
     };
-
-    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend') => {
-        if (sortKey === key) {
-            setSortDesc(!sortDesc);
-        } else {
-            setSortKey(key);
-            setSortDesc(true);
-        }
-    };
-
-    const sortedRankings = useMemo(() => {
-        const sorted = [...combinedRankings].sort((a, b) => {
-            const vA = a[sortKey] || 0;
-            const vB = b[sortKey] || 0;
-            return sortDesc ? vB - vA : vA - vB;
-        });
-        return sorted.slice(0, 10); // Show only top 10
-    }, [combinedRankings, sortKey, sortDesc]);
 
     return (
         <div className="space-y-6 pb-10 relative">
