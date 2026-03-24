@@ -297,6 +297,12 @@ export const parseHistoricalSales = async (file: File, targetYear: number): Prom
                             const parts = h.split('-');
                             month = parts[0].padStart(2, '0');
                             day = parts[1].padStart(2, '0');
+                        } else if (h.includes('월')) {
+                            const parts = h.split('월');
+                            if (parts.length >= 2) {
+                                month = parts[0].replace(/[^0-9]/g, '').padStart(2, '0');
+                                day = parts[1].replace(/[^0-9]/g, '').padStart(2, '0');
+                            }
                         }
                     }
 
