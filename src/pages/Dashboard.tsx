@@ -16,6 +16,7 @@ export default function Dashboard() {
     const [loadingRankings, setLoadingRankings] = useState(false);
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'>('qty_0y');
     const [sortDesc, setSortDesc] = useState(true);
+    const [displayLimit, setDisplayLimit] = useState(10);
 
     useEffect(() => {
         loadData();
@@ -37,6 +38,7 @@ export default function Dashboard() {
     const loadCombinedRankings = async () => {
         if (!startDate || !endDate) return;
         setLoadingRankings(true);
+        setDisplayLimit(10);
         try {
             const list = await api.getDashboardCombinedRankings(startDate, endDate);
             setCombinedRankings(list); 
@@ -71,8 +73,24 @@ export default function Dashboard() {
             const vB = b[sortKey] || 0;
             return sortDesc ? vB - vA : vA - vB;
         });
-        return sorted.slice(0, 10); // Show only top 10
+        return sorted;
     }, [combinedRankings, sortKey, sortDesc]);
+
+    const displayedRankings = useMemo(() => {
+        return sortedRankings.slice(0, displayLimit);
+    }, [sortedRankings, displayLimit]);
+
+    const totals = useMemo(() => {
+        return sortedRankings.reduce((acc, curr) => {
+            acc.qty_0y += curr.qty_0y || 0;
+            acc.qty_1y += curr.qty_1y || 0;
+            acc.qty_2y += curr.qty_2y || 0;
+            acc.amt_0y += (curr.qty_0y || 0) * (curr.cost || 0);
+            acc.amt_1y += (curr.qty_1y || 0) * (curr.cost || 0);
+            acc.amt_2y += (curr.qty_2y || 0) * (curr.cost || 0);
+            return acc;
+        }, { qty_0y: 0, qty_1y: 0, qty_2y: 0, amt_0y: 0, amt_1y: 0, amt_2y: 0 });
+    }, [sortedRankings]);
 
     if (loading) {
         return (
@@ -209,7 +227,7 @@ export default function Dashboard() {
                 <div className="p-4 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center space-x-2">
                         <Trophy size={18} className="text-yellow-500" />
-                        <h3 className="font-bold text-gray-800">통합 베스트 10</h3>
+                        <h3 className="font-bold text-gray-800">판매베스트</h3>
                     </div>
                     <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                         <input 
@@ -259,7 +277,7 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-gray-50">
                             {loadingRankings ? (
                                 <tr><td colSpan={5} className="text-center py-10"><Loader2 className="animate-spin text-blue-500 mx-auto" size={24} /></td></tr>
-                            ) : sortedRankings && sortedRankings.length > 0 ? sortedRankings.map((item: any, idx: number) => {
+                            ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
                                 const yoyDiff = item.qty_0y - item.qty_1y;
                                 
                                 return (
@@ -302,9 +320,33 @@ export default function Dashboard() {
                             )}) : (
                                 <tr><td colSpan={5} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
                             )}
+                            {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
+                                <tr className="bg-gray-100 font-bold border-t border-gray-200">
+                                    <td colSpan={2} className="px-4 py-3 text-center text-gray-800">합계</td>
+                                    <td className="px-4 py-3 text-right text-gray-800">
+                                        <div>{totals.qty_2y.toLocaleString()}건</div>
+                                        {totals.amt_2y > 0 && <div className="text-[10px] text-gray-500 mt-0.5">{totals.amt_2y.toLocaleString()}원</div>}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-800">
+                                        <div>{totals.qty_1y.toLocaleString()}건</div>
+                                        {totals.amt_1y > 0 && <div className="text-[10px] text-gray-500 mt-0.5">{totals.amt_1y.toLocaleString()}원</div>}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-blue-600">
+                                        <div>{totals.qty_0y.toLocaleString()}건</div>
+                                        {totals.amt_0y > 0 && <div className="text-[10px] mt-0.5 font-normal">{totals.amt_0y.toLocaleString()}원</div>}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
+                {displayLimit < sortedRankings.length && (
+                    <div className="flex justify-center p-3 bg-gray-50 border-t border-gray-100 rounded-b-xl">
+                        <button onClick={() => setDisplayLimit(p => p + 10)} className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
+                            더 보기 (+10) <span className="ml-1 text-gray-400 font-normal">({displayLimit} / {sortedRankings.length})</span>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

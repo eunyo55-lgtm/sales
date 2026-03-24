@@ -239,30 +239,32 @@ export default function ProductStatus() {
       dailySalesValue: {} as Record<string, number>
     };
 
-    products.forEach(child => {
-      const cost = child.cost || 0;
-      stats.hqStock += child.hqStock;
-      stats.currentStock += child.coupangStock;
-      stats.fcStock += child.fcStock;
-      stats.vfStock += child.vfStock;
-      stats.totalSales += child.totalSales;
-      stats.fcSales += child.fcSales;
-      stats.vfSales += child.vfSales;
+    filteredGroups.forEach(g => {
+      g.children.forEach(child => {
+        const cost = child.cost || 0;
+        stats.hqStock += (child.hqStock || 0);
+        stats.currentStock += (child.coupangStock || 0);
+        stats.fcStock += (child.fcStock || 0);
+        stats.vfStock += (child.vfStock || 0);
+        stats.totalSales += (child.totalSales || 0);
+        stats.fcSales += (child.fcSales || 0);
+        stats.vfSales += (child.vfSales || 0);
 
-      stats.hqStockValue += child.hqStock * cost;
-      stats.currentStockValue += child.coupangStock * cost;
-      stats.totalSalesValue += child.totalSales * cost;
-      stats.fcSalesValue += child.fcSales * cost;
-      stats.vfSalesValue += child.vfSales * cost;
+        stats.hqStockValue += (child.hqStock || 0) * cost;
+        stats.currentStockValue += (child.coupangStock || 0) * cost;
+        stats.totalSalesValue += (child.totalSales || 0) * cost;
+        stats.fcSalesValue += (child.fcSales || 0) * cost;
+        stats.vfSalesValue += (child.vfSales || 0) * cost;
 
-      Object.entries(child.dailySales).forEach(([date, qty]) => {
-        stats.dailySales[date] = (stats.dailySales[date] || 0) + qty;
-        stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + (qty * cost);
+        Object.entries(child.dailySales || {}).forEach(([date, qty]) => {
+          stats.dailySales[date] = (stats.dailySales[date] || 0) + (qty || 0);
+          stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + ((qty || 0) * cost);
+        });
       });
     });
 
     return stats;
-  }, [products]);
+  }, [filteredGroups]);
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
 

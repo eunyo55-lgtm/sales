@@ -310,28 +310,30 @@ export default function InventoryStatus() {
       dailyStockValue: {} as Record<string, number>,
     };
     
-    products.forEach(child => {
-      const cost = child.cost || 0;
-      stats.hqStock += child.hqStock;
-      stats.coupangStock += child.coupangStock;
-      stats.fcStock += (child.fcStock || 0);
-      stats.vfStock += (child.vfStock || 0);
-      stats.totalSales += child.totalSales;
+    filteredGroups.forEach(g => {
+      g.children.forEach(child => {
+        const cost = child.cost || 0;
+        stats.hqStock += (child.hqStock || 0);
+        stats.coupangStock += (child.coupangStock || 0);
+        stats.fcStock += (child.fcStock || 0);
+        stats.vfStock += (child.vfStock || 0);
+        stats.totalSales += (child.totalSales || 0);
 
-      stats.hqStockValue += child.hqStock * cost;
-      stats.coupangStockValue += child.coupangStock * cost;
-      stats.fcStockValue += (child.fcStock || 0) * cost;
-      stats.vfStockValue += (child.vfStock || 0) * cost;
-      stats.totalSalesValue += child.totalSales * cost;
+        stats.hqStockValue += (child.hqStock || 0) * cost;
+        stats.coupangStockValue += (child.coupangStock || 0) * cost;
+        stats.fcStockValue += (child.fcStock || 0) * cost;
+        stats.vfStockValue += (child.vfStock || 0) * cost;
+        stats.totalSalesValue += (child.totalSales || 0) * cost;
 
-      Object.entries(child.dailyStock || {}).forEach(([date, qty]) => {
-        stats.dailyStock[date] = (stats.dailyStock[date] || 0) + qty;
-        stats.dailyStockValue[date] = (stats.dailyStockValue[date] || 0) + (qty * cost);
+        Object.entries(child.dailyStock || {}).forEach(([date, qty]) => {
+          stats.dailyStock[date] = (stats.dailyStock[date] || 0) + (qty || 0);
+          stats.dailyStockValue[date] = (stats.dailyStockValue[date] || 0) + ((qty || 0) * cost);
+        });
       });
     });
     
     return stats;
-  }, [products]);
+  }, [filteredGroups]);
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
 
