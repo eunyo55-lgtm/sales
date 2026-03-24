@@ -481,7 +481,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                 <thead className="sticky top-0 z-20 shadow-sm">
                                     <tr className="text-gray-500 border-b border-gray-200 text-xs">
                                         <th
-                                            style={{ left: 0, width: 90, minWidth: 90, maxWidth: 90, zIndex: 20 }}
+                                            style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 20 }}
                                             className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('category')}
                                         >
@@ -491,7 +491,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             </div>
                                         </th>
                                         <th
-                                            style={{ left: 90, width: 130, minWidth: 130, maxWidth: 130, zIndex: 20 }}
+                                            style={{ left: 70, width: 110, minWidth: 110, maxWidth: 110, zIndex: 20 }}
                                             className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('keyword')}
                                         >
@@ -501,8 +501,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             </div>
                                         </th>
                                         <th
-                                            style={{ left: 220, width: 160, minWidth: 160, maxWidth: 160, zIndex: 20 }}
-                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb] border-r border-gray-200"
+                                            style={{ left: 180, width: 150, minWidth: 150, maxWidth: 150, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('product')}
                                         >
                                             <div className="flex items-center">
@@ -511,57 +511,63 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             </div>
                                         </th>
                                         <th 
-                                            style={{ left: 380, width: 70, minWidth: 70, maxWidth: 70, zIndex: 20 }}
-                                            className="py-3 px-1 border-x border-gray-200 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 20 }}
+                                            className="py-3 px-2 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesLastWeek')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px] leading-tight">
                                                 판매량<br/>(지난주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesLastWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th 
-                                            style={{ left: 450, width: 70, minWidth: 70, maxWidth: 70, zIndex: 20 }}
-                                            className="py-3 px-1 border-r border-gray-200 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 20 }}
+                                            className="py-3 px-2 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesThisWeek')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px] leading-tight">
                                                 판매량<br/>(이번주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesThisWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th 
-                                            style={{ left: 520, width: 60, minWidth: 60, maxWidth: 60, zIndex: 20 }}
-                                            className="py-3 px-1 border-r border-gray-200 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 20 }}
+                                            className="py-3 px-1 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesWoW')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px]">
                                                 전주대비
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesWoW' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th
-                                            style={{ left: 580, width: 70, minWidth: 70, maxWidth: 70, zIndex: 20 }}
-                                            className="py-3 px-1 font-medium text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky bg-green-50 shadow-[1px_0_0_#dcfce7]"
+                                            style={{ left: 565, width: 85, minWidth: 85, maxWidth: 85, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('views_prev')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px] leading-tight">
                                                 조회수<br/>(지난주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_prev' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th
-                                            style={{ left: 650, width: 70, minWidth: 70, maxWidth: 70, zIndex: 20 }}
-                                            className="py-3 px-1 font-medium text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky bg-green-50 shadow-[1px_0_0_#dcfce7]"
+                                            style={{ left: 650, width: 85, minWidth: 85, maxWidth: 85, zIndex: 20 }}
+                                            className="py-3 px-2 font-medium bg-green-50 text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('views_latest')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px] leading-tight">
                                                 조회수<br/>(이번주)
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_latest' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         <th
-                                            style={{ left: 720, width: 60, minWidth: 60, maxWidth: 60, zIndex: 20 }}
-                                            className="py-3 px-1 font-medium text-green-700 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky bg-green-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
+                                            style={{ left: 735, width: 55, minWidth: 55, maxWidth: 55, zIndex: 20 }}
+                                            className="py-3 px-1 font-medium bg-green-50 text-green-700 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
                                             onClick={() => handleSort('trend')}
                                         >
-                                            <div className="flex items-center justify-center text-[11px] font-bold tracking-tight">
+                                            <div className="flex items-center justify-center text-[11px]">
                                                 추이
+                                                <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'trend' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
                                         </th>
                                         {displayDates.map(date => {
@@ -587,15 +593,15 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 onClick={() => setSelectedKeywordId(kw.id)}
                                             >
                                                 <td
-                                                    style={{ left: 0, width: 90, minWidth: 90, maxWidth: 90, zIndex: 10 }}
-                                                    className="py-3 px-2 text-xs font-semibold text-gray-700 bg-gray-50/50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                    style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }}
+                                                    className="py-3 px-2 text-[10px] font-semibold text-gray-700 bg-gray-50/50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
                                                     onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}
                                                 >
                                                     {editingCategory?.id === kw.id ? (
                                                         <input
                                                             autoFocus
                                                             type="text"
-                                                            className="w-full px-2 py-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                                                            className="w-full px-1 py-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-[10px]"
                                                             value={editingCategory?.value || ''}
                                                             onChange={(e) => setEditingCategory(prev => prev ? { ...prev, value: e.target.value } : null)}
                                                             onBlur={() => { if (editingCategory) handleUpdateCategory(kw.id, editingCategory.value); }}
@@ -607,31 +613,31 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         />
                                                     ) : (
                                                         <div className="truncate w-full" title={kw.category || ''}>
-                                                            {kw.category || <span className="text-gray-400 hover:text-blue-500 italic">+ 분류 추가</span>}
+                                                            {kw.category || <span className="text-gray-400 hover:text-blue-500 italic">+ 분류</span>}
                                                         </div>
                                                     )}
                                                 </td>
                                                 <td
-                                                    style={{ left: 90, width: 130, minWidth: 130, maxWidth: 130, zIndex: 10 }}
-                                                    className="py-3 px-2 font-medium text-blue-900 sticky bg-white shadow-[1px_0_0_#e5e7eb] text-sm"
+                                                    style={{ left: 70, width: 110, minWidth: 110, maxWidth: 110, zIndex: 10 }}
+                                                    className="py-3 px-2 font-medium text-blue-900 text-xs sticky bg-white shadow-[1px_0_0_#e5e7eb]"
                                                 >
                                                     <div className="truncate w-full" title={kw.keyword}>{kw.keyword}</div>
                                                 </td>
                                                 <td
-                                                    style={{ left: 220, width: 160, minWidth: 160, maxWidth: 160, zIndex: 10 }}
-                                                    className="py-3 px-2 text-gray-600 text-[11px] cursor-pointer hover:text-blue-600 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb] border-r border-gray-200"
+                                                    style={{ left: 180, width: 150, minWidth: 150, maxWidth: 150, zIndex: 10 }}
+                                                    className="py-3 px-2 text-gray-600 text-[10px] cursor-pointer hover:text-blue-600 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb]"
                                                     title="클릭하여 순위 추이 보기"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         openChartModal(kw);
                                                     }}
                                                 >
-                                                    <div className="flex items-center min-w-[120px]">
+                                                    <div className="flex items-center min-w-[100px]">
                                                         {kw.products?.image_url && (
                                                             <img
                                                                 src={kw.products.image_url}
                                                                 alt=""
-                                                                className="w-8 h-8 rounded object-cover mr-1 bg-gray-100 border border-gray-200 flex-shrink-0"
+                                                                className="w-6 h-6 rounded object-cover mr-1 bg-gray-100 border border-gray-200 flex-shrink-0"
                                                             />
                                                         )}
                                                         <span className="truncate">{kw.products?.name || '-'}</span>
@@ -650,27 +656,36 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                     return (
                                                         <>
-                                                            <td style={{ left: 380, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }} className="py-3 px-1 text-center border-x border-gray-100 text-gray-500 text-xs sticky bg-white shadow-[1px_0_0_#e5e7eb]">
+                                                            <td 
+                                                                style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
+                                                                className="py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-[10px] bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                            >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
                                                                 ) : (
                                                                     hasProduct ? salesLastWeek.toLocaleString() : '-'
                                                                 )}
                                                             </td>
-                                                            <td style={{ left: 450, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }} className="py-3 px-1 text-center border-r border-gray-100 text-gray-500 text-xs sticky bg-white shadow-[1px_0_0_#e5e7eb]">
+                                                            <td 
+                                                                style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
+                                                                className="py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-[10px] bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                            >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
                                                                 ) : (
                                                                     hasProduct ? salesThisWeek.toLocaleString() : '-'
                                                                 )}
                                                             </td>
-                                                            <td style={{ left: 520, width: 60, minWidth: 60, maxWidth: 60, zIndex: 10 }} className={`py-3 px-1 text-center border-r border-gray-100 text-xs font-medium sticky bg-white shadow-[1px_0_0_#e5e7eb] ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                            <td 
+                                                                style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 10 }}
+                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-[10px] font-medium bg-white sticky shadow-[1px_0_0_#e5e7eb] ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
+                                                            >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
                                                                 ) : (
                                                                     hasProduct ? (
                                                                         <div className="flex items-center justify-center">
-                                                                            {wow > 0 ? <TrendingUp size={12} className="mr-0.5" /> : wow < 0 ? <TrendingDown size={12} className="mr-0.5" /> : <Minus size={12} className="mr-0.5" />}
+                                                                            {wow > 0 ? <TrendingUp size={10} className="mr-0.5" /> : wow < 0 ? <TrendingDown size={10} className="mr-0.5" /> : <Minus size={10} className="mr-0.5" />}
                                                                             {Math.abs(wow).toLocaleString()}
                                                                         </div>
                                                                     ) : '-'
@@ -693,15 +708,24 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                                     return (
                                                         <>
-                                                            <td style={{ left: 580, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }} className="py-3 px-1 text-center bg-green-50/30 border-x border-green-100 text-gray-500 text-xs sticky shadow-[1px_0_0_#dcfce7]">
+                                                            <td 
+                                                                style={{ left: 565, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
+                                                                className="py-3 px-2 text-center bg-green-50/30 border-x border-green-100 text-gray-500 text-[10px] sticky shadow-[1px_0_0_#e5e7eb]"
+                                                            >
                                                                 {prevVol > 0 ? prevVol.toLocaleString() : '-'}
                                                             </td>
-                                                            <td style={{ left: 650, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }} className="py-3 px-1 text-center bg-green-50/30 border-r border-green-100 font-medium text-xs sticky shadow-[1px_0_0_#dcfce7]">
+                                                            <td 
+                                                                style={{ left: 650, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
+                                                                className="py-3 px-2 text-center bg-green-50/30 border-r border-green-100 font-medium text-[10px] sticky shadow-[1px_0_0_#e5e7eb]"
+                                                            >
                                                                 {latestVol > 0 ? latestVol.toLocaleString() : '-'}
                                                             </td>
-                                                            <td style={{ left: 720, width: 60, minWidth: 60, maxWidth: 60, zIndex: 10 }} className="py-3 px-1 text-center bg-green-50/30 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200">
+                                                            <td 
+                                                                style={{ left: 735, width: 55, minWidth: 55, maxWidth: 55, zIndex: 10 }}
+                                                                className="py-3 px-1 text-center bg-green-50/30 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
+                                                            >
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
-                                                                    <div className={`flex items-center justify-center text-[11px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                    <div className={`flex items-center justify-center text-[10px] font-bold ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                                                         {trend > 0 ? '+' : ''}{trend.toLocaleString()}
                                                                     </div>
                                                                 ) : trend === 0 && latestVol > 0 ? (
