@@ -29,41 +29,25 @@ export default function Dashboard() {
     }, []);
 
     useEffect(() => {
-        if (!loading && data) {
-            if (!startDate) {
-                // Default to last 30 days for Best Sales
+        if (!loading && data && data.anchorDate) {
+            // Initial load only if trend dates are not set
+            if (!trendStartDate) {
                 const d = new Date(data.anchorDate);
                 const start = new Date(d);
                 start.setDate(d.getDate() - 30);
                 const startStr = start.toISOString().split('T')[0];
                 
-                setStartDate(startStr);
-                setEndDate(data.anchorDate);
-            } else {
-                loadCombinedRankings();
-            }
-
-            if (!trendStartDate) {
-                // Default to last 30 days for Trend Chart
-                const d = new Date(data.anchorDate);
-                const start = new Date(d);
-                start.setDate(d.getDate() - 30);
-                const startStr = start.toISOString().split('T')[0];
-
                 setTrendStartDate(startStr);
                 setTrendEndDate(data.anchorDate);
+                setStartDate(startStr);
+                setEndDate(data.anchorDate);
+
+                // Start initial data fetch
+                api.getCustomDailySalesTrend(startStr, data.anchorDate).then(setCustomTrendData);
+                api.getDashboardCombinedRankings(startStr, data.anchorDate).then(setCombinedRankings);
             }
         }
-    }, [startDate, endDate, loading, data]);
-
-    // Removed automatic trend load to prevent constant refreshing while pickng dates
-    /*
-    useEffect(() => {
-        if (trendStartDate && trendEndDate) {
-            loadTrendData();
-        }
-    }, [trendStartDate, trendEndDate]);
-    */
+    }, [loading, data]); // Only run when main data is ready or anchorDate changes
 
     const loadTrendData = async () => {
         setLoadingTrend(true);
@@ -260,7 +244,8 @@ export default function Dashboard() {
                                 title="시작일"
                                 value={trendStartDate} 
                                 onChange={e => setTrendStartDate(e.target.value)}
-                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                                style={{ WebkitAppearance: 'none' }}
                             />
                             <span className="text-gray-400">~</span>
                             <input 
@@ -268,7 +253,8 @@ export default function Dashboard() {
                                 title="종료일"
                                 value={trendEndDate} 
                                 onChange={e => setTrendEndDate(e.target.value)}
-                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                                style={{ WebkitAppearance: 'none' }}
                             />
                             <button 
                                 onClick={loadTrendData} 
@@ -324,7 +310,8 @@ export default function Dashboard() {
                             title="시작일"
                             value={startDate} 
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                            style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />
                         <span className="text-gray-400">~</span>
@@ -333,7 +320,8 @@ export default function Dashboard() {
                             title="종료일"
                             value={endDate} 
                             onChange={e => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                            style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />
                         <button 

@@ -1109,35 +1109,64 @@ ${sampleText}
     },
 
     async getCustomDailySalesTrend(startDate: string, endDate: string) {
-        let allData: any[] = [];
-        let i = 0;
-        const BATCH = 5000;
-        let isDone = false;
-        while (!isDone) {
-            const { data, error } = await supabase.from('daily_sales')
-                .select('date, quantity')
-                .gte('date', startDate)
-                .lte('date', endDate)
-                .range(i, i + BATCH - 1);
-            if (error) throw error;
-            if (data && data.length > 0) allData.push(...data);
-            if (!data || data.length < BATCH) isDone = true;
-            i += BATCH;
+        const fetchRange = async (s: string, e: string) => {
+            let allData: any[] = [];
+            let i = 0;
+            const BATCH = 5000;
+            let isDone = false;
+            while (!isDone) {
+                const { data, error } = await supabase.from('daily_sales')
+                    .select('date, quantity')
+                    .gte('date', s)
+                    .lte('date', e)
+                    .range(i, i + BATCH - 1);
+                if (error) throw error;
+                if (data && data.length > 0) allData.push(...data);
+                if (!data || data.length < BATCH) isDone = true;
+                i += BATCH;
+            }
+            return allData;
+        };
+
+        const currentData = await fetchRange(startDate, endDate);
+        
+        // Fetch previous years
+        const sDate = new Date(startDate);
+        const eDate = new Date(endDate);
+        
+        const sYear1 = new Date(sDate); sYear1.setFullYear(sYear1.getFullYear() - 1);
+        const eYear1 = new Date(eDate); eYear1.setFullYear(eYear1.getFullYear() - 1);
+        const prev1Data = await fetchRange(sYear1.toISOString().split('T')[0], eYear1.toISOString().split('T')[0]);
+
+        const sYear2 = new Date(sDate); sYear2.setFullYear(sYear2.getFullYear() - 2);
+        const eYear2 = new Date(eDate); eYear2.setFullYear(eYear2.getFullYear() - 2);
+        const prev2Data = await fetchRange(sYear2.toISOString().split('T')[0], eYear2.toISOString().split('T')[0]);
+
+        const map = new Map<string, any>();
+        
+        // Initialize map with current range dates to ensure sequence
+        let curr = new Date(sDate);
+        while (curr <= eDate) {
+            const dStr = curr.toISOString().split('T')[0];
+            const mmdd = dStr.substring(5);
+            map.set(mmdd, { date: mmdd, fullDate: dStr, sales: 0, prevYearQuantity: 0, prev2YearQuantity: 0 });
+            curr.setDate(curr.getDate() + 1);
         }
 
-        const map = new Map<string, number>();
-        allData.forEach((row: any) => {
-            const d = row.date.substring(0, 10);
-            map.set(d, (map.get(d) || 0) + row.quantity);
+        currentData.forEach(r => {
+            const mmdd = r.date.substring(5, 10);
+            if (map.has(mmdd)) map.get(mmdd).sales += r.quantity;
+        });
+        prev1Data.forEach(r => {
+            const mmdd = r.date.substring(5, 10);
+            if (map.has(mmdd)) map.get(mmdd).prevYearQuantity += r.quantity;
+        });
+        prev2Data.forEach(r => {
+            const mmdd = r.date.substring(5, 10);
+            if (map.has(mmdd)) map.get(mmdd).prev2YearQuantity += r.quantity;
         });
         
-        return Array.from(map.entries())
-            .sort((a,b) => a[0].localeCompare(b[0]))
-            .map(([d, q]) => ({
-                date: d.substring(5), // MM-DD
-                fullDate: d,
-                sales: q
-            }));
+        return Array.from(map.values()).sort((a,b) => a.fullDate.localeCompare(b.fullDate));
     },
 
     /**
