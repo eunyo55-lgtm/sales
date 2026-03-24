@@ -56,11 +56,14 @@ export default function Dashboard() {
         }
     }, [startDate, endDate, loading, data]);
 
+    // Removed automatic trend load to prevent constant refreshing while pickng dates
+    /*
     useEffect(() => {
         if (trendStartDate && trendEndDate) {
             loadTrendData();
         }
     }, [trendStartDate, trendEndDate]);
+    */
 
     const loadTrendData = async () => {
         setLoadingTrend(true);
@@ -267,6 +270,13 @@ export default function Dashboard() {
                                 onChange={e => setTrendEndDate(e.target.value)}
                                 className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
                             />
+                            <button 
+                                onClick={loadTrendData} 
+                                disabled={loadingTrend || !trendStartDate || !trendEndDate}
+                                className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ml-1 ${loadingTrend ? 'animate-spin' : ''}`}
+                            >
+                                <RefreshCw size={16} />
+                            </button>
                         </div>
                     </div>
                     <div className="relative flex-1 min-h-0">
@@ -292,7 +302,7 @@ export default function Dashboard() {
                                 <YAxis fontSize={12} tickLine={false} axisLine={false} />
                                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                 <Legend />
-                                <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                                <Line type="monotone" dataKey="sales" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
                                 <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
                                 <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
                             </LineChart>
