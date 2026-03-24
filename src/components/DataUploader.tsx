@@ -37,7 +37,8 @@ export function DataUploader() {
                 await api.uploadProducts(data, (p) => setProgress(p));
                 setStatus({ type: 'success', message: `✅ 상품 마스터 ${data.length}건 업로드 완료!` });
             } else if (type === 'sales-2024') {
-                const data = await parseCoupangSales(file, 2024);
+                const { parseHistoricalSales } = await import('../lib/parsers');
+                const data = await parseHistoricalSales(file, 2024);
                 setStatus({ type: 'success', message: `${data.length}개 과거 판매 데이터 파싱 완료. 서버 업로드 중...` });
                 await api.uploadSales(data, (p) => setProgress(p));
                 setStatus({ type: 'success', message: `✅ 24년 판매 데이터 ${data.length}건 업로드 완료!` });
