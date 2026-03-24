@@ -1006,13 +1006,13 @@ ${sampleText}
      * Only fetches stats for products currently linked to keywords
      */
     async getProductStatsForKeywords(keywords: any[], historyDays: number = 20): Promise<{ stats: ProductStats[], anchorDate: string }> {
-        const productIds = Array.from(new Set(keywords.map(k => k.product_id).filter(id => !!id)));
-        if (productIds.length === 0) return { stats: [], anchorDate: new Date().toISOString().split('T')[0] };
+        const barcodesToFetch = Array.from(new Set(keywords.map(k => k.barcode).filter(b => !!b)));
+        if (barcodesToFetch.length === 0) return { stats: [], anchorDate: new Date().toISOString().split('T')[0] };
 
         // 1. Fetch relevant products only
         const { data: products } = await supabase.from('products')
             .select('barcode, name, option_value, season, image_url, hq_stock, current_stock, safety_stock, incoming_stock, fc_stock, vf_stock, cost')
-            .in('id', productIds);
+            .in('barcode', barcodesToFetch);
         
         if (!products || products.length === 0) return { stats: [], anchorDate: new Date().toISOString().split('T')[0] };
         const barcodes = products.map(p => p.barcode?.trim()).filter(b => !!b);
