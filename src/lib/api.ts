@@ -1145,8 +1145,9 @@ ${sampleText}
         const map = new Map<string, any>();
         
         // Initialize map with current range dates to ensure sequence
-        let curr = new Date(sDate);
-        while (curr <= eDate) {
+        let curr = new Date(startDate + 'T00:00:00');
+        let stopDate = new Date(endDate + 'T00:00:00');
+        while (curr <= stopDate) {
             const dStr = curr.toISOString().split('T')[0];
             const mmdd = dStr.substring(5);
             map.set(mmdd, { date: mmdd, fullDate: dStr, sales: 0, prevYearQuantity: 0, prev2YearQuantity: 0 });

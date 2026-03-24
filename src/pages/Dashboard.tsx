@@ -310,7 +310,7 @@ export default function Dashboard() {
                             title="시작일"
                             value={startDate} 
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-10 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-75"
                             style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />
@@ -320,7 +320,7 @@ export default function Dashboard() {
                             title="종료일"
                             value={endDate} 
                             onChange={e => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-10 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-75"
                             style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />
@@ -407,6 +407,11 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
                                         {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
+                                        {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
+                                            <div className={`text-[10px] mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
+                                                {(item.qty_0y - item.qty_1y) > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}원
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             )}) : (
