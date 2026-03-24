@@ -10,7 +10,8 @@ export default function Dashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const [rankingPeriod, setRankingPeriod] = useState<'daily'|'weekly'|'yearly'>('daily');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
     const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'>('qty_0y');
@@ -24,14 +25,20 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!loading && data) {
-            loadCombinedRankings();
+            if (!startDate) {
+                setStartDate(data.anchorDate);
+                setEndDate(data.anchorDate);
+            } else {
+                loadCombinedRankings();
+            }
         }
-    }, [rankingPeriod, loading, data]);
+    }, [startDate, endDate, loading, data]);
 
     const loadCombinedRankings = async () => {
+        if (!startDate || !endDate) return;
         setLoadingRankings(true);
         try {
-            const list = await api.getDashboardCombinedRankings(rankingPeriod);
+            const list = await api.getDashboardCombinedRankings(startDate, endDate);
             setCombinedRankings(list); 
         } catch(e) { console.error(e); }
         finally { setLoadingRankings(false); }
@@ -189,9 +196,9 @@ export default function Dashboard() {
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                             <Legend />
-                            <Line type="monotone" dataKey="quantity" name="판매량 (올해)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="판매량 (작년)" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
-                            <Line type="monotone" dataKey="prev2YearQuantity" name="판매량 (제작년)" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
+                            <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -199,26 +206,33 @@ export default function Dashboard() {
 
             {/* Combined Rankings Row (Unified Best 10) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-auto">
-                <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+                <div className="p-4 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center space-x-2">
                         <Trophy size={18} className="text-yellow-500" />
-                        <h3 className="font-bold text-gray-800">통합 베스트 10 (24, 25, 26년 판매량 비교)</h3>
+                        <h3 className="font-bold text-gray-800">통합 베스트 10</h3>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <select 
-                            className="text-sm border-gray-200 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8 py-1.5"
-                            value={rankingPeriod}
-                            onChange={(e: any) => setRankingPeriod(e.target.value)}
+                    <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                        <input 
+                            type="date" 
+                            title="시작일"
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
                             disabled={loadingRankings}
-                        >
-                            <option value="daily">최신 일자 (Daily)</option>
-                            <option value="weekly">주간 (Weekly)</option>
-                            <option value="yearly">연간 (Yearly)</option>
-                        </select>
+                        />
+                        <span className="text-gray-400">~</span>
+                        <input 
+                            type="date" 
+                            title="종료일"
+                            value={endDate} 
+                            onChange={e => setEndDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                            disabled={loadingRankings}
+                        />
                         <button 
                             onClick={loadCombinedRankings} 
-                            disabled={loadingRankings}
-                            className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ${loadingRankings ? 'animate-spin' : ''}`}
+                            disabled={loadingRankings || !startDate || !endDate}
+                            className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw size={16} />
                         </button>
@@ -232,13 +246,13 @@ export default function Dashboard() {
                                 <th className="px-4 py-3 text-center w-12">순위</th>
                                 <th className="px-4 py-3">상품명</th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_2y')}>
-                                    24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                    24년 판매량(액) {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_1y')}>
-                                    25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                    25년 판매량(액) {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_0y')}>
-                                    26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                    26년 판매량(액) {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                             </tr>
                         </thead>
@@ -268,16 +282,19 @@ export default function Dashboard() {
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-right text-gray-600">
-                                        {(item.qty_2y || 0).toLocaleString()}건
+                                        <div className="font-bold">{(item.qty_2y || 0).toLocaleString()}건</div>
+                                        {item.cost > 0 && <div className="text-[10px] text-gray-400 mt-0.5">{(item.qty_2y * item.cost).toLocaleString()}원</div>}
                                     </td>
                                     <td className="px-4 py-3 text-right text-gray-600">
-                                        {(item.qty_1y || 0).toLocaleString()}건
+                                        <div className="font-bold">{(item.qty_1y || 0).toLocaleString()}건</div>
+                                        {item.cost > 0 && <div className="text-[10px] text-gray-400 mt-0.5">{(item.qty_1y * item.cost).toLocaleString()}원</div>}
                                     </td>
                                     <td className="px-4 py-3 text-right font-bold text-gray-900">
                                         <div>{(item.qty_0y || 0).toLocaleString()}건</div>
+                                        {item.cost > 0 && <div className="text-[10px] text-blue-500 mt-0.5 font-normal">{(item.qty_0y * item.cost).toLocaleString()}원</div>}
                                         {yoyDiff !== 0 && (
-                                            <div className={`text-[10px] ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}
+                                            <div className={`text-[10px] mt-1 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
+                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}건
                                             </div>
                                         )}
                                     </td>

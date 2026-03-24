@@ -1428,21 +1428,12 @@ ${sampleText}
     },
 
     /**
-     * Fetch Combined Rankings for 3 Years (24, 25, 26)
+     * Fetch Combined Rankings for 3 Years (24, 25, 26) with custom date range
      */
-    async getDashboardCombinedRankings(period: 'daily' | 'weekly' | 'yearly'): Promise<any[]> {
-        const { data: latestData } = await supabase
-            .from('daily_sales')
-            .select('date')
-            .order('date', { ascending: false })
-            .limit(1)
-            .single();
-
-        const anchorDateStr = latestData?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
-
-        const { data: rankings, error } = await supabase.rpc('get_dashboard_combined_rankings', {
-            anchor_date: anchorDateStr,
-            period_type: period
+    async getDashboardCombinedRankings(startDate: string, endDate: string): Promise<any[]> {
+        const { data: rankings, error } = await supabase.rpc('get_dashboard_combined_rankings_custom', {
+            start_date: startDate,
+            end_date: endDate
         });
 
         if (error) {
