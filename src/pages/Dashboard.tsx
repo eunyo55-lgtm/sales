@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Package, Loader2 } from 'lucide-react';
+import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
-    const [insights, setInsights] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const [rankingPeriod, setRankingPeriod] = useState<'daily'|'weekly'|'yearly'>('daily');
+    const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
+    const [loadingRankings, setLoadingRankings] = useState(false);
+    const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'>('qty_0y');
+    const [sortDesc, setSortDesc] = useState(true);
 
     useEffect(() => {
         loadData();
@@ -17,15 +22,26 @@ export default function Dashboard() {
         return () => clearInterval(interval);
     }, []);
 
+    useEffect(() => {
+        if (!loading && data) {
+            loadCombinedRankings();
+        }
+    }, [rankingPeriod, loading, data]);
+
+    const loadCombinedRankings = async () => {
+        setLoadingRankings(true);
+        try {
+            const list = await api.getDashboardCombinedRankings(rankingPeriod);
+            setCombinedRankings(list); 
+        } catch(e) { console.error(e); }
+        finally { setLoadingRankings(false); }
+    };
+
     const loadData = async () => {
         try {
-            const [result, insightsResult] = await Promise.all([
-                api.getDashboardAnalytics(),
-                api.getDashboardInsights().catch(() => null)
-            ]);
+            const result = await api.getDashboardAnalytics();
             console.log("Dashboard Data:", result);
             setData(result);
-            setInsights(insightsResult);
         } catch (error: any) {
             console.error("Failed to load dashboard data", error);
         } finally {
@@ -51,7 +67,7 @@ export default function Dashboard() {
         );
     }
 
-    const { metrics, trends, rankings, anchorDate } = data;
+    const { metrics, trends, anchorDate } = data;
 
     const StatCard = ({ title, value, amount, sub, icon: Icon, colorClass, yoyValue }: any) => {
         let yoyEl = null;
@@ -98,67 +114,23 @@ export default function Dashboard() {
         );
     };
 
-    const RankingList = ({ title, items, icon: Icon, valueLabel = '판매량', showDiff = false }: any) => (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
-            <div className="p-4 border-b border-gray-50 flex items-center space-x-2">
-                <Icon size={18} className="text-gray-400" />
-                <h3 className="font-bold text-gray-800">{title}</h3>
-            </div>
-            <div className="flex-1 overflow-auto p-2">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 bg-gray-50">
-                        <tr>
-                            <th className="px-3 py-2 text-center w-12">순위</th>
-                            <th className="px-3 py-2">상품명</th>
-                            <th className="px-3 py-2 text-right">{valueLabel === '판매량' ? '판매량/금액' : valueLabel}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {items && items.length > 0 ? items.map((item: any, idx: number) => (
-                            <tr key={item.barcode || item.name || item.category || idx} className="hover:bg-gray-50">
-                                <td className="px-3 py-3 text-center font-medium text-gray-600">
-                                    {idx + 1 <= 3 ? (
-                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'
-                                            }`}>
-                                            {idx + 1}
-                                        </span>
-                                    ) : idx + 1}
-                                </td>
-                                <td className="px-3 py-3">
-                                    <div className="flex items-center space-x-3">
-                                        {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt="" className="w-8 h-8 rounded bg-gray-100 object-cover flex-none" />
-                                        ) : (
-                                            <div className="w-8 h-8 rounded bg-gray-100 flex-none" />
-                                        )}
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-gray-900 truncate" title={item.name || item.category}>{item.name || item.category}</p>
-                                            {item.option_value && <p className="text-[10px] text-gray-400 truncate">{item.option_value}</p>}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-3 py-3 text-right font-bold text-gray-900">
-                                    <div>{(item.curr_qty || item.quantity || 0).toLocaleString()}건</div>
-                                    {item.cost > 0 && (
-                                        <div className="text-[10px] text-blue-500 font-normal">
-                                            {Math.round((item.curr_qty || item.quantity || 0) * item.cost).toLocaleString()}원
-                                        </div>
-                                    )}
-                                    {(showDiff || item.diff !== undefined) && (
-                                        <div className={`text-xs ${item.diff > 0 ? 'text-red-500' : item.diff < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-                                            {item.diff > 0 ? '▲' : item.diff < 0 ? '▼' : '-'} {Math.abs(item.diff).toLocaleString()}
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan={3} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend') => {
+        if (sortKey === key) {
+            setSortDesc(!sortDesc);
+        } else {
+            setSortKey(key);
+            setSortDesc(true);
+        }
+    };
+
+    const sortedRankings = useMemo(() => {
+        const sorted = [...combinedRankings].sort((a, b) => {
+            const vA = a[sortKey] || 0;
+            const vB = b[sortKey] || 0;
+            return sortDesc ? vB - vA : vA - vB;
+        });
+        return sorted.slice(0, 10); // Show only top 10
+    }, [combinedRankings, sortKey, sortDesc]);
 
     return (
         <div className="space-y-6 pb-10 relative">
@@ -219,23 +191,103 @@ export default function Dashboard() {
                             <Legend />
                             <Line type="monotone" dataKey="quantity" name="판매량 (올해)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
                             <Line type="monotone" dataKey="prevYearQuantity" name="판매량 (작년)" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="판매량 (제작년)" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* Rankings Row (Best 10) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 h-auto">
-                <RankingList title="🔥 최신 일자 베스트 10" items={rankings.yesterday} icon={TrendingUp} />
-                <RankingList title="📅 주간 베스트 10" items={rankings.weekly} icon={Calendar} />
-                <RankingList title="🏆 연간 베스트 10 (누적)" items={rankings.yearly} icon={Trophy} />
-                <RankingList title="📦 쿠팡 재고 보유 상위 10" items={rankings.inventory} icon={Package} valueLabel="재고량/재고액" />
-            </div>
-
-            {/* YoY Winners/Losers (At bottom) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <RankingList title="📈 전년 대비 상승 TOP 10 (Winners)" items={insights?.winners} icon={TrendingUp} showDiff={true} valueLabel="올해 판매량/판매액" />
-                <RankingList title="📉 전년 대비 하락 TOP 10 (Losers)" items={insights?.losers} icon={AlertCircle} showDiff={true} valueLabel="올해 판매량/판매액" />
+            {/* Combined Rankings Row (Unified Best 10) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-auto">
+                <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                        <Trophy size={18} className="text-yellow-500" />
+                        <h3 className="font-bold text-gray-800">통합 베스트 10 (24, 25, 26년 판매량 비교)</h3>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <select 
+                            className="text-sm border-gray-200 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8 py-1.5"
+                            value={rankingPeriod}
+                            onChange={(e: any) => setRankingPeriod(e.target.value)}
+                            disabled={loadingRankings}
+                        >
+                            <option value="daily">최신 일자 (Daily)</option>
+                            <option value="weekly">주간 (Weekly)</option>
+                            <option value="yearly">연간 (Yearly)</option>
+                        </select>
+                        <button 
+                            onClick={loadCombinedRankings} 
+                            disabled={loadingRankings}
+                            className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ${loadingRankings ? 'animate-spin' : ''}`}
+                        >
+                            <RefreshCw size={16} />
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="overflow-x-auto p-2">
+                    <table className="w-full text-sm text-left whitespace-nowrap">
+                        <thead className="text-xs text-gray-500 bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-3 text-center w-12">순위</th>
+                                <th className="px-4 py-3">상품명</th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_2y')}>
+                                    24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_1y')}>
+                                    25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_0y')}>
+                                    26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {loadingRankings ? (
+                                <tr><td colSpan={5} className="text-center py-10"><Loader2 className="animate-spin text-blue-500 mx-auto" size={24} /></td></tr>
+                            ) : sortedRankings && sortedRankings.length > 0 ? sortedRankings.map((item: any, idx: number) => {
+                                const yoyDiff = item.qty_0y - item.qty_1y;
+                                
+                                return (
+                                <tr key={item.name} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3 text-center font-medium text-gray-600">
+                                        {idx + 1 <= 3 ? (
+                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
+                                                {idx + 1}
+                                            </span>
+                                        ) : idx + 1}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center space-x-3">
+                                            {item.imageUrl ? (
+                                                <img src={item.imageUrl} alt="" className="w-8 h-8 rounded bg-gray-100 object-cover flex-none" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded bg-gray-100 flex-none" />
+                                            )}
+                                            <p className="font-medium text-gray-900 truncate max-w-xs">{item.name}</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-600">
+                                        {(item.qty_2y || 0).toLocaleString()}건
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-600">
+                                        {(item.qty_1y || 0).toLocaleString()}건
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-bold text-gray-900">
+                                        <div>{(item.qty_0y || 0).toLocaleString()}건</div>
+                                        {yoyDiff !== 0 && (
+                                            <div className={`text-[10px] ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            )}) : (
+                                <tr><td colSpan={5} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

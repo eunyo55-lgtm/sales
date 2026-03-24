@@ -967,12 +967,14 @@ ${sampleText}
                     daily: sortedDaily.map((item: any) => ({
                         date: item.date.substring(5),
                         quantity: item.quantity,
-                        prevYearQuantity: item.prevYearQuantity
+                        prevYearQuantity: item.prevYearQuantity,
+                        prev2YearQuantity: item.prev2YearQuantity
                     })),
                     weekly: sortedWeekly.map((item: any) => ({
                         date: item.date.substring(5),
                         quantity: item.quantity,
-                        prevYearQuantity: item.prevYearQuantity
+                        prevYearQuantity: item.prevYearQuantity,
+                        prev2YearQuantity: item.prev2YearQuantity
                     }))
                 },
                 rankings: {
@@ -1423,5 +1425,67 @@ ${sampleText}
             if (i > 100000) break; // Safety
         }
         return allData;
+    },
+
+    /**
+     * Fetch Combined Rankings for 3 Years (24, 25, 26)
+     */
+    async getDashboardCombinedRankings(period: 'daily' | 'weekly' | 'yearly'): Promise<any[]> {
+        const { data: latestData } = await supabase
+            .from('daily_sales')
+            .select('date')
+            .order('date', { ascending: false })
+            .limit(1)
+            .single();
+
+        const anchorDateStr = latestData?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
+
+        const { data: rankings, error } = await supabase.rpc('get_dashboard_combined_rankings', {
+            anchor_date: anchorDateStr,
+            period_type: period
+        });
+
+        if (error) {
+            console.error("[API] getDashboardCombinedRankings error:", error);
+            throw error;
+        }
+
+        // Fetch products to map barcode to name, cost, etc.
+        const products = await this._getRawProducts();
+        const productMap = new Map(products.map(p => [p.barcode, p]));
+
+        // Deduplicate by name if barcodes belong to the same product name
+        const nameMap = new Map<string, any>();
+
+        rankings?.forEach((r: any) => {
+            const prod = productMap.get(r.barcode);
+            if (!prod) return;
+            const name = prod.name;
+
+            if (nameMap.has(name)) {
+                const existing = nameMap.get(name);
+                existing.qty_0y += Number(r.qty_0y || 0);
+                existing.qty_1y += Number(r.qty_1y || 0);
+                existing.qty_2y += Number(r.qty_2y || 0);
+                existing.trend += Number(r.trend || 0);
+            } else {
+                nameMap.set(name, {
+                    name,
+                    imageUrl: prod.image_url,
+                    qty_0y: Number(r.qty_0y || 0),
+                    qty_1y: Number(r.qty_1y || 0),
+                    qty_2y: Number(r.qty_2y || 0),
+                    trend: Number(r.trend || 0),
+                    cost: prod.cost
+                });
+            }
+        });
+
+        return Array.from(nameMap.values())
+            .sort((a, b) => b.qty_0y - a.qty_0y) // Sort by most recent year sales DESC
+            .map((item, index) => ({
+                ...item,
+                rank: index + 1
+            }));
     }
 };
