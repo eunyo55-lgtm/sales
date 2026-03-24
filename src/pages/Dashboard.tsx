@@ -14,6 +14,8 @@ export default function Dashboard() {
     const [endDate, setEndDate] = useState<string>('');
     const [trendStartDate, setTrendStartDate] = useState<string>('');
     const [trendEndDate, setTrendEndDate] = useState<string>('');
+    const [customTrendData, setCustomTrendData] = useState<any[]>([]);
+    const [loadingTrend, setLoadingTrend] = useState(false);
     const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
@@ -29,18 +31,48 @@ export default function Dashboard() {
     useEffect(() => {
         if (!loading && data) {
             if (!startDate) {
-                setStartDate(data.anchorDate);
+                // Default to last 30 days for Best Sales
+                const d = new Date(data.anchorDate);
+                const start = new Date(d);
+                start.setDate(d.getDate() - 30);
+                const startStr = start.toISOString().split('T')[0];
+                
+                setStartDate(startStr);
                 setEndDate(data.anchorDate);
             } else {
                 loadCombinedRankings();
             }
 
-            if (!trendStartDate && data.trends?.daily?.length > 0) {
-                setTrendStartDate(data.trends.daily[0].fullDate || '');
-                setTrendEndDate(data.trends.daily[data.trends.daily.length - 1].fullDate || '');
+            if (!trendStartDate) {
+                // Default to last 30 days for Trend Chart
+                const d = new Date(data.anchorDate);
+                const start = new Date(d);
+                start.setDate(d.getDate() - 30);
+                const startStr = start.toISOString().split('T')[0];
+
+                setTrendStartDate(startStr);
+                setTrendEndDate(data.anchorDate);
             }
         }
     }, [startDate, endDate, loading, data]);
+
+    useEffect(() => {
+        if (trendStartDate && trendEndDate) {
+            loadTrendData();
+        }
+    }, [trendStartDate, trendEndDate]);
+
+    const loadTrendData = async () => {
+        setLoadingTrend(true);
+        try {
+            const trend = await api.getCustomDailySalesTrend(trendStartDate, trendEndDate);
+            setCustomTrendData(trend);
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setLoadingTrend(false);
+        }
+    };
 
     const loadCombinedRankings = async () => {
         if (!startDate || !endDate) return;
@@ -96,14 +128,10 @@ export default function Dashboard() {
     }, [sortedRankings, displayLimit]);
 
     const filteredDailyTrends = useMemo(() => {
-        if (!data?.trends?.daily) return [];
-        if (!trendStartDate || !trendEndDate) return data.trends.daily;
-        
-        return data.trends.daily.filter((t: any) => {
-            if (!t.fullDate) return true;
-            return t.fullDate >= trendStartDate && t.fullDate <= trendEndDate;
-        });
-    }, [data, trendStartDate, trendEndDate]);
+        // Use custom loaded trend data if available, otherwise fallback to initial data
+        if (customTrendData && customTrendData.length > 0) return customTrendData;
+        return data?.trends?.daily || [];
+    }, [data, customTrendData]);
 
     const totals = useMemo(() => {
         return sortedRankings.reduce((acc, curr) => {
@@ -241,8 +269,14 @@ export default function Dashboard() {
                             />
                         </div>
                     </div>
-                    <ResponsiveContainer width="100%" height="100%" className="-ml-4">
-                        <LineChart data={filteredDailyTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                    <div className="relative flex-1 min-h-0">
+                        {loadingTrend && (
+                            <div className="absolute inset-0 z-10 bg-white/50 flex justify-center items-center">
+                                <Loader2 className="animate-spin text-blue-500" size={32} />
+                            </div>
+                        )}
+                        <ResponsiveContainer width="100%" height="100%" className="-ml-4">
+                            <LineChart data={filteredDailyTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                             <CartesianGrid stroke="#f0f0f0" vertical={false} />
                             <XAxis
                                 dataKey="date"
