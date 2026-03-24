@@ -310,7 +310,7 @@ export default function Dashboard() {
                             title="시작일"
                             value={startDate} 
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-10 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-75"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:bg-none [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-calendar-picker-indicator]:p-0 [&::-webkit-calendar-picker-indicator]:m-0"
                             style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />
@@ -320,7 +320,7 @@ export default function Dashboard() {
                             title="종료일"
                             value={endDate} 
                             onChange={e => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-10 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-75"
+                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:bg-none [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-calendar-picker-indicator]:p-0 [&::-webkit-calendar-picker-indicator]:m-0"
                             style={{ WebkitAppearance: 'none' }}
                             disabled={loadingRankings}
                         />

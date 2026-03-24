@@ -1130,44 +1130,47 @@ ${sampleText}
 
         const currentData = await fetchRange(startDate, endDate);
         
-        // Fetch previous years
-        const sDate = new Date(startDate);
-        const eDate = new Date(endDate);
+        const sDate = new Date(startDate + 'T00:00:00');
+        const eDate = new Date(endDate + 'T00:00:00');
         
-        const sYear1 = new Date(sDate); sYear1.setFullYear(sYear1.getFullYear() - 1);
-        const eYear1 = new Date(eDate); eYear1.setFullYear(eYear1.getFullYear() - 1);
-        const prev1Data = await fetchRange(sYear1.toISOString().split('T')[0], eYear1.toISOString().split('T')[0]);
+        const fetchPrevYear = async (offset: number) => {
+            const s = new Date(sDate); s.setFullYear(s.getFullYear() - offset);
+            const e = new Date(eDate); e.setFullYear(e.getFullYear() - offset);
+            return await fetchRange(s.toISOString().split('T')[0], e.toISOString().split('T')[0]);
+        };
 
-        const sYear2 = new Date(sDate); sYear2.setFullYear(sYear2.getFullYear() - 2);
-        const eYear2 = new Date(eDate); eYear2.setFullYear(eYear2.getFullYear() - 2);
-        const prev2Data = await fetchRange(sYear2.toISOString().split('T')[0], eYear2.toISOString().split('T')[0]);
+        const prev1Data = await fetchPrevYear(1);
+        const prev2Data = await fetchPrevYear(2);
 
-        const map = new Map<string, any>();
-        
-        // Initialize map with current range dates to ensure sequence
-        let curr = new Date(startDate + 'T00:00:00');
-        let stopDate = new Date(endDate + 'T00:00:00');
-        while (curr <= stopDate) {
+        const buildMap = (dataArr: any[]) => {
+            const m = new Map<string, number>();
+            dataArr.forEach(r => {
+                const mmdd = r.date.substring(5, 10);
+                m.set(mmdd, (m.get(mmdd) || 0) + r.quantity);
+            });
+            return m;
+        };
+
+        const m0 = buildMap(currentData);
+        const m1 = buildMap(prev1Data);
+        const m2 = buildMap(prev2Data);
+
+        const result: any[] = [];
+        let curr = new Date(sDate);
+        while (curr <= eDate) {
             const dStr = curr.toISOString().split('T')[0];
-            const mmdd = dStr.substring(5);
-            map.set(mmdd, { date: mmdd, fullDate: dStr, sales: 0, prevYearQuantity: 0, prev2YearQuantity: 0 });
+            const mmdd = dStr.substring(5, 10);
+            result.push({
+                date: mmdd,
+                fullDate: dStr,
+                sales: m0.get(mmdd) || 0,
+                prevYearQuantity: m1.get(mmdd) || 0,
+                prev2YearQuantity: m2.get(mmdd) || 0
+            });
             curr.setDate(curr.getDate() + 1);
         }
-
-        currentData.forEach(r => {
-            const mmdd = r.date.substring(5, 10);
-            if (map.has(mmdd)) map.get(mmdd).sales += r.quantity;
-        });
-        prev1Data.forEach(r => {
-            const mmdd = r.date.substring(5, 10);
-            if (map.has(mmdd)) map.get(mmdd).prevYearQuantity += r.quantity;
-        });
-        prev2Data.forEach(r => {
-            const mmdd = r.date.substring(5, 10);
-            if (map.has(mmdd)) map.get(mmdd).prev2YearQuantity += r.quantity;
-        });
         
-        return Array.from(map.values()).sort((a,b) => a.fullDate.localeCompare(b.fullDate));
+        return result;
     },
 
     /**
