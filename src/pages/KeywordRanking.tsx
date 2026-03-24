@@ -191,21 +191,16 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
     // Get unique search volume dates
     const allSvDates = Array.from(new Set(keywordSearchVolumes.map(sv => sv.target_date))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-    // Group into Friday-Thursday weeks to determine latest/prev dates
-    const getWeekKey = (dateStr: string | Date) => {
-        const d = new Date(dateStr);
-        // getDay(): 0(Sun), 1(Mon), 2(Tue), 3(Wed), 4(Thu), 5(Fri), 6(Sat)
-        // We want Friday to be 0, Saturday to be 1, ..., Thursday to be 6
-        const diff = (d.getDay() + 2) % 7;
-        const weekStart = new Date(d);
-        weekStart.setDate(d.getDate() - diff);
-        return getKSTDateString(weekStart);
-    };
+    const currentWeekEnd = new Date(anchorDate);
+    const currentWeekStart = new Date(anchorDate);
+    currentWeekStart.setDate(currentWeekEnd.getDate() - 6);
+    
+    // Previous week is the 7 days before currentWeekStart
+    const lastWeekEnd = new Date(currentWeekStart);
+    lastWeekEnd.setDate(currentWeekStart.getDate() - 1);
+    const lastWeekStart = new Date(lastWeekEnd);
+    lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
 
-    const currentWeekKey = getWeekKey(anchorDate);
-    const prevWeekDateObj = new Date(anchorDate);
-    prevWeekDateObj.setDate(prevWeekDateObj.getDate() - 7);
-    const lastWeekKey = getWeekKey(prevWeekDateObj);
     const latestSvDate = allSvDates[0] || '';
     const prevSvDate = allSvDates[1] || '';
 
@@ -230,14 +225,12 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
         return groups;
     }, [productStats]);
 
-    // [New] Frontend Week Calculation
-    const getWeeklySales = (dailySales: Record<string, number>, weekKey: string) => {
-        if (!weekKey) return 0;
-        const start = new Date(weekKey);
+    // [New] Frontend Week Calculation for exact 7 day ranges
+    const getWeeklySales = (dailySales: Record<string, number>, startDate: Date) => {
         let sum = 0;
         for (let j = 0; j < 7; j++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + j);
+            const d = new Date(startDate);
+            d.setDate(startDate.getDate() + j);
             const dStr = getKSTDateString(d);
             sum += (dailySales[dStr] || 0);
         }
@@ -268,13 +261,13 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
         } else if (sortConfig.key === 'salesLastWeek' || sortConfig.key === 'salesThisWeek' || sortConfig.key === 'salesWoW') {
             const aName = (a.products?.name || "").trim().toLowerCase();
             const aG = groupedStats.get(aName);
-            const aLast = aG ? getWeeklySales(aG.dailySales, lastWeekKey) : 0;
-            const aThis = aG ? getWeeklySales(aG.dailySales, currentWeekKey) : 0;
+            const aLast = aG ? getWeeklySales(aG.dailySales, lastWeekStart) : 0;
+            const aThis = aG ? getWeeklySales(aG.dailySales, currentWeekStart) : 0;
 
             const bName = (b.products?.name || "").trim().toLowerCase();
             const bG = groupedStats.get(bName);
-            const bLast = bG ? getWeeklySales(bG.dailySales, lastWeekKey) : 0;
-            const bThis = bG ? getWeeklySales(bG.dailySales, currentWeekKey) : 0;
+            const bLast = bG ? getWeeklySales(bG.dailySales, lastWeekStart) : 0;
+            const bThis = bG ? getWeeklySales(bG.dailySales, currentWeekStart) : 0;
 
             if (sortConfig.key === 'salesLastWeek') {
                 aValue = aLast;
@@ -651,8 +644,8 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                     const g = groupedStats.get(prodName);
                                                     const hasProduct = !!prodName && !!g;
                                                     
-                                                    const salesLastWeek = hasProduct ? getWeeklySales(g.dailySales, lastWeekKey) : 0;
-                                                    const salesThisWeek = hasProduct ? getWeeklySales(g.dailySales, currentWeekKey) : 0;
+                                                    const salesLastWeek = hasProduct ? getWeeklySales(g.dailySales, lastWeekStart) : 0;
+                                                    const salesThisWeek = hasProduct ? getWeeklySales(g.dailySales, currentWeekStart) : 0;
                                                     const wow = salesThisWeek - salesLastWeek;
 
                                                     return (

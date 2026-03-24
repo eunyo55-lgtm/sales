@@ -736,18 +736,36 @@ ${sampleText}
         };
     },
 
-    async getDashboardAnalytics() {
-        if (this._dashboardCache) {
+    async getDashboardAnalytics(forceRefresh = false) {
+        if (!forceRefresh && this._dashboardCache) {
             console.log("[Cache] Dashboard HIT");
             return this._dashboardCache;
         }
-        if (this._dashboardPromise) {
+        if (!forceRefresh && this._dashboardPromise) {
             console.log("[Promise Cache] Dashboard HIT");
             return this._dashboardPromise;
         }
 
+        if (!forceRefresh) {
+            try {
+                const cachedStr = sessionStorage.getItem('DASHBOARD_FULL');
+                if (cachedStr) {
+                    const parsed = JSON.parse(cachedStr);
+                    if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
+                        console.log(`[Session Cache] Dashboard HIT`);
+                        setTimeout(() => { this._fetchDashboardCore(true); }, 500); // background refresh
+                        return parsed.data;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        return this._fetchDashboardCore(false);
+    },
+
+    async _fetchDashboardCore(isBackground: boolean) {
         const promise = (async () => {
-            console.time("getDashboardAnalytics");
+            if (!isBackground) console.time("getDashboardAnalytics");
 
             // 1. Get Latest Date (Anchor)
             const { data: latestData, error: latestError } = await supabase
@@ -989,7 +1007,10 @@ ${sampleText}
             };
 
             this._dashboardCache = result; // Cache the result
-            console.timeEnd("getDashboardAnalytics");
+            try {
+                sessionStorage.setItem('DASHBOARD_FULL', JSON.stringify({ timestamp: Date.now(), data: result }));
+            } catch(e) {}
+            if (!isBackground) console.timeEnd("getDashboardAnalytics");
             return result;
         })();
 
@@ -1087,6 +1108,38 @@ ${sampleText}
         return res;
     },
 
+    async getCustomDailySalesTrend(startDate: string, endDate: string) {
+        let allData: any[] = [];
+        let i = 0;
+        const BATCH = 5000;
+        let isDone = false;
+        while (!isDone) {
+            const { data, error } = await supabase.from('daily_sales')
+                .select('date, quantity')
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .range(i, i + BATCH - 1);
+            if (error) throw error;
+            if (data && data.length > 0) allData.push(...data);
+            if (!data || data.length < BATCH) isDone = true;
+            i += BATCH;
+        }
+
+        const map = new Map<string, number>();
+        allData.forEach((row: any) => {
+            const d = row.date.substring(0, 10);
+            map.set(d, (map.get(d) || 0) + row.quantity);
+        });
+        
+        return Array.from(map.entries())
+            .sort((a,b) => a[0].localeCompare(b[0]))
+            .map(([d, q]) => ({
+                date: d.substring(5), // MM-DD
+                fullDate: d,
+                sales: q
+            }));
+    },
+
     /**
      * Fetch Product List with Sales & Inventory Data
      * Optionally takes the number of historical days to fetch (defaults to full year since Jan 1st if not specified)
@@ -1112,8 +1165,30 @@ ${sampleText}
             return this._productStatsPromise_Map.get(cacheKey)!;
         }
 
+        // Session storage cache for Instant Load
+        try {
+            const cachedStr = sessionStorage.getItem(cacheKey);
+            if (cachedStr) {
+                const parsed = JSON.parse(cachedStr);
+                if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
+                    console.log(`[Session Cache] ProductStats HIT for ${cacheKey}`);
+                    
+                    // Background refresh
+                    setTimeout(() => {
+                        this._fetchProductStatsCore(historyDays, cacheKey, true);
+                    }, 500);
+
+                    return parsed.data;
+                }
+            }
+        } catch(e) {}
+
+        return this._fetchProductStatsCore(historyDays, cacheKey, false);
+    },
+
+    async _fetchProductStatsCore(historyDays: number | undefined, cacheKey: string, isBackground: boolean): Promise<ProductStats[]> {
         const promise = (async () => {
-            console.time(`getProductStats(${historyDays || 'ALL'})`);
+            if (!isBackground) console.time(`getProductStats(${historyDays || 'ALL'})`);
 
             const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
             const anchorDateStr = latestData ? latestData.date.substring(0, 10) : new Date().toISOString().split('T')[0];

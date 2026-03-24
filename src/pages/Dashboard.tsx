@@ -12,6 +12,8 @@ export default function Dashboard() {
 
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [trendStartDate, setTrendStartDate] = useState<string>('');
+    const [trendEndDate, setTrendEndDate] = useState<string>('');
     const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
@@ -31,6 +33,11 @@ export default function Dashboard() {
                 setEndDate(data.anchorDate);
             } else {
                 loadCombinedRankings();
+            }
+
+            if (!trendStartDate && data.trends?.daily?.length > 0) {
+                setTrendStartDate(data.trends.daily[0].fullDate || '');
+                setTrendEndDate(data.trends.daily[data.trends.daily.length - 1].fullDate || '');
             }
         }
     }, [startDate, endDate, loading, data]);
@@ -88,6 +95,16 @@ export default function Dashboard() {
         return sortedRankings.slice(0, displayLimit);
     }, [sortedRankings, displayLimit]);
 
+    const filteredDailyTrends = useMemo(() => {
+        if (!data?.trends?.daily) return [];
+        if (!trendStartDate || !trendEndDate) return data.trends.daily;
+        
+        return data.trends.daily.filter((t: any) => {
+            if (!t.fullDate) return true;
+            return t.fullDate >= trendStartDate && t.fullDate <= trendEndDate;
+        });
+    }, [data, trendStartDate, trendEndDate]);
+
     const totals = useMemo(() => {
         return sortedRankings.reduce((acc, curr) => {
             acc.qty_0y += curr.qty_0y || 0;
@@ -118,7 +135,7 @@ export default function Dashboard() {
         );
     }
 
-    const { metrics, trends, anchorDate } = data;
+    const { metrics, anchorDate } = data;
 
     const StatCard = ({ title, value, amount, sub, icon: Icon, colorClass, yoyValue }: any) => {
         let yoyEl = null;
@@ -200,13 +217,32 @@ export default function Dashboard() {
 
             {/* Daily Trend Chart */}
             <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px]">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Activity size={18} className="mr-2 text-blue-500" />
-                        일별 판매 추이 (최근 30일)
-                    </h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                        <LineChart data={trends.daily} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px] flex flex-col">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                        <h3 className="font-bold text-gray-800 flex items-center">
+                            <Activity size={18} className="mr-2 text-blue-500" />
+                            일별 판매 추이
+                        </h3>
+                        <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                            <input 
+                                type="date" 
+                                title="시작일"
+                                value={trendStartDate} 
+                                onChange={e => setTrendStartDate(e.target.value)}
+                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                            />
+                            <span className="text-gray-400">~</span>
+                            <input 
+                                type="date" 
+                                title="종료일"
+                                value={trendEndDate} 
+                                onChange={e => setTrendEndDate(e.target.value)}
+                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1"
+                            />
+                        </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%" className="-ml-4">
+                        <LineChart data={filteredDailyTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                             <CartesianGrid stroke="#f0f0f0" vertical={false} />
                             <XAxis
                                 dataKey="date"
