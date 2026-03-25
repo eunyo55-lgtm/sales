@@ -1259,39 +1259,31 @@ ${sampleText}
                 if (s.barcode) statsMap.set(s.barcode.trim(), s);
             });
 
-            // 3. Fetch Daily Sales for recent history or since Jan 1st
-            let startDate: string;
-            if (historyDays) {
-                const startD = new Date(anchorDateStr);
-                startD.setDate(startD.getDate() - historyDays);
-                startDate = startD.toISOString().split('T')[0];
-            } else {
-                startDate = `${anchorDateStr.substring(0, 4)}-01-01`;
-            }
+            // 3. Optional: Fetch Daily Sales for recent history (LATEST 14 DAYS ONLY for table visibility)
+            const historyD = new Date(anchorDateStr);
+            historyD.setDate(historyD.getDate() - 14);
+            const historyStartStr = historyD.toISOString().split('T')[0];
             
-            const rawDailySales = await this._getRawDailySales(startDate);
+            const rawDailySales = await this._getRawDailySales(historyStartStr);
             
             const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
             rawDailySales.forEach((row: any) => {
-                if (!row.barcode) return;
-                const trimmed = row.barcode.trim();
-                if (!rawDailyMap.has(trimmed)) {
-                    rawDailyMap.set(trimmed, { sales: {}, stock: {} });
-                }
-                const d = rawDailyMap.get(trimmed)!;
-                d.sales[row.date] = row.quantity;
-                d.stock[row.date] = row.stock;
+                const b = (row.barcode || '').trim();
+                if (!b) return;
+                if (!rawDailyMap.has(b)) rawDailyMap.set(b, { sales: {}, stock: {} });
+                const d = rawDailyMap.get(b)!;
+                const dStr = row.date.substring(0, 10);
+                d.sales[dStr] = row.quantity;
+                d.stock[dStr] = row.stock;
             });
-
+            
             // 5. Merge
             const result = products.map(p => {
                 const trimmedBarcode = p.barcode.trim();
                 const st = statsMap.get(trimmedBarcode) || {};
-                const rawD = rawDailyMap.get(trimmedBarcode) || { sales: {}, stock: {} };
-                const dailySales = rawD.sales;
-                const dailyStock = rawD.stock;
-
-                // Use Number() for BIGINT fields from RPC to prevent string concatenation in JS
+                const recentD = rawDailyMap.get(trimmedBarcode) || { sales: {}, stock: {} };
+                
+                // Use Number() for BIGINT fields from RPC
                 const qty7d = Number(st.qty_7d || 0);
                 const qty14d = Number(st.qty_14d || 0);
                 const qty30d = Number(st.qty_30d || 0);
@@ -1302,8 +1294,10 @@ ${sampleText}
                 const fcQtyYear = Number(st.fc_qty_year || 0);
                 const vfQtyYear = Number(st.vf_qty_year || 0);
 
+                // Derived metrics
                 const avgDailySales = qty7d / 7;
-                const daysOfInventory = avgDailySales > 0 ? Math.round(p.current_stock / avgDailySales) : 999;
+                const totalStock = (p.fc_stock || 0) + (p.vf_stock || 0);
+                const daysOfInventory = avgDailySales > 0 ? totalStock / avgDailySales : (totalStock > 0 ? 999 : 0);
 
                 // Trend Calculation
                 const prevSales7Days = qty14d - qty7d;
@@ -1343,8 +1337,8 @@ ${sampleText}
                     sales7Days: qty7d,
                     salesYesterday: qtyYesterday,
                     sales30Days: qty30d,
-                    salesWeekly: qtyWeek, // [NEW] Friday-Thursday
-                    salesWeeklyPrev: qtyWeekPrev, // [NEW] Friday-Thursday
+                    salesWeekly: qtyWeek, 
+                    salesWeeklyPrev: qtyWeekPrev, 
                     trends: {
                         yesterday: trendYesterday,
                         week: trendWeek,
@@ -1352,9 +1346,9 @@ ${sampleText}
                     },
                     avgDailySales: parseFloat(avgDailySales.toFixed(1)),
                     daysOfInventory,
-                    cost: Number(p.cost || 0), // [NEW]
-                    dailySales: dailySales,
-                    dailyStock: dailyStock,
+                    cost: Number(p.cost || 0), 
+                    dailySales: recentD.sales, 
+                    dailyStock: recentD.stock,
                     abcGrade: 'D' as 'A' | 'B' | 'C' | 'D',
                     prevSales7Days,
                     trend
@@ -1603,5 +1597,40 @@ ${sampleText}
                 ...item,
                 rank: index + 1
             }));
+    },
+
+    /**
+     * Fetch Daily History for a single barcode (on-demand for charts)
+     */
+    async getProductHistory(barcode: string, days: number = 90): Promise<{ sales: Record<string, number>, stock: Record<string, number> }> {
+        const endD = new Date();
+        const startD = new Date();
+        startD.setDate(startD.getDate() - days);
+        
+        const startDate = startD.toISOString().split('T')[0];
+        const endDate = endD.toISOString().split('T')[0];
+
+        const { data, error } = await supabase.from('daily_sales')
+            .select('date, quantity, stock')
+            .eq('barcode', barcode)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true });
+
+        if (error) {
+            console.error(`[API] getProductHistory error for ${barcode}:`, error);
+            throw error;
+        }
+
+        const sales: Record<string, number> = {};
+        const stock: Record<string, number> = {};
+
+        data?.forEach(row => {
+            const dateStr = row.date.substring(0, 10);
+            sales[dateStr] = row.quantity;
+            stock[dateStr] = row.stock;
+        });
+
+        return { sales, stock };
     }
 };

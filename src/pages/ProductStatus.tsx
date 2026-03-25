@@ -37,11 +37,40 @@ export default function ProductStatus() {
   const [visibleCount, setVisibleCount] = useState(20);
   const [chartModalOpen, setChartModalOpen] = useState(false);
   const [selectedGroupForChart, setSelectedGroupForChart] = useState<string | null>(null);
+  const [modalHistory, setModalHistory] = useState<{sales: Record<string, number>, stock: Record<string, number>} | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const openChartModal = (groupName: string, e: React.MouseEvent) => {
+  const openChartModal = async (groupName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedGroupForChart(groupName);
     setChartModalOpen(true);
+    setModalHistory(null);
+    setLoadingHistory(true);
+
+    try {
+      const group = filteredGroups.find(g => g.name === groupName);
+      if (!group) return;
+
+      const historyData = { sales: {} as Record<string, number>, stock: {} as Record<string, number> };
+      
+      const promises = group.children.map(c => api.getProductHistory(c.barcode, 90));
+      const results = await Promise.all(promises);
+
+      results.forEach(res => {
+        Object.keys(res.sales).forEach(date => {
+          historyData.sales[date] = (historyData.sales[date] || 0) + res.sales[date];
+        });
+        Object.keys(res.stock).forEach(date => {
+          historyData.stock[date] = (historyData.stock[date] || 0) + res.stock[date];
+        });
+      });
+
+      setModalHistory(historyData);
+    } catch (err) {
+      console.error("Failed to load history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   useEffect(() => {
@@ -156,8 +185,8 @@ export default function ProductStatus() {
       latestDateStr = new Date().toISOString().split('T')[0];
     }
     
-    const currentYear = latestDateStr.substring(0, 4);
-    const startDate = new Date(`${currentYear}-01-01`);
+    const startDate = new Date(latestDateStr);
+    startDate.setDate(startDate.getDate() - 14);
     const endDate = new Date(latestDateStr);
     
     const dates = [];
@@ -598,41 +627,25 @@ export default function ProductStatus() {
             </div>
             <div className="p-6 h-[400px] w-full">
               {(() => {
-                const group = groupedProducts.find(g => g.name === selectedGroupForChart);
-                if (!group) return null;
-
-                let latestDateStr = '';
-                Object.keys(group.dailySales).forEach(d => {
-                  if (d > latestDateStr) latestDateStr = d;
-                });
-                if (!latestDateStr) latestDateStr = new Date().toISOString().split('T')[0];
-
-                const currentYear = latestDateStr.substring(0, 4);
-                const startDate = new Date(`${currentYear}-01-01`);
-                const endDate = new Date(latestDateStr);
-
-                const chartData: any[] = [];
-                const lastKnownStockPerChild: Record<string, number> = {};
-
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                  const dStr = d.toISOString().split('T')[0];
-
-                  let stockSum = 0;
-                  group.children.forEach(child => {
-                    const childStock = child.dailyStock[dStr];
-                    if (childStock !== undefined && childStock !== null) {
-                      lastKnownStockPerChild[child.barcode] = childStock;
-                    }
-                    // Accumulate carried over or newly updated stock for this child
-                    stockSum += lastKnownStockPerChild[child.barcode] || 0;
-                  });
-
-                  chartData.push({
-                    date: dStr.substring(5).replace('-', '/'),
-                    sales: group.dailySales[dStr] || 0,
-                    stock: stockSum
-                  });
+                if (loadingHistory) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                      <Loader2 className="animate-spin text-blue-500 mb-2" size={32} />
+                      <p className="text-sm italic">과거 90일 데이터를 불러오는 중...</p>
+                    </div>
+                  );
                 }
+
+                if (!modalHistory || Object.keys(modalHistory.sales).length === 0) {
+                  return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;
+                }
+
+                const dates = Object.keys(modalHistory.sales).sort();
+                const chartData = dates.map(dStr => ({
+                  date: dStr.substring(5).replace('-', '/'),
+                  sales: modalHistory.sales[dStr] || 0,
+                  stock: modalHistory.stock[dStr] || 0
+                }));
 
                 if (chartData.length === 0) {
                   return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;

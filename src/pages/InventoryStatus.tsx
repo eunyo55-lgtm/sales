@@ -44,11 +44,42 @@ export default function InventoryStatus() {
   const [viewMode, setViewMode] = useState<'qty' | 'amount'>('qty'); // [NEW] View Mode Toggle
   const [selectedSeason, setSelectedSeason] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
+  const [modalHistory, setModalHistory] = useState<{sales: Record<string, number>, stock: Record<string, number>} | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const openChartModal = (groupName: string, e: React.MouseEvent) => {
+  const openChartModal = async (groupName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedGroupForChart(groupName);
     setChartModalOpen(true);
+    setModalHistory(null);
+    setLoadingHistory(true);
+
+    try {
+      const group = filteredGroups.find(g => g.name === groupName);
+      if (!group) return;
+
+      const historyData = { sales: {} as Record<string, number>, stock: {} as Record<string, number> };
+      
+      // Fetch history for all children in parallel
+      const promises = group.children.map(c => api.getProductHistory(c.barcode, 90));
+      const results = await Promise.all(promises);
+
+      results.forEach(res => {
+        // Aggregate
+        Object.keys(res.sales).forEach(date => {
+          historyData.sales[date] = (historyData.sales[date] || 0) + res.sales[date];
+        });
+        Object.keys(res.stock).forEach(date => {
+          historyData.stock[date] = (historyData.stock[date] || 0) + res.stock[date];
+        });
+      });
+
+      setModalHistory(historyData);
+    } catch (err) {
+      console.error("Failed to load history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   useEffect(() => {
@@ -172,14 +203,15 @@ export default function InventoryStatus() {
 
     if (!latestDateStr) latestDateStr = new Date().toISOString().split('T')[0];
 
-    const currentYear = latestDateStr.substring(0, 4);
-    const startDate = new Date(`${currentYear}-01-01`);
+    const startDate = new Date(latestDateStr);
+    startDate.setDate(startDate.getDate() - 14);
     const endDate = new Date(latestDateStr);
 
     const dates = [];
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         dates.push(d.toISOString().split('T')[0]);
     }
+
     return dates;
   }, [groupedData, products.length]);
 
@@ -669,33 +701,24 @@ export default function InventoryStatus() {
             </div>
             <div className="p-6 h-[400px] w-full">
               {(() => {
-                const group = groupedData.find(g => g.name === selectedGroupForChart);
-                if (!group) return null;
-
-                let latestDateStr = '';
-                group.children.forEach(c => {
-                  Object.keys(c.dailyStock).forEach(d => {
-                    if (d > latestDateStr) latestDateStr = d;
-                  });
-                });
-                if (!latestDateStr) latestDateStr = new Date().toISOString().split('T')[0];
-
-                const currentYear = latestDateStr.substring(0, 4);
-                const startDate = new Date(`${currentYear}-01-01`);
-                const endDate = new Date(latestDateStr);
-
-                const chartData = [];
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                  const dStr = d.toISOString().split('T')[0];
-                  let dailyTotal = 0;
-                  group.children.forEach(c => {
-                    dailyTotal += c.dailyStock[dStr] || 0;
-                  });
-                  chartData.push({
-                    date: dStr.substring(5).replace('-', '/'),
-                    stock: dailyTotal
-                  });
+                if (loadingHistory) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                      <Loader2 className="animate-spin text-blue-500 mb-2" size={32} />
+                      <p className="text-sm italic">과거 90일 데이터를 불러오는 중...</p>
+                    </div>
+                  );
                 }
+
+                if (!modalHistory || Object.keys(modalHistory.stock).length === 0) {
+                  return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;
+                }
+
+                const dates = Object.keys(modalHistory.stock).sort();
+                const chartData = dates.map(dStr => ({
+                  date: dStr.substring(5).replace('-', '/'),
+                  stock: modalHistory.stock[dStr]
+                }));
 
                 if (chartData.length === 0) {
                   return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;

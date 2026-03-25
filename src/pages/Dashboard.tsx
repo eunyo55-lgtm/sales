@@ -409,15 +409,15 @@ export default function Dashboard() {
                                 <tr><td colSpan={8} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
                             )}
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-gray-100 font-bold border-t-2 border-gray-200">
-                                    <td colSpan={2} className="px-4 py-4 text-center text-gray-800 border-r border-gray-200">합계</td>
+                                <tr className="bg-blue-50/80 font-bold sticky bottom-0 z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] border-t-2 border-blue-100 backdrop-blur-sm">
+                                    <td colSpan={2} className="px-4 py-4 text-center text-blue-800 border-r border-blue-100">전체 합계</td>
                                     <td className="px-4 py-4 text-right text-gray-800">
                                         {totals.qty_2y.toLocaleString()}건
                                     </td>
                                     <td className="px-4 py-4 text-right text-gray-800">
                                         {totals.qty_1y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-4 text-right text-gray-900 border-r border-gray-200 text-base">
+                                    <td className="px-4 py-4 text-right text-gray-900 border-r border-blue-100 text-base">
                                         {totals.qty_0y.toLocaleString()}건
                                     </td>
                                     <td className="px-4 py-4 text-right text-gray-600">
@@ -426,7 +426,7 @@ export default function Dashboard() {
                                     <td className="px-4 py-4 text-right text-gray-600">
                                         {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
                                     </td>
-                                    <td className="px-4 py-4 text-right text-blue-600 text-base">
+                                    <td className="px-4 py-4 text-right text-blue-700 text-base">
                                         {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
                                     </td>
                                 </tr>
