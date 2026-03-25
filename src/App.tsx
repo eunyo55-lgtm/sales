@@ -47,6 +47,16 @@ function App() {
           </div>
           <nav className="mt-6 px-4 space-y-2 flex-1">
             <button
+              onClick={() => setActiveTab('advertising')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'advertising'
+                ? 'bg-blue-50 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <BarChart3 size={20} className={activeTab === 'advertising' ? 'text-blue-600' : 'text-gray-500'} />
+              <span className="font-medium">광고 관리</span>
+            </button>
+            <button
               onClick={() => setActiveTab('dashboard')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard'
                 ? 'bg-blue-50 text-blue-600'
@@ -110,17 +120,6 @@ function App() {
             >
               <span className="text-xl">📊</span>
               <span className="font-medium">키워드 랭킹</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('advertising')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'advertising'
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              <BarChart3 size={20} className={activeTab === 'advertising' ? 'text-blue-600' : 'text-gray-500'} />
-              <span className="font-medium">광고 관리</span>
             </button>
           </nav>
 
