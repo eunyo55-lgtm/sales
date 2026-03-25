@@ -1175,7 +1175,7 @@ ${sampleText}
             result.push({
                 date: mmdd,
                 fullDate: dStr,
-                sales: m0.get(dStr) || 0,
+                quantity: m0.get(dStr) || 0,
                 prevYearQuantity: m1.get(mmdd) || 0,
                 prev2YearQuantity: m2.get(mmdd) || 0
             });
