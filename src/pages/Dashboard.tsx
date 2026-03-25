@@ -41,8 +41,8 @@ export default function Dashboard() {
                 setStartDate(startStr);
                 setEndDate(data.anchorDate);
 
-                // Start initial data fetch
-                api.getCustomDailySalesTrend(startStr, data.anchorDate).then(setCustomTrendData);
+                // Instead of fetching custom trends, just clear it to use data.trends.daily
+                setCustomTrendData([]);
                 api.getDashboardCombinedRankings(startStr, data.anchorDate).then(setCombinedRankings);
             }
         }
@@ -198,21 +198,8 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 pb-10 relative">
-            {/* Page Header with Manual Refresh */}
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
-                <button 
-                    onClick={() => {
-                        loadData();
-                        loadTrendData();
-                        loadCombinedRankings();
-                    }}
-                    disabled={loading || loadingTrend || loadingRankings}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                >
-                    <RefreshCw size={16} className={loading || loadingTrend || loadingRankings ? 'animate-spin' : ''} />
-                    <span>전체 새로고침</span>
-                </button>
             </div>
 
             {/* Top Cards */}
