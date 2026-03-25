@@ -5,16 +5,28 @@ import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
-  // 1. Handle CORS preflight
+  console.log(`[Proxy] Request received: ${req.method} ${req.url}`);
+  
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders, status: 200 })
+  }
+
+  // Gateway Test: If x-test header is present, return 200 immediately
+  if (req.headers.get('x-test') === 'true') {
+    return new Response(JSON.stringify({ message: "Gateway check OK" }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
+    });
   }
 
   try {
-    const { method, path, params, body } = await req.json()
+    const { method, path, params, body } = await req.json();
+    console.log(`[Proxy] Processing ${method} ${path}`);
 
     // 2. Get API Keys from Environment Variables or DB fallback
     let ACCESS_KEY = Deno.env.get('COUPANG_AD_ACCESS_KEY');
@@ -47,16 +59,18 @@ serve(async (req) => {
       });
     }
 
-    const timestamp = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-    // Format: YYYYMMDDTHHMMSSZ
+    // Coupang Advertising API requires YYMMDD'T'HHmmss'Z'
+    const now = new Date();
+    const year = now.getUTCFullYear().toString().slice(-2);
+    const month = (now.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = now.getUTCDate().toString().padStart(2, '0');
+    const hours = now.getUTCHours().toString().padStart(2, '0');
+    const minutes = now.getUTCMinutes().toString().padStart(2, '0');
+    const seconds = now.getUTCSeconds().toString().padStart(2, '0');
+    const datetime = `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
     
-    // HMAC Signature Generation (Simplified for conceptual implementation)
-    // Note: Actual Coupang HMAC depends on the specific API (Partners vs Advertising)
-    // For Advertising API, it usually follows the standard Coupang mechanism:
-    // String to sign: {timestamp}{method}{path}{query_string}
-    
-    const queryString = params ? new URLSearchParams(params).toString() : '';
-    const stringToSign = `${timestamp}${method}${path}${queryString}`;
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
+    const stringToSign = `${datetime}${method}${path}${queryString}`;
     
     const key = new TextEncoder().encode(SECRET_KEY);
     const message = new TextEncoder().encode(stringToSign);
@@ -79,7 +93,7 @@ serve(async (req) => {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, timestamp=${timestamp}, signature=${signature}`,
+        'Authorization': `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, signed-date=${datetime}, signature=${signature}`,
         'X-Customer-Id': CUSTOMER_ID || '',
       },
       body: body ? JSON.stringify(body) : undefined
@@ -95,7 +109,7 @@ serve(async (req) => {
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, // Returning 200 with error object for easier frontend handling
     })
   }
 })

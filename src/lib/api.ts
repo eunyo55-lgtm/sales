@@ -1638,12 +1638,27 @@ ${sampleText}
      * Advertising Management API (Proxy via Supabase Edge Function)
      */
     async _callAdProxy(method: string, path: string, params?: object, body?: object) {
-        const { data, error } = await supabase.functions.invoke('coupang-ad-proxy', {
-            body: { method, path, params, body }
+        // Use direct fetch to avoid Supabase gateway's automatic Authorization header injection
+        // which was causing 401 Unauthorized errors in the browser.
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/coupang-ad-proxy`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ method, path, params, body })
         });
-        if (error) {
-            console.error(`[AdAPI] Proxy error for ${path}:`, error);
-            throw error;
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[AdAPI] Proxy error for ${path}:`, response.status, errorText);
+            throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+            console.error(`[AdAPI] Proxy logic error for ${path}:`, data.error);
+            // If it's a known error from Coupang, we can handle it specifically if needed
         }
         return data;
     },

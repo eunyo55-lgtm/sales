@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 temp/
 .env
+
+.vercel
+.env*.local
