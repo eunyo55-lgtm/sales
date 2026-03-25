@@ -1672,14 +1672,14 @@ ${sampleText}
     },
 
     async updateAdBid(adId: string, bid: number) {
-        return this._callAdProxy('PATCH', `/v2/providers/openapi/apis/api/v1/ads/${adId}`, undefined, { bid });
+        return this._callAdProxy('PATCH', `/v2/providers/openapi/apis/api/v4/ads/${adId}`, undefined, { bid });
     },
 
     async excludeAdKeyword(campaignId: string, keyword: string) {
-        return this._callAdProxy('POST', `/v2/providers/openapi/apis/api/v1/campaigns/${campaignId}/excluded-keywords`, undefined, { keyword });
+        return this._callAdProxy('POST', `/v2/providers/openapi/apis/api/v4/campaigns/${campaignId}/excluded-keywords`, undefined, { keyword });
     },
 
     async getAdKeywordReport() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v1/report/keywords', { period: 'LAST_7_DAYS' });
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/keywords', { period: 'LAST_7_DAYS' });
     }
 };
