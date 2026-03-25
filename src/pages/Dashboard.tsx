@@ -286,7 +286,7 @@ export default function Dashboard() {
                                 <YAxis fontSize={12} tickLine={false} axisLine={false} />
                                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                 <Legend />
-                                <Line type="monotone" dataKey="sales" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                                <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
                                 <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
                                 <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
                             </LineChart>
