@@ -191,10 +191,17 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                     let dateStr = '';
                     if (cellA !== undefined && cellA !== null && cellA !== '') {
                         if (typeof cellA === 'number') {
-                            const p = XLSX.SSF.parse_date_code(cellA);
-                            if (p) {
-                                const y = targetYearOverride || p.y;
-                                dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+                            const numStr = String(cellA);
+                            if (numStr.length === 8 && (numStr.startsWith('20') || numStr.startsWith('19'))) {
+                                // It's a YYYYMMDD number
+                                const y = targetYearOverride || numStr.substring(0, 4);
+                                dateStr = `${y}-${numStr.substring(4, 6)}-${numStr.substring(6, 8)}`;
+                            } else {
+                                const p = XLSX.SSF.parse_date_code(cellA);
+                                if (p) {
+                                    const y = targetYearOverride || p.y;
+                                    dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+                                }
                             }
                         } else {
                             let rawVal = String(cellA).trim().replace(/\./g, '-'); // Normalize dots to hyphens
