@@ -244,6 +244,11 @@ export const api = {
         this._productStatsPromise_Map.clear();
         this._rawProductsPromise = null;
         this._rawDailySalesPromiseMap.clear();
+        
+        // Also clear persistent session storage
+        try {
+            sessionStorage.removeItem('DASHBOARD_FULL');
+        } catch(e) {}
     },
 
     /**
