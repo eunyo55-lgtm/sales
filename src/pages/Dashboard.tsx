@@ -160,7 +160,7 @@ export default function Dashboard() {
             const isDown = diff < 0;
 
             yoyEl = (
-                <div className={`mt-2 flex items-center text-xs font-medium ${isUp ? 'text-red-500' : isDown ? 'text-blue-500' : 'text-gray-400'}`}>
+                <div className={`mt-2 flex items-center text-sm font-medium ${isUp ? 'text-red-500' : isDown ? 'text-blue-500' : 'text-gray-400'}`}>
                     <span>전년 동기대비(요일기준)</span>
                     <span className="ml-1 flex items-center">
                         {isUp ? '▲' : isDown ? '▼' : '-'} {Math.abs(diff).toLocaleString()}건
@@ -186,7 +186,7 @@ export default function Dashboard() {
                             </span>
                         )}
                     </div>
-                    {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+                    {sub && <p className="text-sm text-gray-400 mt-1">{sub}</p>}
                     {yoyEl}
                 </div>
                 <div className={`p-3 rounded-full ${colorClass}`}>
@@ -327,7 +327,7 @@ export default function Dashboard() {
                 
                 <div className="overflow-x-auto p-2">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="text-xs text-gray-500 bg-gray-50">
+                        <thead className="text-sm text-gray-500 bg-gray-50">
                             <tr>
                                 <th className="px-4 py-3 text-center w-12 border-r border-gray-100">순위</th>
                                 <th className="px-4 py-3 border-r border-gray-100 min-w-[200px]">상품명</th>
@@ -354,23 +354,23 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-gray-50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
                                 <tr className="bg-blue-50/80 font-bold border-b-2 border-blue-100">
-                                    <td colSpan={2} className="px-4 py-1.5 text-center text-blue-800 border-r border-blue-100 text-xs">전체 합계</td>
-                                    <td className="px-4 py-1.5 text-right text-gray-800 text-xs">
+                                    <td colSpan={2} className="px-4 py-1.5 text-center text-blue-800 border-r border-blue-100 text-sm">전체 합계</td>
+                                    <td className="px-4 py-1.5 text-right text-gray-800 text-sm">
                                         {totals.qty_2y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-800 text-xs">
+                                    <td className="px-4 py-1.5 text-right text-gray-800 text-sm">
                                         {totals.qty_1y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-900 border-r border-blue-100 text-xs">
+                                    <td className="px-4 py-1.5 text-right text-gray-900 border-r border-blue-100 text-sm">
                                         {totals.qty_0y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-600 text-[10px]">
+                                    <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
                                         {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-600 text-[10px]">
+                                    <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
                                         {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-blue-700 text-xs">
+                                    <td className="px-4 py-1.5 text-right text-blue-700 text-sm">
                                         {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
                                     </td>
                                 </tr>
@@ -382,14 +382,14 @@ export default function Dashboard() {
                                 
                                 return (
                                 <tr key={item.name} className="hover:bg-gray-50 transition-colors border-b border-gray-50">
-                                    <td className="px-4 py-3 text-center font-medium text-gray-600 border-r border-gray-100">
+                                    <td className="px-4 py-3 text-center font-medium text-gray-600 border-r border-gray-100 text-sm">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
+                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
                                                 {idx + 1}
                                             </span>
                                         ) : idx + 1}
                                     </td>
-                                    <td className="px-4 py-3 border-r border-gray-100">
+                                    <td className="px-4 py-3 border-r border-gray-100 text-sm">
                                         <div className="flex items-center space-x-4">
                                             {item.imageUrl ? (
                                                 <img src={item.imageUrl} alt="" className="w-16 h-16 rounded-md bg-gray-100 object-cover flex-none border border-gray-200" />
@@ -399,30 +399,30 @@ export default function Dashboard() {
                                             <p className="font-semibold text-gray-800 break-words whitespace-normal leading-snug">{item.name}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-600 font-medium">
+                                    <td className="px-4 py-3 text-right text-gray-600 font-medium text-sm">
                                         {(item.qty_2y || 0).toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-600 font-medium">
+                                    <td className="px-4 py-3 text-right text-gray-600 font-medium text-sm">
                                         {(item.qty_1y || 0).toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-900 font-bold border-r border-gray-100">
+                                    <td className="px-4 py-3 text-right text-gray-900 font-bold border-r border-gray-100 text-sm">
                                         {(item.qty_0y || 0).toLocaleString()}건
                                         {yoyDiff !== 0 && (
-                                            <div className={`text-[11px] mt-0.5 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
+                                            <div className={`text-sm mt-0.5 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
                                                 {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}건
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                                    <td className="px-4 py-3 text-right text-gray-500 text-sm">
                                         {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() + '원' : '-'}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                                    <td className="px-4 py-3 text-right text-gray-500 text-sm">
                                         {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() + '원' : '-'}
                                     </td>
                                     <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
                                         {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
                                         {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
-                                            <div className={`text-[10px] mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
+                                            <div className={`text-sm mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
                                                 {(item.qty_0y - item.qty_1y) > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}원
                                             </div>
                                         )}

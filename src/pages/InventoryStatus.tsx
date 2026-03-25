@@ -522,12 +522,12 @@ export default function InventoryStatus() {
                     <span onClick={() => handleSort('coupangStock')}>{viewMode === 'qty' ? '쿠팡재고량(합계)' : '쿠팡재고액(합계)'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right text-xs cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-gray-100 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('fcStock')}>{viewMode === 'qty' ? 'FC재고량' : 'FC재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right text-xs cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-gray-100 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('vfStock')}>{viewMode === 'qty' ? 'VF재고량' : 'VF재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
@@ -560,14 +560,14 @@ export default function InventoryStatus() {
 
                 <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
                 <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.coupangStock.toLocaleString() : totalStats.coupangStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-xs bg-gray-100">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-sm bg-gray-100">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-sm bg-gray-100">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
                 <th className="px-4 py-2 text-right text-teal-600 bg-teal-50/50">
                   {viewMode === 'qty' ? filteredGroups.reduce((acc, g) => acc + g.sales7Days, 0).toLocaleString() : filteredGroups.reduce((acc, g) => acc + g.children.reduce((cAcc, c) => cAcc + (c.sales7Days * (c.cost || 0)), 0), 0).toLocaleString()}
                 </th>
                 <th className="px-4 py-2 bg-gray-100"></th>
                 {uniqueDates.map(date => (
-                  <th key={date} className="px-2 py-2 text-center text-xs bg-gray-100">
+                  <th key={date} className="px-2 py-2 text-center text-sm bg-gray-100">
                     {totalStats.dailyStock[date] ? (viewMode === 'qty' ? totalStats.dailyStock[date].toLocaleString() : totalStats.dailyStockValue[date].toLocaleString()) : '-'}
                   </th>
                 ))}
@@ -580,18 +580,18 @@ export default function InventoryStatus() {
 
                 // Burn Rate Badge
                 let BurnRateBadge = (
-                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-green-100 text-green-800">
                     3달+
                   </span>
                 );
                 if (g.minDaysOfInventory <= 7) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-red-100 text-red-700 animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
                 } else if (g.minDaysOfInventory <= 14) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-orange-100 text-orange-800">2주 이내</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-orange-100 text-orange-800">2주 이내</span>;
                 } else if (g.minDaysOfInventory <= 30) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">1달 이내</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-yellow-100 text-yellow-800">1달 이내</span>;
                 } else if (g.minDaysOfInventory <= 90) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">3달 이내</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-blue-100 text-blue-800">3달 이내</span>;
                 }
 
                 return (
@@ -611,22 +611,22 @@ export default function InventoryStatus() {
                         >
                           {g.name}
                         </span>
-                        <span className="ml-1 text-xs font-normal text-gray-500">[{g.children.length}]</span>
+                        <span className="ml-1 text-sm font-normal text-gray-500">[{g.children.length}]</span>
                       </td>
 
                       <td className="px-4 py-2 text-right font-bold text-blue-600 bg-blue-50/10 whitespace-nowrap">{viewMode === 'qty' ? g.totalSales.toLocaleString() : g.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}</td>
 
                       <td className="px-4 py-2 text-right text-gray-900 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.hqStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-900 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.coupangStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? g.fcStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.fcStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-xs whitespace-nowrap">{viewMode === 'qty' ? g.vfStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.vfStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-sm whitespace-nowrap">{viewMode === 'qty' ? g.fcStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.fcStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-gray-600 font-mono text-sm whitespace-nowrap">{viewMode === 'qty' ? g.vfStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.vfStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-teal-600 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.sales7Days.toLocaleString() : g.children.reduce((acc, c) => acc + (c.sales7Days * (c.cost || 0)), 0).toLocaleString()}</td>
 
                       <td className="px-4 py-2 text-right whitespace-nowrap">
                         {BurnRateBadge}
                       </td>
                       {uniqueDates.map(date => (
-                        <td key={date} className={`px-2 py-2 text-center text-xs min-w-[50px] ${g.dailyStock[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
+                        <td key={date} className={`px-2 py-2 text-center text-sm min-w-[50px] ${g.dailyStock[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
                           {g.dailyStock[date] ? (viewMode === 'qty' ? g.dailyStock[date].toLocaleString() : g.children.reduce((acc, c) => acc + ((c.dailyStock[date] || 0) * (c.cost || 0)), 0).toLocaleString()) : '-'}
                         </td>
                       ))}
@@ -635,10 +635,10 @@ export default function InventoryStatus() {
                     {/* Children Rows */}
                     {isExpanded && g.children.map(child => {
                       return (
-                        <tr key={child.barcode} className="bg-gray-50 border-b border-gray-100 text-xs">
+                        <tr key={child.barcode} className="bg-gray-50 border-b border-gray-100 text-sm">
                           <td className={`sticky z-20 bg-gray-50 ${W_TOGGLE} ${L_TOGGLE}`}></td>
                           <td className={`sticky z-20 bg-gray-50 ${W_IMG} ${L_IMG}`}></td>
-                          <td className={`px-4 py-1.5 pl-8 text-xs whitespace-nowrap sticky z-20 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>
+                          <td className={`px-4 py-1.5 pl-8 text-sm whitespace-nowrap sticky z-20 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>
                             <div className="flex flex-col">
                               <span className="font-mono text-gray-400">{child.barcode}</span>
                               <span className="text-gray-600 font-medium">{child.option || '-'}</span>
@@ -649,8 +649,8 @@ export default function InventoryStatus() {
 
                           <td className="px-4 py-1.5 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.hqStock.toLocaleString() : (child.hqStock * (child.cost || 0)).toLocaleString()}</td>
                           <td className="px-4 py-1.5 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.coupangStock.toLocaleString() : (child.coupangStock * (child.cost || 0)).toLocaleString()}</td>
-                          <td className="px-4 py-1.5 text-right text-gray-400 text-[10px] whitespace-nowrap">{viewMode === 'qty' ? (child.fcStock || 0).toLocaleString() : ((child.fcStock || 0) * (child.cost || 0)).toLocaleString()}</td>
-                          <td className="px-4 py-1.5 text-right text-gray-400 text-[10px] whitespace-nowrap">{viewMode === 'qty' ? (child.vfStock || 0).toLocaleString() : ((child.vfStock || 0) * (child.cost || 0)).toLocaleString()}</td>
+                          <td className="px-4 py-1.5 text-right text-gray-400 text-sm whitespace-nowrap">{viewMode === 'qty' ? (child.fcStock || 0).toLocaleString() : ((child.fcStock || 0) * (child.cost || 0)).toLocaleString()}</td>
+                          <td className="px-4 py-1.5 text-right text-gray-400 text-sm whitespace-nowrap">{viewMode === 'qty' ? (child.vfStock || 0).toLocaleString() : ((child.vfStock || 0) * (child.cost || 0)).toLocaleString()}</td>
                           
                           <td className="px-4 py-1.5 text-right text-teal-500 whitespace-nowrap">{viewMode === 'qty' ? child.sales7Days.toLocaleString() : (child.sales7Days * (child.cost || 0)).toLocaleString()}</td>
 
@@ -677,7 +677,7 @@ export default function InventoryStatus() {
         {visibleCount < filteredGroups.length && (
           <div className="flex justify-center py-4 bg-gray-50 border-t border-gray-200 flex-none">
             <button onClick={() => setVisibleCount(prev => prev + 20)} className="px-8 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              더 보기 (+20) <span className="ml-2 text-gray-400 text-xs">({visibleCount} / {filteredGroups.length})</span>
+              더 보기 (+20) <span className="ml-2 text-gray-400 text-sm">({visibleCount} / {filteredGroups.length})</span>
             </button>
           </div>
         )}
