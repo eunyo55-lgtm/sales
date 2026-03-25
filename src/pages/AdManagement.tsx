@@ -59,10 +59,12 @@ const AdManagement = () => {
         setShowSettings(true);
         return;
       }
+      console.log("Summary Data:", summaryData);
       setSummary(summaryData);
 
       // 2. Fetch Product Report
       const productReport = await api.getAdProductReport();
+      console.log("Product Report:", productReport);
       setProducts(productReport.items || []);
 
       // 3. Fetch Keyword Report
@@ -253,6 +255,22 @@ const AdManagement = () => {
             className="px-8 py-3 bg-amber-600 text-white rounded-xl font-bold shadow-lg hover:bg-amber-700 transition-all"
           >
             설정하러 가기
+          </button>
+        </div>
+      )}
+
+      {error && error !== 'CREDENTIALS_REQUIRED' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center space-x-4 text-red-800">
+          <AlertCircle size={24} className="flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-bold text-sm">데이터를 불러오는 중 오류가 발생했습니다.</p>
+            <p className="text-xs mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={fetchAdData}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
+          >
+            다시 시도
           </button>
         </div>
       )}
