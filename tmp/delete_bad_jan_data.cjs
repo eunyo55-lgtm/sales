@@ -12,8 +12,8 @@ async function deleteDistortedData() {
         .delete({ count: 'exact' })
         .gte('order_date', '2026-01-01')
         .lte('order_date', '2026-01-08')
-        .gte('created_at', '2026-03-12')
-        .lte('created_at', '2026-03-12T23:59:59');
+        .gte('created_at', '2026-03-13T00:00:00')
+        .lte('created_at', '2026-03-13T01:00:00');
 
     if (error) {
         console.error("Error deleting data:", error);

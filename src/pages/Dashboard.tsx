@@ -3,8 +3,9 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Calendar, Trophy, Activity, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
+import { CustomDatePicker } from '../components/CustomDatePicker';
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
@@ -24,8 +25,6 @@ export default function Dashboard() {
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 60000); // 1 min refresh
-        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -35,7 +34,7 @@ export default function Dashboard() {
                 const d = new Date(data.anchorDate);
                 const start = new Date(d);
                 start.setDate(d.getDate() - 30);
-                const startStr = start.toISOString().split('T')[0];
+                const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
                 
                 setTrendStartDate(startStr);
                 setTrendEndDate(data.anchorDate);
@@ -199,6 +198,23 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 pb-10 relative">
+            {/* Page Header with Manual Refresh */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
+                <button 
+                    onClick={() => {
+                        loadData();
+                        loadTrendData();
+                        loadCombinedRankings();
+                    }}
+                    disabled={loading || loadingTrend || loadingRankings}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                >
+                    <RefreshCw size={16} className={loading || loadingTrend || loadingRankings ? 'animate-spin' : ''} />
+                    <span>전체 새로고침</span>
+                </button>
+            </div>
+
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
@@ -238,30 +254,25 @@ export default function Dashboard() {
                             <Activity size={18} className="mr-2 text-blue-500" />
                             일별 판매 추이
                         </h3>
-                        <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-                            <input 
-                                type="date" 
-                                title="시작일"
+                        <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1 rounded-lg border border-gray-200">
+                            <CustomDatePicker 
                                 value={trendStartDate} 
-                                onChange={e => setTrendStartDate(e.target.value)}
-                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
-                                style={{ WebkitAppearance: 'none' }}
+                                onChange={setTrendStartDate} 
+                                disabled={loadingTrend}
                             />
                             <span className="text-gray-400">~</span>
-                            <input 
-                                type="date" 
-                                title="종료일"
+                            <CustomDatePicker 
                                 value={trendEndDate} 
-                                onChange={e => setTrendEndDate(e.target.value)}
-                                className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:scale-90"
-                                style={{ WebkitAppearance: 'none' }}
+                                onChange={setTrendEndDate} 
+                                disabled={loadingTrend}
                             />
                             <button 
                                 onClick={loadTrendData} 
+                                title="조회"
                                 disabled={loadingTrend || !trendStartDate || !trendEndDate}
-                                className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ml-1 ${loadingTrend ? 'animate-spin' : ''}`}
+                                className={`p-1.5 text-gray-500 hover:text-blue-600 transition-colors ml-1 bg-white border border-gray-100 rounded-md shadow-sm ${loadingTrend ? 'animate-spin' : ''}`}
                             >
-                                <RefreshCw size={16} />
+                                <RefreshCw size={14} />
                             </button>
                         </div>
                     </div>
@@ -304,32 +315,25 @@ export default function Dashboard() {
                         <Trophy size={18} className="text-yellow-500" />
                         <h3 className="font-bold text-gray-800">판매베스트</h3>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-                        <input 
-                            type="date" 
-                            title="시작일"
+                    <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1 rounded-lg border border-gray-200">
+                        <CustomDatePicker 
                             value={startDate} 
-                            onChange={e => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:bg-none [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-calendar-picker-indicator]:p-0 [&::-webkit-calendar-picker-indicator]:m-0"
-                            style={{ WebkitAppearance: 'none' }}
+                            onChange={setStartDate} 
                             disabled={loadingRankings}
                         />
                         <span className="text-gray-400">~</span>
-                        <input 
-                            type="date" 
-                            title="종료일"
+                        <CustomDatePicker 
                             value={endDate} 
-                            onChange={e => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-700 outline-none text-sm p-1 appearance-none [&::-webkit-calendar-picker-indicator]:bg-none [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-calendar-picker-indicator]:p-0 [&::-webkit-calendar-picker-indicator]:m-0"
-                            style={{ WebkitAppearance: 'none' }}
+                            onChange={setEndDate} 
                             disabled={loadingRankings}
                         />
                         <button 
                             onClick={loadCombinedRankings} 
+                            title="조회"
                             disabled={loadingRankings || !startDate || !endDate}
-                            className={`p-1.5 text-gray-400 hover:text-blue-500 transition-colors ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
+                            className={`p-1.5 text-gray-500 hover:text-blue-600 transition-colors ml-1 bg-white border border-gray-100 rounded-md shadow-sm ${loadingRankings ? 'animate-spin' : ''}`}
                         >
-                            <RefreshCw size={16} />
+                            <RefreshCw size={14} />
                         </button>
                     </div>
                 </div>

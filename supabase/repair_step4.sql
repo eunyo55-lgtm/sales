@@ -69,7 +69,7 @@ BEGIN
         COALESCE(SUM(c.vf_qty) FILTER (WHERE c.date >= start_of_year AND c.date <= anchor_date), 0)::BIGINT AS vf_qty_year,
         COALESCE(SUM(c.qty) FILTER (WHERE c.date >= anchor_date - integer '13' AND c.date <= anchor_date), 0)::BIGINT AS qty_14d,
         COALESCE(SUM(c.qty) FILTER (WHERE c.date >= anchor_date - integer '6' AND c.date <= anchor_date), 0)::BIGINT AS qty_7d,
-        COALESCE(SUM(c.qty) FILTER (WHERE d.date >= anchor_date - integer '29' AND c.date <= anchor_date), 0)::BIGINT AS qty_30d, -- Corrected 'd.date' to 'c.date' here as well
+        COALESCE(SUM(c.qty) FILTER (WHERE c.date >= anchor_date - integer '29' AND c.date <= anchor_date), 0)::BIGINT AS qty_30d, -- Corrected 'd.date' to 'c.date' here as well
         COALESCE(SUM(c.qty) FILTER (WHERE c.date >= anchor_date - integer '59' AND c.date <= anchor_date), 0)::BIGINT AS qty_60d,
         json_object_agg(c.date::TEXT, COALESCE(c.qty, 0)) FILTER (WHERE c.date >= start_of_year AND c.date <= anchor_date) AS daily_sales,
         json_object_agg(c.date::TEXT, COALESCE(c.daily_stock_val, 0)) FILTER (WHERE c.date >= start_of_year AND c.date <= anchor_date AND c.daily_stock_val IS NOT NULL) AS daily_stock

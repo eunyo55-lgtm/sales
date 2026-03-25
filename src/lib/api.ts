@@ -1130,40 +1130,50 @@ ${sampleText}
 
         const currentData = await fetchRange(startDate, endDate);
         
-        const sDate = new Date(startDate + 'T00:00:00');
-        const eDate = new Date(endDate + 'T00:00:00');
-        
-        const fetchPrevYear = async (offset: number) => {
-            const s = new Date(sDate); s.setFullYear(s.getFullYear() - offset);
-            const e = new Date(eDate); e.setFullYear(e.getFullYear() - offset);
-            return await fetchRange(s.toISOString().split('T')[0], e.toISOString().split('T')[0]);
-        };
+        const m0 = new Map<string, number>();
+        currentData.forEach(r => {
+            const d = r.date.substring(0, 10);
+            m0.set(d, (m0.get(d) || 0) + r.quantity);
+        });
 
-        const prev1Data = await fetchPrevYear(1);
-        const prev2Data = await fetchPrevYear(2);
+        // Use Date objects for iterating but avoid direct toISOString() for display mapping
+        const sParts = startDate.split('-').map(Number);
+        const eParts = endDate.split('-').map(Number);
+        const sDateInput = new Date(sParts[0], sParts[1] - 1, sParts[2]);
+        const eDateInput = new Date(eParts[0], eParts[1] - 1, eParts[2]);
 
-        const buildMap = (dataArr: any[]) => {
+        const fetchYearOffsetMap = async (offset: number) => {
+            const s = new Date(sDateInput); s.setFullYear(s.getFullYear() - offset);
+            const e = new Date(eDateInput); e.setFullYear(e.getFullYear() - offset);
+            
+            const sStr = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`;
+            const eStr = `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`;
+            
+            const data = await fetchRange(sStr, eStr);
             const m = new Map<string, number>();
-            dataArr.forEach(r => {
+            data.forEach(r => {
                 const mmdd = r.date.substring(5, 10);
                 m.set(mmdd, (m.get(mmdd) || 0) + r.quantity);
             });
             return m;
         };
 
-        const m0 = buildMap(currentData);
-        const m1 = buildMap(prev1Data);
-        const m2 = buildMap(prev2Data);
+        const m1 = await fetchYearOffsetMap(1);
+        const m2 = await fetchYearOffsetMap(2);
 
         const result: any[] = [];
-        let curr = new Date(sDate);
-        while (curr <= eDate) {
-            const dStr = curr.toISOString().split('T')[0];
+        const curr = new Date(sDateInput);
+        while (curr <= eDateInput) {
+            const y = curr.getFullYear();
+            const m = curr.getMonth() + 1;
+            const d = curr.getDate();
+            const dStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const mmdd = dStr.substring(5, 10);
+            
             result.push({
                 date: mmdd,
                 fullDate: dStr,
-                sales: m0.get(mmdd) || 0,
+                sales: m0.get(dStr) || 0,
                 prevYearQuantity: m1.get(mmdd) || 0,
                 prev2YearQuantity: m2.get(mmdd) || 0
             });
