@@ -132,7 +132,20 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                 const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[];
                 if (jsonData.length < 2) return resolve([]);
 
-                const headers = (jsonData[0] || []).map((h: any) => String(h || '').trim());
+                // Find the header row (search first 10 rows)
+                let headerRowIndex = 0;
+                for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
+                    const row = jsonData[i] || [];
+                    if (row.some((cell: any) => {
+                        const s = String(cell || '');
+                        return s.includes('날짜') || s.includes('Date') || s.includes('바코드') || s.includes('Barcode');
+                    })) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+
+                const headers = (jsonData[headerRowIndex] || []).map((h: any) => String(h || '').trim());
                 
                 // Dynamic Column Detection
                 const findCol = (keywords: string[]) => headers.findIndex((h: string) => keywords.some(k => h.includes(k)));
@@ -154,7 +167,7 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
 
                 const salesRows: CoupangSalesRow[] = [];
 
-                for (let i = 1; i < jsonData.length; i++) {
+                for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     if (!row || row.length === 0) continue;
 
