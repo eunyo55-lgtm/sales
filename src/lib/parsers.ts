@@ -130,7 +130,11 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                 const sheet = workbook.Sheets[sheetName];
 
                 const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[];
-                if (jsonData.length < 2) return resolve([]);
+                console.log('DEBUG [Parser]: jsonData length =', jsonData.length);
+                if (jsonData.length < 2) {
+                    console.log('DEBUG [Parser]: File seems empty or has only one row.');
+                    return resolve([]);
+                }
 
                 // Find the header row (search first 10 rows)
                 let headerRowIndex = 0;
@@ -144,8 +148,10 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                         break;
                     }
                 }
+                console.log('DEBUG [Parser]: Detected headerRowIndex =', headerRowIndex);
 
                 const headers = (jsonData[headerRowIndex] || []).map((h: any) => String(h || '').trim());
+                console.log('DEBUG [Parser]: Headers found =', headers);
                 
                 // Dynamic Column Detection
                 const findCol = (keywords: string[]) => headers.findIndex((h: string) => keywords.some(k => h.includes(k)));
@@ -164,6 +170,8 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                 const idxSkuId = colSkuId !== -1 ? colSkuId : 6;
                 const idxSales = colSales !== -1 ? colSales : 12;
                 const idxStock = colStock !== -1 ? colStock : 13;
+
+                console.log('DEBUG [Parser]: Column mapping =', { idxDate, idxBarcode, idxSkuId, idxSales, idxStock });
 
                 const salesRows: CoupangSalesRow[] = [];
 
@@ -242,10 +250,19 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                         currentStock = isNaN(Number(str)) ? 0 : Math.round(Number(str));
                     }
 
+                    if (i === headerRowIndex + 1) {
+                        console.log('DEBUG [Parser]: First data row sample:', row);
+                    }
+
                     if (barcode && dateStr) {
                         salesRows.push({ date: dateStr, barcode, salesQty, currentStock, center, centerRaw });
+                    } else {
+                        if (i < headerRowIndex + 10) {
+                            console.log(`DEBUG [Parser]: Row ${i} skipped - barcode: "${barcode}", dateStr: "${dateStr}"`);
+                        }
                     }
                 }
+                console.log('DEBUG [Parser]: Total rows parsed and keeping:', salesRows.length);
 
                 resolve(salesRows);
             } catch (error) {
