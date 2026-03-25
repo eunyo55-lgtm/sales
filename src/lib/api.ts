@@ -1632,5 +1632,35 @@ ${sampleText}
         });
 
         return { sales, stock };
+    },
+
+    /**
+     * Advertising Management API (Proxy via Supabase Edge Function)
+     */
+    async _callAdProxy(method: string, path: string, params?: object, body?: object) {
+        const { data, error } = await supabase.functions.invoke('coupang-ad-proxy', {
+            body: { method, path, params, body }
+        });
+        if (error) {
+            console.error(`[AdAPI] Proxy error for ${path}:`, error);
+            throw error;
+        }
+        return data;
+    },
+
+    async getAdSummary() {
+        return this._callAdProxy('GET', '/v1/report/summary', { period: 'TODAY' });
+    },
+
+    async getAdProductReport() {
+        return this._callAdProxy('GET', '/v1/report/products', { period: 'TODAY' });
+    },
+
+    async updateAdBid(adId: string, bid: number) {
+        return this._callAdProxy('PATCH', `/v1/ads/${adId}`, undefined, { bid });
+    },
+
+    async excludeAdKeyword(campaignId: string, keyword: string) {
+        return this._callAdProxy('POST', `/v1/campaigns/${campaignId}/excluded-keywords`, undefined, { keyword });
     }
 };

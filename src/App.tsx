@@ -6,17 +6,21 @@ import InventoryStatus from './pages/InventoryStatus';
 import SmartOrder from './pages/SmartOrder';
 import SupplyStatus from './pages/SupplyStatus';
 import KeywordRanking from './pages/KeywordRanking';
+import AdManagement from './pages/AdManagement';
 import { DataUploader } from './components/DataUploader';
+import { BarChart3 } from 'lucide-react';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply'>(() => {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'keyword' | 'supply' | 'advertising'>(() => {
     const saved = localStorage.getItem('activeTab');
-    return (saved as 'dashboard' | 'products' | 'inventory' | 'smartorder' | 'insights' | 'keyword' | 'supply') || 'dashboard';
+    const validTabs = ['dashboard', 'products', 'inventory', 'smartorder', 'keyword', 'supply' , 'advertising'];
+    return (validTabs.includes(saved || '') ? saved : 'dashboard') as any;
   });
 
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showKeywordManager, setShowKeywordManager] = useState(() => {
     const saved = localStorage.getItem('showKeywordManager');
@@ -26,10 +30,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('showKeywordManager', JSON.stringify(showKeywordManager));
   }, [showKeywordManager]);
-
-  useEffect(() => {
-    localStorage.setItem('activeTab', activeTab);
-  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -111,6 +111,17 @@ function App() {
               <span className="text-xl">📊</span>
               <span className="font-medium">키워드 랭킹</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('advertising')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'advertising'
+                ? 'bg-blue-50 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <BarChart3 size={20} className={activeTab === 'advertising' ? 'text-blue-600' : 'text-gray-500'} />
+              <span className="font-medium">광고 관리</span>
+            </button>
           </nav>
 
           <div className="w-full p-4 border-t border-gray-200 bg-gray-50">
@@ -139,6 +150,7 @@ function App() {
               {activeTab === 'smartorder' && '스마트 발주 추천'}
               {activeTab === 'keyword' && '쿠팡 키워드 랭킹 추적'}
               {activeTab === 'supply' && '쿠팡 발주 대비 공급/입고 현황'}
+              {activeTab === 'advertising' && '쿠팡 광고 성과 및 제어'}
             </h2>
           </div>
           <DataUploader />
@@ -156,6 +168,7 @@ function App() {
             />
           )}
           {activeTab === 'supply' && <SupplyStatus />}
+          {activeTab === 'advertising' && <AdManagement />}
         </div>
       </main>
     </div>
