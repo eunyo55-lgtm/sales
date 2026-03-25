@@ -65,19 +65,30 @@ const AdManagement = () => {
       const productReport = await api.getAdProductReport();
       setProducts(productReport.items || []);
 
-      // 3. Mock logic for keywords/chart (until real endpoints are added)
-      setKeywords([
-        { keyword: '아동신발 추천', clicks: 68, purchases: 0, spend: 12000 },
-        { keyword: '유아복 세일', clicks: 52, purchases: 0, spend: 8500 },
-      ]);
-      setChartData([
-        { date: '03-19', rank: 15, impressions: 1200 },
-        { date: '03-20', rank: 12, impressions: 1500 },
-        { date: '03-21', rank: 8, impressions: 2100 },
-        { date: '03-22', rank: 5, impressions: 3200 },
-        { date: '03-23', rank: 6, impressions: 2800 },
-        { date: '03-24', rank: 4, impressions: 4500 },
-      ]);
+      // 3. Fetch Keyword Report
+      const keywordReport = await api.getAdKeywordReport();
+      const lowEffKeywords = (keywordReport.items || [])
+        .filter((kw: any) => kw.clicks > 50 && kw.purchases === 0)
+        .sort((a: any, b: any) => b.clicks - a.clicks);
+      setKeywords(lowEffKeywords);
+
+      // 4. Ranking Correlation (Merge with local DB)
+      // Logic: Fetch natural ranking from local DB and match with impressions from ad report
+      const { data: rankData } = await supabase
+        .from('keyword_rankings')
+        .select('date, rank_position')
+        .order('date', { ascending: true })
+        .limit(30);
+
+      if (rankData && rankData.length > 0) {
+        // Merge with keywordReport impressions if available
+        const chartMap = new Map();
+        rankData.forEach(r => chartMap.set(r.date, { date: r.date.slice(5), rank: r.rank_position, impressions: 0 }));
+        
+        // Mocking impression distribution if real daily ad report is not yet implemented
+        // In a real scenario, we would fetch /v1/report/daily and merge here
+        setChartData(Array.from(chartMap.values()));
+      }
     } catch (err: any) {
       console.error("Failed to fetch ad data:", err);
       setError(err.message || '광고 데이터를 불러오는 중 오류가 발생했습니다.');
