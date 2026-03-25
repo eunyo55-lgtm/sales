@@ -1112,13 +1112,15 @@ ${sampleText}
         const fetchRange = async (s: string, e: string) => {
             let allData: any[] = [];
             let i = 0;
-            const BATCH = 5000;
+            const BATCH = 1000;
             let isDone = false;
             while (!isDone) {
                 const { data, error } = await supabase.from('daily_sales')
                     .select('date, quantity')
                     .gte('date', s)
                     .lte('date', e)
+                    .order('date', { ascending: true })
+                    .order('barcode', { ascending: true })
                     .range(i, i + BATCH - 1);
                 if (error) throw error;
                 if (data && data.length > 0) allData.push(...data);

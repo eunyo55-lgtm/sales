@@ -254,7 +254,7 @@ export default function Dashboard() {
                             <Activity size={18} className="mr-2 text-blue-500" />
                             일별 판매 추이
                         </h3>
-                        <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2 text-sm">
                             <CustomDatePicker 
                                 value={trendStartDate} 
                                 onChange={setTrendStartDate} 
@@ -270,7 +270,7 @@ export default function Dashboard() {
                                 onClick={loadTrendData} 
                                 title="조회"
                                 disabled={loadingTrend || !trendStartDate || !trendEndDate}
-                                className={`p-1.5 text-gray-500 hover:text-blue-600 transition-colors ml-1 bg-white border border-gray-100 rounded-md shadow-sm ${loadingTrend ? 'animate-spin' : ''}`}
+                                className={`p-1.5 text-gray-400 hover:text-blue-600 transition-colors ml-1 ${loadingTrend ? 'animate-spin' : ''}`}
                             >
                                 <RefreshCw size={14} />
                             </button>
@@ -315,7 +315,7 @@ export default function Dashboard() {
                         <Trophy size={18} className="text-yellow-500" />
                         <h3 className="font-bold text-gray-800">판매베스트</h3>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm bg-gray-50 p-1 rounded-lg border border-gray-200">
+                    <div className="flex items-center space-x-2 text-sm">
                         <CustomDatePicker 
                             value={startDate} 
                             onChange={setStartDate} 
@@ -331,7 +331,7 @@ export default function Dashboard() {
                             onClick={loadCombinedRankings} 
                             title="조회"
                             disabled={loadingRankings || !startDate || !endDate}
-                            className={`p-1.5 text-gray-500 hover:text-blue-600 transition-colors ml-1 bg-white border border-gray-100 rounded-md shadow-sm ${loadingRankings ? 'animate-spin' : ''}`}
+                            className={`p-1.5 text-gray-400 hover:text-blue-600 transition-colors ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw size={14} />
                         </button>

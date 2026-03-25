@@ -81,14 +81,14 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
     <div className="relative inline-block" ref={containerRef}>
       <div 
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition-all shadow-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`flex items-center space-x-2 px-2 py-1 cursor-pointer transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-500'}`}
       >
         <span className="text-sm text-gray-700 min-w-[85px]">{value || '날짜 선택'}</span>
         <CalendarIcon size={14} className="text-gray-400" />
       </div>
 
       {isOpen && (
-        <div className="absolute z-[100] mt-2 bg-white border border-gray-100 rounded-xl shadow-xl w-64 p-4 animate-in fade-in zoom-in duration-200 origin-top-right right-0">
+        <div className="absolute z-[100] mt-2 bg-white border border-gray-100 rounded-xl w-64 p-4 animate-in fade-in zoom-in duration-200 origin-top-right right-0">
           <div className="flex items-center justify-between mb-4">
             <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600">
               <ChevronLeft size={18} />
