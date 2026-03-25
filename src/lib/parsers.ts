@@ -171,9 +171,11 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                 const idxSales = colSales !== -1 ? colSales : 12;
                 const idxStock = colStock !== -1 ? colStock : 13;
 
-                console.log('DEBUG [Parser]: Column mapping =', { idxDate, idxBarcode, idxSkuId, idxSales, idxStock });
+                console.log('DEBUG [Parser]: index detection results:', { colDate, colCenter, colBarcode, colSkuId, colSales, colStock });
+                console.log('DEBUG [Parser]: Final indices used:', { idxDate, idxBarcode, idxSkuId, idxSales, idxStock });
 
                 const salesRows: CoupangSalesRow[] = [];
+                let lastValidDate = '';
 
                 for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
@@ -186,44 +188,45 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                     const cellM = row[idxSales];
                     const cellN = row[idxStock];
 
-                    if (!cellA) continue;
-
                     let dateStr = '';
-                    if (typeof cellA === 'number') {
-                        const p = XLSX.SSF.parse_date_code(cellA);
-                        if (p) {
-                            const y = targetYearOverride || p.y;
-                            dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
-                        }
-                    } else {
-                        const rawVal = String(cellA).trim();
-                        if (rawVal.length === 8 && !rawVal.includes('-')) {
-                            const y = targetYearOverride || rawVal.substring(0, 4);
-                            dateStr = `${y}-${rawVal.substring(4, 6)}-${rawVal.substring(6, 8)}`; // Fixed Bug
-                        } else if (targetYearOverride) {
-                            if (rawVal.includes('-')) {
-                                const parts = rawVal.split('-');
-                                if (parts.length === 2) {
-                                    dateStr = `${targetYearOverride}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                                } else if (parts.length === 3) {
-                                    dateStr = `${targetYearOverride}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-                                }
-                            } else if (rawVal.includes('/')) {
-                                const parts = rawVal.split('/');
-                                if (parts.length === 2) {
-                                    dateStr = `${targetYearOverride}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                                } else if (parts.length === 3) {
-                                    dateStr = `${targetYearOverride}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    if (cellA !== undefined && cellA !== null && cellA !== '') {
+                        if (typeof cellA === 'number') {
+                            const p = XLSX.SSF.parse_date_code(cellA);
+                            if (p) {
+                                const y = targetYearOverride || p.y;
+                                dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+                            }
+                        } else {
+                            let rawVal = String(cellA).trim().replace(/\./g, '-'); // Normalize dots to hyphens
+                            if (rawVal.length === 8 && !rawVal.includes('-')) {
+                                const y = targetYearOverride || rawVal.substring(0, 4);
+                                dateStr = `${y}-${rawVal.substring(4, 6)}-${rawVal.substring(6, 8)}`; 
+                            } else if (targetYearOverride) {
+                                if (rawVal.includes('-')) {
+                                    const parts = rawVal.split('-');
+                                    if (parts.length === 2) {
+                                        dateStr = `${targetYearOverride}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                    } else if (parts.length === 3) {
+                                        dateStr = `${targetYearOverride}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                    }
+                                } else {
+                                    dateStr = rawVal;
                                 }
                             } else {
                                 dateStr = rawVal;
-                            }
-                        } else {
-                            dateStr = rawVal;
-                            if (dateStr.length === 8 && !dateStr.includes('-')) {
-                                dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+                                // Still try to fix YYYYMMDD if no override
+                                if (dateStr.length === 8 && !dateStr.includes('-')) {
+                                    dateStr = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+                                }
                             }
                         }
+                    }
+
+                    // Fill down logic: if date is missing, use the previous valid one
+                    if (!dateStr && lastValidDate) {
+                        dateStr = lastValidDate;
+                    } else if (dateStr) {
+                        lastValidDate = dateStr;
                     }
 
                     const centerRaw = String(cellF || '').trim().toUpperCase();
@@ -251,14 +254,15 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                     }
 
                     if (i === headerRowIndex + 1) {
-                        console.log('DEBUG [Parser]: First data row sample:', row);
+                        console.log('DEBUG [Parser]: Row 1 data:', row);
+                        console.log('DEBUG [Parser]: Row 1 parsed -> barcode:', barcode, 'dateStr:', dateStr);
                     }
 
-                    if (barcode && dateStr) {
+                    if (barcode && dateStr && dateStr.length >= 8) {
                         salesRows.push({ date: dateStr, barcode, salesQty, currentStock, center, centerRaw });
                     } else {
                         if (i < headerRowIndex + 10) {
-                            console.log(`DEBUG [Parser]: Row ${i} skipped - barcode: "${barcode}", dateStr: "${dateStr}"`);
+                            console.log(`DEBUG [Parser]: Row ${i} skipped - barcode: "${barcode}", dateStr: "${dateStr}", rawDateCell:`, cellA);
                         }
                     }
                 }
