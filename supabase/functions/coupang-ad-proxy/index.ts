@@ -78,9 +78,9 @@ serve(async (req) => {
       });
     }
 
-    // Coupang Advertising API requires YYMMDD'T'HHmmss'Z'
+    // Coupang Advertising API v4 Signature: datetime + method + path (NO query string in signature!)
     const now = new Date();
-    const year = now.getUTCFullYear().toString().slice(-2);
+    const year = now.getUTCFullYear().toString(); // 4-digit year
     const month = (now.getUTCMonth() + 1).toString().padStart(2, '0');
     const day = now.getUTCDate().toString().padStart(2, '0');
     const hours = now.getUTCHours().toString().padStart(2, '0');
@@ -88,11 +88,14 @@ serve(async (req) => {
     const seconds = now.getUTCSeconds().toString().padStart(2, '0');
     const datetime = `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
     
-    const queryString = params ? new URLSearchParams(params as any).toString() : '';
-    const stringToSign = `${datetime}${method}${path}${queryString}`;
+    // In Advertising API, some specs exclude query string from the signature string
+    const stringToSign = `${datetime}${method}${path}`;
     
-    const key = new TextEncoder().encode(SECRET_KEY);
-    const message = new TextEncoder().encode(stringToSign);
+    console.log(`[Proxy] StringToSign (No Query): ${stringToSign}`);
+
+    const encoder = new TextEncoder();
+    const key = encoder.encode(SECRET_KEY);
+    const message = encoder.encode(stringToSign);
     
     const hmacKey = await crypto.subtle.importKey(
       "raw",
@@ -106,13 +109,17 @@ serve(async (req) => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
     const url = `https://api-gateway.coupang.com${path}${queryString ? '?' + queryString : ''}`;
-
+    const authHeader = `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, signed-date=${datetime}, signature=${signature}`;
+    
+    console.log(`[Proxy] Calling Coupang: ${method} ${url}`);
+    
     const coupangRes = await fetch(url, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, signed-date=${datetime}, signature=${signature}`,
+        'Authorization': authHeader,
         'X-Customer-Id': CUSTOMER_ID || '',
       },
       body: body ? JSON.stringify(body) : undefined
