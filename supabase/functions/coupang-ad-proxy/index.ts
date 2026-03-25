@@ -42,21 +42,23 @@ serve(async (req) => {
         headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` }
       }).then(res => res.json());
 
-      if (settings && Array.isArray(settings)) {
-        ACCESS_KEY = settings.find(s => s.key === 'COUPANG_AD_ACCESS_KEY')?.value || ACCESS_KEY;
-        SECRET_KEY = settings.find(s => s.key === 'COUPANG_AD_SECRET_KEY')?.value || SECRET_KEY;
-        CUSTOMER_ID = settings.find(s => s.key === 'COUPANG_AD_CUSTOMER_ID')?.value || CUSTOMER_ID;
+      if (settings) {
+        settings.forEach((s: any) => {
+          if (s.key === 'COUPANG_AD_ACCESS_KEY') ACCESS_KEY = s.value;
+          if (s.key === 'COUPANG_AD_SECRET_KEY') SECRET_KEY = s.value;
+          if (s.key === 'COUPANG_AD_CUSTOMER_ID') CUSTOMER_ID = s.value;
+        });
       }
-    }
 
-    if (!ACCESS_KEY || !SECRET_KEY || !ACCESS_KEY.trim() || !SECRET_KEY.trim()) {
-      return new Response(JSON.stringify({ 
-        error: 'CREDENTIALS_REQUIRED', 
-        message: 'Coupang Ad API credentials not configured. Please set them in Ad Management settings.' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      });
+      if (!ACCESS_KEY || !SECRET_KEY) {
+        return new Response(JSON.stringify({ 
+          error: 'CREDENTIALS_REQUIRED', 
+          message: 'Coupang Ad API credentials not configured. Please set them in Ad Management settings.' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 // Use 200 to allow frontend to handle it as a state
+        });
+      }
     }
 
     // Coupang Advertising API requires YYMMDD'T'HHmmss'Z'

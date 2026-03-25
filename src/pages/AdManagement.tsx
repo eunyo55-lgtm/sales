@@ -57,6 +57,7 @@ const AdManagement = () => {
       if (summaryData.error === 'CREDENTIALS_REQUIRED') {
         setError('CREDENTIALS_REQUIRED');
         setShowSettings(true);
+        setLoading(false);
         return;
       }
       console.log("Summary Data:", summaryData);
