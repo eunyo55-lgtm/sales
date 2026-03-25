@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-test',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 }
@@ -34,31 +35,47 @@ serve(async (req) => {
     let CUSTOMER_ID = Deno.env.get('COUPANG_AD_CUSTOMER_ID');
 
     if (!ACCESS_KEY || !SECRET_KEY) {
-      // Fallback: Fetch from app_settings table
       const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+      console.log(`[Proxy] Keys not in env, fetching from DB... (URL: ${supabaseUrl})`);
       
-      const { data: settings } = await fetch(`${supabaseUrl}/rest/v1/app_settings?select=key,value`, {
-        headers: { 'apikey': supabaseServiceKey, 'Authorization': `Bearer ${supabaseServiceKey}` }
-      }).then(res => res.json());
+      const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: settings, error: dbError } = await supabaseClient
+        .from('app_settings')
+        .select('key, value');
+
+      if (dbError) {
+        console.error(`[Proxy] DB Fetch Error:`, dbError);
+      }
 
       if (settings) {
+        console.log(`[Proxy] Found ${settings.length} settings in DB`);
         settings.forEach((s: any) => {
-          if (s.key === 'COUPANG_AD_ACCESS_KEY') ACCESS_KEY = s.value;
-          if (s.key === 'COUPANG_AD_SECRET_KEY') SECRET_KEY = s.value;
-          if (s.key === 'COUPANG_AD_CUSTOMER_ID') CUSTOMER_ID = s.value;
+          if (s.key === 'COUPANG_AD_ACCESS_KEY') {
+            ACCESS_KEY = s.value;
+            console.log(`[Proxy] Found ACCESS_KEY`);
+          }
+          if (s.key === 'COUPANG_AD_SECRET_KEY') {
+            SECRET_KEY = s.value;
+            console.log(`[Proxy] Found SECRET_KEY`);
+          }
+          if (s.key === 'COUPANG_AD_CUSTOMER_ID') {
+            CUSTOMER_ID = s.value;
+            console.log(`[Proxy] Found CUSTOMER_ID`);
+          }
         });
       }
+    }
 
-      if (!ACCESS_KEY || !SECRET_KEY) {
-        return new Response(JSON.stringify({ 
-          error: 'CREDENTIALS_REQUIRED', 
-          message: 'Coupang Ad API credentials not configured. Please set them in Ad Management settings.' 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 // Use 200 to allow frontend to handle it as a state
-        });
-      }
+    if (!ACCESS_KEY || !SECRET_KEY) {
+      console.warn(`[Proxy] Credentials still missing after DB fetch.`);
+      return new Response(JSON.stringify({ 
+        error: 'CREDENTIALS_REQUIRED', 
+        message: 'Coupang Ad API credentials not configured. Please set them in Ad Management settings.' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 // Use 200 to allow frontend to handle it as a state
+      });
     }
 
     // Coupang Advertising API requires YYMMDD'T'HHmmss'Z'

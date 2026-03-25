@@ -1664,11 +1664,11 @@ ${sampleText}
     },
 
     async getAdSummary() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v1/report/summary', { period: 'TODAY' });
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/summary', { period: 'TODAY' });
     },
 
     async getAdProductReport() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v1/report/products', { period: 'TODAY' });
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/products', { period: 'TODAY' });
     },
 
     async updateAdBid(adId: string, bid: number) {
