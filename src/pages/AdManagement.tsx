@@ -11,8 +11,6 @@ import {
   LineChart,
   Settings,
   Loader2,
-  CheckCircle2,
-  XCircle,
   Save
 } from 'lucide-react';
 import { 
