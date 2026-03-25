@@ -129,31 +129,56 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
 
-                // Memory efficient parsing without sheet_to_json
-                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[];
+                if (jsonData.length < 2) return resolve([]);
+
+                const headers = (jsonData[0] || []).map((h: any) => String(h || '').trim());
+                
+                // Dynamic Column Detection
+                const findCol = (keywords: string[]) => headers.findIndex((h: string) => keywords.some(k => h.includes(k)));
+                
+                const colDate = findCol(['날짜', 'Date']);
+                const colCenter = findCol(['센터', '물류센터', 'Center']);
+                const colBarcode = findCol(['바코드', 'Barcode', '등록바코드']);
+                const colSkuId = findCol(['단품번호', 'SKU ID', '단품ID']);
+                const colSales = findCol(['판매수량', '출고수량', 'Sales']);
+                const colStock = findCol(['재고수량', '현재재고', 'Stock']);
+
+                // Fallback: If some columns not found by name, use hardcoded defaults from common report
+                const idxDate = colDate !== -1 ? colDate : 0;
+                const idxCenter = colCenter !== -1 ? colCenter : 5;
+                const idxBarcode = colBarcode !== -1 ? colBarcode : 8;
+                const idxSkuId = colSkuId !== -1 ? colSkuId : 6;
+                const idxSales = colSales !== -1 ? colSales : 12;
+                const idxStock = colStock !== -1 ? colStock : 13;
+
                 const salesRows: CoupangSalesRow[] = [];
 
-                for (let r = range.s.r + 1; r <= range.e.r; r++) { // skip header at row 0
-                    const cellA = sheet[XLSX.utils.encode_cell({ c: 0, r })]; // Date
-                    const cellF = sheet[XLSX.utils.encode_cell({ c: 5, r })]; // Center
-                    const cellI = sheet[XLSX.utils.encode_cell({ c: 8, r })]; // Barcode
-                    const cellM = sheet[XLSX.utils.encode_cell({ c: 12, r })]; // Sales Qty
-                    const cellN = sheet[XLSX.utils.encode_cell({ c: 13, r })]; // Stock
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue;
 
-                    if (!cellA || !cellI) continue;
+                    const cellA = row[idxDate];
+                    const cellF = row[idxCenter];
+                    const cellI = row[idxBarcode];
+                    const cellG = row[idxSkuId]; // Fallback for barcode
+                    const cellM = row[idxSales];
+                    const cellN = row[idxStock];
+
+                    if (!cellA) continue;
 
                     let dateStr = '';
-                    if (typeof cellA.v === 'number') {
-                        const p = XLSX.SSF.parse_date_code(cellA.v);
+                    if (typeof cellA === 'number') {
+                        const p = XLSX.SSF.parse_date_code(cellA);
                         if (p) {
                             const y = targetYearOverride || p.y;
                             dateStr = `${y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
                         }
                     } else {
-                        const rawVal = String(cellA.w || cellA.v).trim();
+                        const rawVal = String(cellA).trim();
                         if (rawVal.length === 8 && !rawVal.includes('-')) {
                             const y = targetYearOverride || rawVal.substring(0, 4);
-                            dateStr = `${y}-${rawVal.substring(4, 6)}-rawVal.substring(6, 8)`;
+                            dateStr = `${y}-${rawVal.substring(4, 6)}-${rawVal.substring(6, 8)}`; // Fixed Bug
                         } else if (targetYearOverride) {
                             if (rawVal.includes('-')) {
                                 const parts = rawVal.split('-');
@@ -180,23 +205,27 @@ export const parseCoupangSales = async (file: File, targetYearOverride?: number)
                         }
                     }
 
-                    const centerRaw = String(cellF?.v || '').trim().toUpperCase();
+                    const centerRaw = String(cellF || '').trim().toUpperCase();
                     let center = 'FC';
                     if (centerRaw === 'VF164' || centerRaw.includes('VF') || centerRaw.includes('VENDOR')) {
                         center = 'VF164';
                     }
 
-                    const barcode = String(cellI.v || '').replace(/\s+/g, '');
+                    // Fallback: use SKU ID if Barcode is empty
+                    let barcode = String(cellI || '').replace(/\s+/g, '');
+                    if (!barcode && cellG) {
+                        barcode = String(cellG).replace(/\s+/g, '');
+                    }
 
                     let salesQty = 0;
-                    if (cellM && cellM.v) {
-                        const str = String(cellM.v).replace(/,/g, '').trim();
+                    if (cellM !== undefined && cellM !== null) {
+                        const str = String(cellM).replace(/,/g, '').trim();
                         salesQty = isNaN(Number(str)) ? 0 : Math.round(Number(str));
                     }
 
                     let currentStock = 0;
-                    if (cellN && cellN.v) {
-                        const str = String(cellN.v).replace(/,/g, '').trim();
+                    if (cellN !== undefined && cellN !== null) {
+                        const str = String(cellN).replace(/,/g, '').trim();
                         currentStock = isNaN(Number(str)) ? 0 : Math.round(Number(str));
                     }
 
