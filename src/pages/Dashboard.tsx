@@ -65,10 +65,16 @@ export default function Dashboard() {
         setLoadingRankings(true);
         setDisplayLimit(10);
         try {
+            console.time('[Dashboard] Load Rankings');
             const list = await api.getDashboardCombinedRankings(startDate, endDate);
             setCombinedRankings(list); 
-        } catch(e) { console.error(e); }
-        finally { setLoadingRankings(false); }
+            console.timeEnd('[Dashboard] Load Rankings');
+        } catch(e) { 
+            console.error("[Dashboard] Rankings load failed:", e); 
+            setCombinedRankings([]);
+        } finally {
+            setLoadingRankings(false);
+        }
     };
 
     const loadData = async () => {

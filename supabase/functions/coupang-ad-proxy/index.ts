@@ -78,9 +78,9 @@ serve(async (req) => {
       });
     }
 
-    // Coupang Advertising API v4 Signature: datetime + method + path (NO query string in signature!)
+    // Coupang Advertising API Signature: datetime + method + path + query
     const now = new Date();
-    const year = now.getUTCFullYear().toString(); // 4-digit year
+    const year = now.getUTCFullYear().toString();
     const month = (now.getUTCMonth() + 1).toString().padStart(2, '0');
     const day = now.getUTCDate().toString().padStart(2, '0');
     const hours = now.getUTCHours().toString().padStart(2, '0');
@@ -88,10 +88,12 @@ serve(async (req) => {
     const seconds = now.getUTCSeconds().toString().padStart(2, '0');
     const datetime = `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
     
-    // In Advertising API, some specs exclude query string from the signature string
-    const stringToSign = `${datetime}${method}${path}`;
+    // Back to openapi provider which is the most standard
+    const targetPath = path;
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
+    const stringToSign = `${datetime}${method}${targetPath}${queryString}`;
     
-    console.log(`[Proxy] StringToSign (No Query): ${stringToSign}`);
+    console.log(`[Proxy] Using openapi, StringToSign: ${stringToSign}`);
 
     const encoder = new TextEncoder();
     const key = encoder.encode(SECRET_KEY);
@@ -109,8 +111,7 @@ serve(async (req) => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    const queryString = params ? new URLSearchParams(params as any).toString() : '';
-    const url = `https://api-gateway.coupang.com${path}${queryString ? '?' + queryString : ''}`;
+    const url = `https://api-gateway.coupang.com${targetPath}${queryString ? '?' + queryString : ''}`;
     const authHeader = `CEA algorithm=HmacSHA256, access-key=${ACCESS_KEY}, signed-date=${datetime}, signature=${signature}`;
     
     console.log(`[Proxy] Calling Coupang: ${method} ${url}`);
@@ -118,9 +119,11 @@ serve(async (req) => {
     const coupangRes = await fetch(url, {
       method,
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Authorization': authHeader,
         'X-Customer-Id': CUSTOMER_ID || '',
+        'User-Agent': 'Coupang-Open-API-SDK-JS/1.0',
       },
       body: body ? JSON.stringify(body) : undefined
     });

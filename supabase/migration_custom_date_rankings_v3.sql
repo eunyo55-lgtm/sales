@@ -1,4 +1,6 @@
--- Supabase Migration for Custom Date Range Rankings
+-- Supabase Migration for Custom Date Range Rankings (Optimized V3 Final)
+-- This version performs JOIN and GROUP BY in the database to prevent frontend timeouts.
+-- It returns product names directly, handling multiple barcodes for the same product.
 
 CREATE OR REPLACE FUNCTION get_dashboard_combined_rankings_custom(
     start_date DATE,
@@ -7,7 +9,9 @@ CREATE OR REPLACE FUNCTION get_dashboard_combined_rankings_custom(
     offset_val INTEGER DEFAULT 0
 )
 RETURNS TABLE (
-    barcode TEXT,
+    name TEXT,
+    image_url TEXT,
+    cost NUMERIC,
     qty_0y BIGINT,
     qty_1y BIGINT,
     qty_2y BIGINT,
@@ -41,18 +45,29 @@ BEGIN
         WHERE (ds.date >= start_0 AND ds.date <= end_0)
            OR (ds.date >= start_1 AND ds.date <= end_1)
            OR (ds.date >= start_2 AND ds.date <= end_2)
+    ),
+    barcode_agg AS (
+        SELECT 
+            ts.barcode,
+            COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 0), 0)::BIGINT AS q0,
+            COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 1), 0)::BIGINT AS q1,
+            COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 2), 0)::BIGINT AS q2
+        FROM target_sales ts
+        GROUP BY ts.barcode
     )
     SELECT 
-        ts.barcode,
-        COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 0), 0)::BIGINT AS qty_0y,
-        COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 1), 0)::BIGINT AS qty_1y,
-        COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 2), 0)::BIGINT AS qty_2y,
-        (COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 0), 0) - COALESCE(SUM(ts.quantity) FILTER (WHERE ts.year_idx = 1), 0))::BIGINT AS trend
-    FROM target_sales ts
-    GROUP BY ts.barcode
-    HAVING SUM(ts.quantity) > 0
-    ORDER BY qty_0y DESC, ts.barcode
+        COALESCE(p.name, ba.barcode) as name,
+        MAX(p.image_url) as image_url,
+        COALESCE(MAX(p.cost), 0)::NUMERIC as cost,
+        SUM(ba.q0)::BIGINT as qty_0y,
+        SUM(ba.q1)::BIGINT as qty_1y,
+        SUM(ba.q2)::BIGINT as qty_2y,
+        (SUM(ba.q0) - SUM(ba.q1))::BIGINT as trend
+    FROM barcode_agg ba
+    LEFT JOIN products p ON p.barcode = ba.barcode
+    GROUP BY 1
+    HAVING SUM(ba.q0 + ba.q1 + ba.q2) > 0
+    ORDER BY qty_0y DESC, name
     LIMIT limit_val OFFSET offset_val;
 END;
 $$;
-

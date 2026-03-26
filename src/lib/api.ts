@@ -50,37 +50,46 @@ export const api = {
         const BATCH_SIZE = 1000;
         const allData: T[] = [];
         let i = 0;
+        const CONCURRENCY = 6;
         let isDone = false;
 
-        console.time(`[API] Sequential RPC: ${rpcName}`);
+        console.time(`[API] Parallel RPC: ${rpcName}`);
         while (!isDone) {
-            const { data, error } = await supabase.rpc(rpcName, {
-                ...params,
-                limit_val: BATCH_SIZE,
-                offset_val: i
-            });
-
-            if (error) {
-                console.error(`[API] RPC Fetch error at offset ${i}: `, error);
-                throw error;
+            const batchPromises = [];
+            for (let c = 0; c < CONCURRENCY; c++) {
+                batchPromises.push(supabase.rpc(rpcName, {
+                    ...params,
+                    limit_val: BATCH_SIZE,
+                    offset_val: i + (c * BATCH_SIZE)
+                }));
             }
 
-            if (data && data.length > 0) {
-                allData.push(...(data as T[]));
-            }
+            const results = await Promise.all(batchPromises);
 
-            if (!data || data.length < BATCH_SIZE) {
-                isDone = true;
-            }
-            i += BATCH_SIZE;
+            for (let c = 0; c < CONCURRENCY; c++) {
+                const { data, error } = results[c];
+                if (error) {
+                    console.error(`[API] RPC Fetch error in ${rpcName}: `, error);
+                    throw error;
+                }
 
-            // Safety break to prevent infinite loops
+                if (data && data.length > 0) {
+                    allData.push(...(data as T[]));
+                }
+
+                if (!data || data.length < BATCH_SIZE) {
+                    isDone = true;
+                    break;
+                }
+            }
+            i += (CONCURRENCY * BATCH_SIZE);
             if (i > 100000) break;
         }
-        console.timeEnd(`[API] Sequential RPC: ${rpcName}`);
+        console.timeEnd(`[API] Parallel RPC: ${rpcName}`);
         console.log(`[API] Total rows fetched from ${rpcName}: ${allData.length}`);
         return allData;
     },
+
 
     async _fetchAllParallel<T>(table: string, select: string, order?: string, filterBuilder?: (q: any) => any) {
         const BATCH_SIZE = 1000;
@@ -1436,9 +1445,11 @@ ${sampleText}
             groups.get(item.name)!.push(item);
         });
 
-        const header = `🚨 * [긴급발주 요망] * ${dateStr} 기준 품절 임박 상품(${groups.size}종) \n-- -\n`;
+        const header = `🚨 * [긴급발주 요망] * ${dateStr} 기준 품절 임박 상품(${groups.size}종) \n--- \n`;
 
         let body = '';
+
+
         let index = 1;
 
         for (const [name, groupItems] of groups.entries()) {
@@ -1546,58 +1557,25 @@ ${sampleText}
         return allData;
     },
 
-    /**
-     * Fetch Combined Rankings for 3 Years (24, 25, 26) with custom date range
-     */
     async getDashboardCombinedRankings(startDate: string, endDate: string): Promise<any[]> {
-        const { data: rankings, error } = await supabase.rpc('get_dashboard_combined_rankings_custom', {
+        const rankings = await this._fetchRPCParallel<any>('get_dashboard_combined_rankings_custom', {
             start_date: startDate,
             end_date: endDate
         });
 
-        if (error) {
-            console.error("[API] getDashboardCombinedRankings error:", error);
-            throw error;
-        }
-
-        // Fetch products to map barcode to name, cost, etc.
-        const products = await this._getRawProducts();
-        const productMap = new Map(products.map(p => [p.barcode, p]));
-
-        // Deduplicate by name if barcodes belong to the same product name
-        const nameMap = new Map<string, any>();
-
-        rankings?.forEach((r: any) => {
-            const prod = productMap.get(r.barcode);
-            if (!prod) return;
-            const name = prod.name;
-
-            if (nameMap.has(name)) {
-                const existing = nameMap.get(name);
-                existing.qty_0y += Number(r.qty_0y || 0);
-                existing.qty_1y += Number(r.qty_1y || 0);
-                existing.qty_2y += Number(r.qty_2y || 0);
-                existing.trend += Number(r.trend || 0);
-            } else {
-                nameMap.set(name, {
-                    name,
-                    imageUrl: prod.image_url,
-                    qty_0y: Number(r.qty_0y || 0),
-                    qty_1y: Number(r.qty_1y || 0),
-                    qty_2y: Number(r.qty_2y || 0),
-                    trend: Number(r.trend || 0),
-                    cost: prod.cost
-                });
-            }
-        });
-
-        return Array.from(nameMap.values())
-            .sort((a, b) => b.qty_0y - a.qty_0y) // Sort by most recent year sales DESC
-            .map((item, index) => ({
-                ...item,
-                rank: index + 1
-            }));
+        // Use the new SQL results which are already joined with products and grouped by name.
+        return rankings.map((r, index) => ({
+            name: r.name,
+            imageUrl: r.image_url,
+            qty_0y: Number(r.qty_0y || 0),
+            qty_1y: Number(r.qty_1y || 0),
+            qty_2y: Number(r.qty_2y || 0),
+            trend: Number(r.trend || 0),
+            cost: Number(r.cost || 0),
+            rank: index + 1
+        }));
     },
+
 
     /**
      * Fetch Daily History for a single barcode (on-demand for charts)
