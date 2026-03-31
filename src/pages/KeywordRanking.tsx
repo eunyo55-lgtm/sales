@@ -311,14 +311,14 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                 {/* Left: Keyword Management */}
                 {showKeywordManager ? (
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm col-span-1 border-t-4 border-t-blue-500 relative">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-slate-700 mb-4 flex items-center justify-between">
                             <div className="flex items-center">
                                 <Search className="w-5 h-5 mr-2 text-blue-500" />
                                 추적 키워드 관리
                             </div>
                             <button
                                 onClick={() => setShowKeywordManager(false)}
-                                className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-1.5 text-gray-500 hover:bg-slate-50 rounded-lg transition-colors"
                                 title="관리창 숨기기"
                             >
                                 <Menu size={18} />
@@ -409,7 +409,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         <div className="flex items-center space-x-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-left-2 mb-6">
                             <button
                                 onClick={() => setShowKeywordManager(true)}
-                                className="flex items-center px-3 py-1.5 text-gray-600 hover:bg-gray-100 text-sm font-bold rounded-md transition-all border border-gray-200"
+                                className="flex items-center px-3 py-1.5 text-gray-600 hover:bg-slate-50 text-sm font-medium rounded-md transition-all border border-gray-200"
                             >
                                 <LayoutList className="w-4 h-4 mr-1.5 text-blue-500" />
                                 키워드 관리창 열기
@@ -419,10 +419,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                     {/* Chart Card */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">단축 명령</h3>
+                            <h3 className="text-lg font-medium text-slate-700">단축 명령</h3>
                             <button
                                 onClick={() => setShowManualSync(true)}
-                                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition border border-gray-200"
+                                className="px-3 py-1.5 bg-slate-50 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition border border-gray-200"
                             >
                                 ⚡ 수동 순위 집계
                             </button>
@@ -436,7 +436,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                         {showManualSync && (
                             <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
-                                <h4 className="font-bold text-gray-800 mb-2">수동으로 순위 집계하기</h4>
+                                <h4 className="font-medium text-slate-700 mb-2">수동으로 순위 집계하기</h4>
                                 <p className="text-gray-600 mb-3 text-xs leading-relaxed">
                                     현재 쿠팡의 강력한 봇 차단(방화벽) 정책으로 인해 외부 서버(GitHub)에서의 자동 수집이 불가능합니다. 순위를 갱신하시려면 <b>대표님의 PC</b>에서 직접 수집기를 작동시켜야 합니다.
                                 </p>
@@ -444,14 +444,14 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                     <b>사용 방법:</b> 바탕화면에 만들어진 <b>[쿠팡 키워드 랭킹 수집기]</b> 아이콘을 더블클릭하세요. 실제 크롬 브라우저 창이 열리며 사람처럼 안전하게 순위를 수집하고 자동으로 닫힙니다. (수집 완료 후 이 화면을 새로고침 하시면 반영됩니다.)
                                 </div>
                                 <div className="flex justify-end">
-                                    <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
+                                    <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-sky-500 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
                                 </div>
                             </div>
                         )}
 
                         {showNaverSync && (
                             <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
-                                <h4 className="font-bold text-gray-800 mb-2">네이버 조회수 수동 갱신</h4>
+                                <h4 className="font-medium text-slate-700 mb-2">네이버 조회수 수동 갱신</h4>
                                 <p className="text-gray-600 mb-3 text-xs leading-relaxed">
                                     네이버 광고시스템의 보안 정책으로 인해 서버에서 자동 수집이 어렵습니다. 아래 순서대로 직접 실행해 주세요.
                                 </p>
@@ -474,7 +474,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                     {/* Summary Table */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-sm">
                         <div className="p-4 border-b border-gray-200 bg-gray-50">
-                            <h3 className="font-bold text-gray-800">키워드별 순위 누적 현황</h3>
+                            <h3 className="font-medium text-slate-700">키워드별 순위 누적 현황</h3>
                         </div>
                         <div className="overflow-auto max-h-[calc(100vh-250px)]">
                             <table className="w-full text-left border-collapse whitespace-nowrap min-w-max relative">
@@ -482,7 +482,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                     <tr className="text-gray-500 border-b border-gray-200 text-xs">
                                         <th
                                             style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 30 }}
-                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('category')}
                                         >
                                             <div className="flex items-center text-xs">
@@ -492,7 +492,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         </th>
                                         <th
                                             style={{ left: 70, width: 110, minWidth: 110, maxWidth: 110, zIndex: 30 }}
-                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('keyword')}
                                         >
                                             <div className="flex items-center text-xs">
@@ -502,7 +502,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         </th>
                                         <th
                                             style={{ left: 180, width: 150, minWidth: 150, maxWidth: 150, zIndex: 30 }}
-                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('product')}
                                         >
                                             <div className="flex items-center text-xs">
@@ -512,7 +512,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         </th>
                                         <th 
                                             style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 30 }}
-                                            className="py-3 px-2 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-2 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesLastWeek')}
                                         >
                                             <div className="flex items-center justify-center text-xs leading-tight">
@@ -522,7 +522,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         </th>
                                         <th 
                                             style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 30 }}
-                                            className="py-3 px-2 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-2 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesThisWeek')}
                                         >
                                             <div className="flex items-center justify-center text-xs leading-tight">
@@ -532,7 +532,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         </th>
                                         <th 
                                             style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 30 }}
-                                            className="py-3 px-1 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-gray-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
+                                            className="py-3 px-1 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesWoW')}
                                         >
                                             <div className="flex items-center justify-center text-xs">
@@ -625,7 +625,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 </td>
                                                 <td
                                                     style={{ left: 180, width: 150, minWidth: 150, maxWidth: 150, zIndex: 10 }}
-                                                    className="py-3 px-2 text-gray-600 text-xs cursor-pointer hover:text-blue-600 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb]"
+                                                    className="py-3 px-2 text-gray-600 text-xs cursor-pointer hover:text-sky-500 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb]"
                                                     title="클릭하여 순위 추이 보기"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -637,7 +637,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             <img
                                                                 src={kw.products.image_url}
                                                                 alt=""
-                                                                className="w-6 h-6 rounded object-cover mr-1 bg-gray-100 border border-gray-200 flex-shrink-0"
+                                                                className="w-6 h-6 rounded object-cover mr-1 bg-slate-50 border border-gray-200 flex-shrink-0"
                                                             />
                                                         )}
                                                         <span className="truncate">{kw.products?.name || '-'}</span>
@@ -658,7 +658,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         <>
                                                             <td 
                                                                 style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className={`py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesLastWeek >= 100 ? 'font-bold' : ''}`}
+                                                                className={`py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesLastWeek >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -668,7 +668,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className={`py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesThisWeek >= 100 ? 'font-bold' : ''}`}
+                                                                className={`py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesThisWeek >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -678,7 +678,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 10 }}
-                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && Math.abs(wow) >= 100 ? 'font-bold' : ''} ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
+                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && Math.abs(wow) >= 100 ? 'font-medium' : ''} ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -746,10 +746,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 735, width: 55, minWidth: 55, maxWidth: 55, zIndex: 10 }}
-                                                                className={`py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-xs ${Math.abs(trend) >= 100 ? 'font-bold' : ''}`}
+                                                                className={`py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-xs ${Math.abs(trend) >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
-                                                                    <div className={`flex items-center justify-center text-xs ${Math.abs(trend) >= 100 ? 'font-bold' : ''} ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                    <div className={`flex items-center justify-center text-xs ${Math.abs(trend) >= 100 ? 'font-medium' : ''} ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                                                         {trend > 0 ? '+' : ''}{trend.toLocaleString()}
                                                                     </div>
                                                                 ) : trend === 0 && latestVol > 0 ? (
@@ -785,7 +785,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                     let dodElement = null;
                                                     if (pos > 0) {
                                                         if (prevPos === 0) {
-                                                            dodElement = <span className="text-[9px] font-bold text-orange-500 bg-orange-50 px-1 rounded">NEW</span>;
+                                                            dodElement = <span className="text-[9px] font-medium text-orange-500 bg-orange-50 px-1 rounded">NEW</span>;
                                                         } else if (prevPos > pos) {
                                                             dodElement = <span className="flex items-center text-[10px] text-red-500"><TrendingUp className="w-2.5 h-2.5 mr-0.5" />{prevPos - pos}</span>;
                                                         } else if (prevPos < pos) {
@@ -795,11 +795,11 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         }
                                                     }
                                                     return (
-                                                            <td key={date} className="py-2 px-2 text-center border-l border-gray-100/50 hover:bg-gray-100/50 transition-colors">
+                                                            <td key={date} className="py-2 px-2 text-center border-l border-gray-100/50 hover:bg-slate-50/50 transition-colors">
                                                                 {pos > 0 ? (
                                                                     <div className="flex flex-col items-center justify-center space-y-0.5 min-w-[40px]">
                                                                         <div className="flex items-center space-x-1">
-                                                                            <span className="font-semibold text-gray-800 text-sm">{pos}</span>
+                                                                            <span className="font-semibold text-slate-700 text-sm">{pos}</span>
                                                                             {dodElement}
                                                                         </div>
                                                                         {(r?.rating > 0 || r?.review_count > 0) && (
@@ -842,9 +842,9 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                                <h3 className="text-lg font-medium text-slate-700 flex items-center">
                                     <TrendingUp className="w-5 h-5 text-blue-500 mr-2" />
-                                    순위 추이: <span className="text-blue-600 ml-1">{selectedChartKeyword.keyword}</span>
+                                    순위 추이: <span className="text-sky-500 ml-1">{selectedChartKeyword.keyword}</span>
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">연결 상품: {selectedChartKeyword.products?.name || '없음'}</p>
                             </div>

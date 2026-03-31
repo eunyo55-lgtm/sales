@@ -121,7 +121,7 @@ export default function Insights() {
                         <Lightbulb size={28} />
                     </div>
                     <div>
-                        <h3 className="text-purple-900 font-bold text-lg">악성 재고 (Dead Stock) 인사이트</h3>
+                        <h3 className="text-purple-900 font-medium text-lg">악성 재고 (Dead Stock) 인사이트</h3>
                         <p className="text-purple-700 text-sm mt-1">
                             재고 수량은 많지만 최근 판매량이 저조한 상품 목록입니다.<br />
                             시즌이 지났거나 정체된 상품은 <b>기획전 제안</b>이나 <b>광고 부스팅</b>을 통해 소진을 유도하세요.
@@ -130,7 +130,7 @@ export default function Insights() {
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100 text-center min-w-[150px]">
                     <p className="text-sm font-medium text-gray-500 mb-1">총 체화 재고량</p>
-                    <p className="text-2xl font-bold text-purple-700">
+                    <p className="text-2xl font-medium text-purple-700">
                         {deadStockGroups.reduce((acc, g) => acc + g.totalStock, 0).toLocaleString()} <span className="text-sm">개</span>
                     </p>
                 </div>
@@ -139,7 +139,7 @@ export default function Insights() {
             {/* Filters */}
             <div className="flex justify-between items-center flex-none">
                 <div className="flex items-center space-x-4">
-                    <h3 className="font-bold text-gray-800">잠재 체화 상품 리스트 ({deadStockGroups.length}종)</h3>
+                    <h3 className="font-medium text-slate-700">잠재 체화 상품 리스트 ({deadStockGroups.length}종)</h3>
 
                     {/* Season Filter Dropdown */}
                     <div className="relative">
@@ -183,9 +183,9 @@ export default function Insights() {
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
                             <tr>
                                 <th className="px-5 py-3 w-8"></th>
-                                <th className="px-5 py-3 font-medium cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>상품명 / 시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('totalStock')}>쿠팡 재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sales30Days')}>최근 30일 판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 font-medium cursor-pointer hover:bg-slate-50" onClick={() => handleSort('name')}>상품명 / 시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-slate-50" onClick={() => handleSort('totalStock')}>쿠팡 재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-slate-50" onClick={() => handleSort('sales30Days')}>최근 30일 판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -205,12 +205,12 @@ export default function Insights() {
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center">
                                                     {group.imageUrl ? (
-                                                        <img src={group.imageUrl} alt="" className="w-10 h-10 rounded object-cover mr-3 bg-gray-100" />
+                                                        <img src={group.imageUrl} alt="" className="w-10 h-10 rounded object-cover mr-3 bg-slate-50" />
                                                     ) : (
-                                                        <div className="w-10 h-10 rounded bg-gray-100 mr-3"></div>
+                                                        <div className="w-10 h-10 rounded bg-slate-50 mr-3"></div>
                                                     )}
                                                     <div>
-                                                        <div className="font-medium text-gray-900">{group.name}</div>
+                                                        <div className="font-medium text-slate-700">{group.name}</div>
                                                         <div className="flex items-center mt-1 space-x-2">
                                                             <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-500 border-gray-200">
                                                                 {group.season}
@@ -221,7 +221,7 @@ export default function Insights() {
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4 text-right">
-                                                <span className="font-bold text-gray-900 text-lg">{group.totalStock.toLocaleString()}</span>
+                                                <span className="font-medium text-slate-700 text-lg">{group.totalStock.toLocaleString()}</span>
                                                 <span className="text-xs text-gray-500 ml-1">개</span>
                                             </td>
                                             <td className="px-5 py-4 text-right">

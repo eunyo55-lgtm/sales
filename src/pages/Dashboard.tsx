@@ -185,14 +185,14 @@ export default function Dashboard() {
             <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-slate-200 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
                 <div className="flex justify-between items-start relative z-10">
                     <div className="flex-1">
-                        <h3 className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-2">{title}</h3>
+                        <h3 className="text-slate-400 text-[13px] font-medium uppercase tracking-wide mb-2">{title}</h3>
                         <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1">
-                            <span className="text-3xl font-bold text-slate-800 tracking-tight leading-none">{value.toLocaleString()}</span>
-                            <span className="text-sm font-semibold text-slate-400">건</span>
+                            <span className="text-[28px] font-semibold text-slate-700 tracking-tight leading-none">{value.toLocaleString()}</span>
+                            <span className="text-sm font-medium text-slate-400">건</span>
                         </div>
                         {avgCost > 0 && (
                             <div className="mt-2">
-                                <span className="text-[13px] font-bold text-slate-500">
+                                <span className="text-[13px] font-medium text-slate-400">
                                     약 {totalAmount.toLocaleString()}원
                                 </span>
                             </div>
@@ -244,8 +244,8 @@ export default function Dashboard() {
             {/* Daily Trend Chart (Glassmorphism) */}
             <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-slate-200 transition-shadow duration-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center">
-                        <Activity size={20} className="mr-2 text-slate-800 stroke-[2.5px]" />
+                    <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
+                        <Activity size={20} className="mr-2 text-sky-400 stroke-[2.5px]" />
                         판매 다이내믹 뷰
                     </h3>
                     <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2 relative z-50">
@@ -287,9 +287,9 @@ export default function Dashboard() {
                                 contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
                             />
                             <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
-                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#0f172a" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.8} />
-                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.6} />
+                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.8} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#fbcfe8" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.6} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -299,10 +299,10 @@ export default function Dashboard() {
             <div className="bg-white/70 backdrop-blur-xl rounded-[24px] border border-slate-200 flex flex-col h-auto overflow-hidden">
                 <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
                     <div className="flex items-center space-x-3">
-                        <div className="bg-slate-100 border border-slate-200 p-2 rounded-xl text-slate-700">
+                        <div className="bg-sky-50 border border-sky-100 p-2 rounded-xl text-sky-500">
                             <Trophy size={20} className="stroke-[2px]"/>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800">퍼포먼스 랭킹 보드</h3>
+                        <h3 className="text-[17px] font-semibold text-slate-700">퍼포먼스 랭킹 보드</h3>
                     </div>
                     <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200 relative z-50">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
@@ -320,7 +320,7 @@ export default function Dashboard() {
                 
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="text-[13px] font-bold text-slate-500 bg-slate-50/80 sticky top-0 backdrop-blur-md">
+                        <thead className="text-[13px] font-medium text-slate-400 bg-white/50 border-b border-slate-50 sticky top-0 backdrop-blur-md">
                             <tr>
                                 <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
                                 <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
@@ -350,8 +350,8 @@ export default function Dashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-slate-100 font-bold border-b border-slate-200">
-                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-800 border-r border-slate-200 tracking-widest text-xs font-bold">전체 합계</td>
+                                <tr className="bg-slate-50/50 font-semibold border-b border-slate-100">
+                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_2y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_1y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-slate-800 text-[14px]">{totals.qty_0y.toLocaleString()}건</td>
@@ -379,15 +379,15 @@ export default function Dashboard() {
                                 <tr key={item.name} className="group hover:bg-white transition-all bg-slate-50/20 duration-200">
                                     <td className="px-5 py-3.5 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-bold ${
-                                                idx === 0 ? 'bg-slate-800 text-white' : 
-                                                idx === 1 ? 'bg-slate-500 text-white' : 
-                                                'bg-slate-400 text-white'
+                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-semibold ${
+                                                idx === 0 ? 'bg-sky-100 text-sky-600' : 
+                                                idx === 1 ? 'bg-slate-100 text-slate-500' : 
+                                                'bg-slate-50 text-slate-400'
                                             }`}>
                                                 {idx + 1}
                                             </span>
                                         ) : (
-                                            <span className="font-bold text-slate-400">{idx + 1}</span>
+                                            <span className="font-medium text-slate-300">{idx + 1}</span>
                                         )}
                                     </td>
                                     <td className="px-5 py-3.5 border-r border-slate-50 text-sm">
@@ -397,12 +397,12 @@ export default function Dashboard() {
                                             ) : (
                                                 <div className="w-14 h-14 rounded-xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
-                                            <p className="font-bold text-slate-800 break-words whitespace-normal leading-snug hover:text-indigo-600 transition-colors cursor-pointer">{item.name}</p>
+                                            <p className="font-medium text-slate-700 break-words whitespace-normal leading-snug hover:text-sky-500 transition-colors cursor-pointer">{item.name}</p>
                                         </div>
                                     </td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_2y.toLocaleString()}</td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_1y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right font-extrabold text-slate-800 text-[14px]">
+                                    <td className="px-5 py-3.5 text-right font-semibold text-slate-700 text-[14px]">
                                         {item.qty_0y.toLocaleString()}
                                         {yoyDiff !== 0 && (
                                             <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
@@ -418,7 +418,7 @@ export default function Dashboard() {
                                             <td className="px-5 py-3.5 text-right text-slate-400 font-medium">
                                                 {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() : '-'}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right text-slate-800 font-bold">
+                                            <td className="px-5 py-3.5 text-right text-slate-700 font-semibold">
                                                 {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() : '-'}
                                                 {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
                                                     <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
@@ -439,7 +439,7 @@ export default function Dashboard() {
                     <div className="flex justify-center p-4 bg-white/50 backdrop-blur-md border-t border-white rounded-b-[24px]">
                         <button 
                             onClick={() => setDisplayLimit(p => p + 10)} 
-                            className="group px-6 py-2.5 bg-white border border-slate-200 rounded-full text-sm font-bold text-indigo-600 hover:bg-slate-50 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                            className="group px-6 py-2.5 bg-white border border-slate-100 rounded-full text-sm font-medium text-sky-500 hover:bg-sky-50 hover:-translate-y-0.5 transition-all flex items-center gap-2"
                         >
                             더 보기 (+10) 
                             <span className="text-slate-400 font-medium text-xs bg-slate-100 px-2 py-0.5 rounded-full group-hover:bg-slate-200 transition-colors">

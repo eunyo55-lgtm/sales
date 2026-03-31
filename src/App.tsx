@@ -46,18 +46,17 @@ function App() {
         <div className="w-64 h-full relative flex flex-col">
           <div className="p-6 pb-2">
             <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
-                <span className="text-xl font-bold text-white tracking-widest">C</span>
+              <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center transition-all duration-300 shadow-sm">
+                <span className="text-sm font-bold text-white tracking-widest">C</span>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-[17px] font-extrabold text-slate-800 whitespace-nowrap leading-tight tracking-tight">Coupang Analytics</h1>
-                <p className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">Manager Pro</p>
+                <h1 className="text-[17px] font-semibold text-slate-800 whitespace-nowrap leading-tight tracking-tight">Coupang Analytics</h1>
               </div>
             </div>
           </div>
           
           <div className="px-6 py-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">Menu</p>
+            <p className="text-[11px] font-medium text-slate-400 mb-3 px-3">Menu</p>
             <nav className="space-y-1.5 flex-1 w-full">
               {[
                 { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -73,16 +72,15 @@ function App() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id as any)}
-                    className={`group w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all duration-300 overflow-hidden relative ${
+                    className={`group w-full flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-300 overflow-hidden relative ${
                       isActive
-                        ? 'bg-slate-800 text-white font-bold'
-                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 font-medium hover:translate-x-1'
+                        ? 'bg-sky-50 text-blue-500 font-semibold'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-medium'
                     }`}
                   >
-                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-400 rounded-r-md"></div>}
                     <div className="flex items-center space-x-3 z-10 w-full">
                       {item.icon ? (
-                        <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-500'}`} />
+                        <item.icon size={18} strokeWidth={isActive ? 2 : 1.5} className={`transition-colors ${isActive ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-500'}`} />
                       ) : (
                         <span className="text-lg w-[18px] text-center">{item.emoji}</span>
                       )}
@@ -101,8 +99,7 @@ function App() {
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] font-bold text-slate-800 leading-tight">Supabase</span>
-                <span className="text-[10px] text-emerald-600 font-medium">Connected</span>
+                <span className="text-[11px] font-medium text-slate-600 leading-tight">Supabase Connected</span>
               </div>
             </div>
           </div>
@@ -121,7 +118,7 @@ function App() {
               <Menu size={22} className={!isSidebarOpen ? "scale-110" : ""} />
             </button>
             <div className="h-6 w-px bg-slate-200"></div>
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center">
+            <h2 className="text-lg font-medium text-slate-700 tracking-tight flex items-center">
               {activeTab === 'dashboard' && '대시보드 Overview'}
               {activeTab === 'products' && '상품 판매 현황'}
               {activeTab === 'inventory' && '재고 관리 현황'}

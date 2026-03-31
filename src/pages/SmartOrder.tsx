@@ -197,7 +197,7 @@ export default function SmartOrder() {
         <div className="flex justify-center items-center h-full p-6">
             <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-2xl w-full text-center space-y-4 shadow-sm">
                 <AlertTriangle className="mx-auto text-red-500 mb-2" size={48} />
-                <h3 className="text-xl font-bold text-red-700">데이터 불러오기 실패</h3>
+                <h3 className="text-xl font-medium text-rose-500">데이터 불러오기 실패</h3>
                 <p className="text-red-600">{error.message}</p>
 
                 {error.sql && (
@@ -237,7 +237,7 @@ export default function SmartOrder() {
                             <MessageSquareWarning size={24} />
                         </div>
                         <div>
-                            <h3 className="text-red-800 font-bold text-lg">🚨 긴급 발주 및 이관 요망</h3>
+                            <h3 className="text-rose-600 font-medium text-lg">🚨 긴급 발주 및 이관 요망</h3>
                             <p className="text-red-600 text-sm">
                                 현재 <b>A 등급</b> 핵심 상품 중 소진 예상일이 <b>5일 이하</b>인 품절 위기 상품이 <b>{urgentItems.length}개</b> 있습니다.
                             </p>
@@ -260,14 +260,14 @@ export default function SmartOrder() {
                     {/* Left: Settings */}
                     <div className="space-y-4">
                         <div className="flex items-center space-x-2 mb-2">
-                            <Truck className="text-blue-600" />
-                            <h2 className="text-lg font-bold text-gray-800">발주 설정 (Lead Time)</h2>
+                            <Truck className="text-sky-500" />
+                            <h2 className="text-lg font-medium text-slate-700">발주 설정 (Lead Time)</h2>
                         </div>
 
                         <div>
                             <div className="flex justify-between mb-1">
                                 <label className="text-sm font-medium text-gray-700">배송 리드타임</label>
-                                <span className="text-sm font-bold text-blue-600">{leadTime}일</span>
+                                <span className="text-sm font-medium text-sky-500">{leadTime}일</span>
                             </div>
                             <input
                                 type="range"
@@ -282,7 +282,7 @@ export default function SmartOrder() {
                         <div>
                             <div className="flex justify-between mb-1">
                                 <label className="text-sm font-medium text-gray-700">안전 재고 버퍼</label>
-                                <span className="text-sm font-bold text-green-600">{safetyBuffer}일</span>
+                                <span className="text-sm font-medium text-green-600">{safetyBuffer}일</span>
                             </div>
                             <div className="flex space-x-2">
                                 {[1, 2, 3, 5, 7].map(d => (
@@ -290,7 +290,7 @@ export default function SmartOrder() {
                                         key={d}
                                         onClick={() => setSafetyBuffer(d)}
                                         className={`px-3 py-1 text-xs rounded-full border transition-colors ${safetyBuffer === d
-                                            ? 'bg-green-50 border-green-200 text-green-700 font-bold'
+                                            ? 'bg-green-50 border-green-200 text-green-700 font-medium'
                                             : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                                             }`}
                                     >
@@ -305,10 +305,10 @@ export default function SmartOrder() {
                     <div className="bg-blue-50/50 rounded-lg p-5 border border-blue-100 flex flex-col justify-center">
                         <div className="flex justify-between items-center mb-4">
                             <span className="text-sm text-gray-600 font-medium">총 발주 추천 상품 (그룹)</span>
-                            <span className="text-2xl font-bold text-gray-900">{groupedOrders.length}개</span>
+                            <span className="text-2xl font-medium text-slate-700">{groupedOrders.length}개</span>
                         </div>
                         <div className="text-sm text-gray-600 space-y-1">
-                            <p>• 기준: 일평균 판매량 × <strong className="text-blue-700">{leadTime + safetyBuffer}일치</strong> 재고 확보</p>
+                            <p>• 기준: 일평균 판매량 × <strong className="text-sky-600">{leadTime + safetyBuffer}일치</strong> 재고 확보</p>
                             <p>• {groupedOrders.length > 0 ? '지금 발주하면 품절을 막을 수 있습니다!' : '현재 재고가 충분합니다.'}</p>
                         </div>
                     </div>
@@ -318,16 +318,16 @@ export default function SmartOrder() {
             {/* List Header & Filters */}
             <div className="flex justify-between items-center flex-none">
                 <div className="flex items-center space-x-4">
-                    <h3 className="font-bold text-gray-800">발주 추천 리스트</h3>
+                    <h3 className="font-medium text-slate-700">발주 추천 리스트</h3>
 
                     {/* Grade Filters */}
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <div className="flex bg-slate-50 p-1 rounded-lg">
                         {(['ALL', 'A', 'B', 'C', 'D'] as const).map(grade => (
                             <button
                                 key={grade}
                                 onClick={() => setSelectedGrade(grade)}
                                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${selectedGrade === grade
-                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    ? 'bg-white text-sky-500 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
@@ -363,43 +363,43 @@ export default function SmartOrder() {
                             <tr>
                                 <th className="px-6 py-3 w-8"></th>
                                 <th
-                                    className="px-6 py-3 font-medium cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('name')}
                                 >
                                     상품명 / 등급 {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('totalHqStock')}
                                 >
                                     본사재고 {sortConfig?.key === 'totalHqStock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('totalCurrentStock')}
                                 >
                                     쿠팡재고(총 현재고) {sortConfig?.key === 'totalCurrentStock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('totalIncomingStock')}
                                 >
                                     이동중 재고 {sortConfig?.key === 'totalIncomingStock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium text-right cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('totalAvgDailySales')}
                                 >
                                     총 일평균 판매 {sortConfig?.key === 'totalAvgDailySales' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-right text-blue-700 bg-blue-50 cursor-pointer hover:bg-blue-100"
+                                    className="px-6 py-3 font-medium text-right text-sky-600 bg-blue-50 cursor-pointer hover:bg-blue-100"
                                     onClick={() => handleSort('totalRecommendation')}
                                 >
                                     총 추천 발주량 {sortConfig?.key === 'totalRecommendation' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 font-medium text-center cursor-pointer hover:bg-gray-100"
+                                    className="px-6 py-3 font-medium text-center cursor-pointer hover:bg-slate-50"
                                     onClick={() => handleSort('isUrgent')}
                                 >
                                     상태 {sortConfig?.key === 'isUrgent' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -423,12 +423,12 @@ export default function SmartOrder() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
                                                     {group.imageUrl && (
-                                                        <img src={group.imageUrl} alt="" className="w-10 h-10 rounded object-cover mr-3 bg-gray-100" />
+                                                        <img src={group.imageUrl} alt="" className="w-10 h-10 rounded object-cover mr-3 bg-slate-50" />
                                                     )}
                                                     <div>
-                                                        <div className="font-medium text-gray-900 line-clamp-1">{group.name}</div>
+                                                        <div className="font-medium text-slate-700 line-clamp-1">{group.name}</div>
                                                         <div className="flex items-center mt-1 space-x-2">
-                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${group.abcGrade === 'A' ? 'bg-red-50 text-red-600 border-red-200 font-bold' :
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${group.abcGrade === 'A' ? 'bg-red-50 text-red-600 border-red-200 font-medium' :
                                                                 group.abcGrade === 'B' ? 'bg-green-50 text-green-600 border-green-200 font-medium' :
                                                                     group.abcGrade === 'C' ? 'bg-gray-50 text-gray-500 border-gray-200' :
                                                                         'bg-gray-50 text-gray-400 border-gray-100'
@@ -453,14 +453,14 @@ export default function SmartOrder() {
                                                 {group.totalAvgDailySales.toFixed(1)}개
                                             </td>
                                             <td className="px-6 py-4 text-right bg-blue-50/30">
-                                                <span className="text-lg font-bold text-blue-600">
+                                                <span className="text-lg font-medium text-sky-500">
                                                     {group.totalRecommendation.toLocaleString()}
                                                 </span>
                                                 <span className="text-xs text-gray-400 ml-1">개</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 {group.isUrgent ? (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-rose-600">
                                                         <AlertTriangle size={12} className="mr-1" />
                                                         긴급
                                                     </span>
@@ -499,11 +499,11 @@ export default function SmartOrder() {
                                                     <td className="px-6 py-3 text-right text-sm text-gray-500 font-mono">
                                                         {child.avgDailySales.toFixed(1)}
                                                     </td>
-                                                    <td className="px-6 py-3 text-right font-bold text-blue-600 bg-blue-50/10">
+                                                    <td className="px-6 py-3 text-right font-medium text-sky-500 bg-blue-50/10">
                                                         {child.recommendation.toLocaleString()}
                                                     </td>
                                                     <td className="px-6 py-3 text-right text-xs">
-                                                        <span className={isChildUrgent ? 'text-red-500 font-bold' : 'text-gray-500'}>
+                                                        <span className={isChildUrgent ? 'text-red-500 font-medium' : 'text-gray-500'}>
                                                             {child.stockoutDate.toFixed(1)}일 후 소진
                                                         </span>
                                                     </td>

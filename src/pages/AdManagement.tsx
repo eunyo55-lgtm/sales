@@ -191,17 +191,17 @@ const AdManagement = () => {
       {showSettings && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-6 animate-in slide-in-from-top duration-300">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-bold text-blue-900 flex items-center">
+            <h3 className="font-medium text-blue-900 flex items-center">
               <Settings size={18} className="mr-2" />
               쿠팡 광고 API 설정
             </h3>
-            <button onClick={() => setShowSettings(false)} className="text-blue-400 hover:text-blue-600">
+            <button onClick={() => setShowSettings(false)} className="text-blue-400 hover:text-sky-500">
               <XCircle size={20} />
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-xs font-bold text-blue-700 mb-1">Access Key</label>
+              <label className="block text-xs font-medium text-sky-600 mb-1">Access Key</label>
               <input 
                 type="password" 
                 value={creds.accessKey}
@@ -211,7 +211,7 @@ const AdManagement = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-blue-700 mb-1">Secret Key</label>
+              <label className="block text-xs font-medium text-sky-600 mb-1">Secret Key</label>
               <input 
                 type="password" 
                 value={creds.secretKey}
@@ -220,7 +220,7 @@ const AdManagement = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-blue-700 mb-1">Customer ID</label>
+              <label className="block text-xs font-medium text-sky-600 mb-1">Customer ID</label>
               <input 
                 type="text" 
                 value={creds.customerId}
@@ -234,7 +234,7 @@ const AdManagement = () => {
             <button 
               onClick={handleSaveSettings}
               disabled={savingCreds}
-              className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md"
+              className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md"
             >
               {savingCreds ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               <span>설정 저장 및 데이터 갱신</span>
@@ -249,11 +249,11 @@ const AdManagement = () => {
       {error === 'CREDENTIALS_REQUIRED' && !showSettings && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-10 text-center">
           <AlertCircle size={48} className="text-amber-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-amber-900 mb-2">광고 API 설정이 필요합니다</h3>
+          <h3 className="text-xl font-medium text-amber-900 mb-2">광고 API 설정이 필요합니다</h3>
           <p className="text-amber-700 mb-6">쿠팡 광고 데이터를 불러오려면 API Key 설정이 완료되어야 합니다.</p>
           <button 
             onClick={() => setShowSettings(true)}
-            className="px-8 py-3 bg-amber-600 text-white rounded-xl font-bold shadow-lg hover:bg-amber-700 transition-all"
+            className="px-8 py-3 bg-amber-600 text-white rounded-xl font-medium shadow-lg hover:bg-amber-700 transition-all"
           >
             설정하러 가기
           </button>
@@ -261,15 +261,15 @@ const AdManagement = () => {
       )}
 
       {error && error !== 'CREDENTIALS_REQUIRED' && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center space-x-4 text-red-800">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-center space-x-4 text-rose-600">
           <AlertCircle size={24} className="flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-bold text-sm">데이터를 불러오는 중 오류가 발생했습니다.</p>
+            <p className="font-medium text-sm">데이터를 불러오는 중 오류가 발생했습니다.</p>
             <p className="text-xs mt-1">{error}</p>
           </div>
           <button 
             onClick={fetchAdData}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
           >
             다시 시도
           </button>
@@ -282,14 +282,14 @@ const AdManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group">
               <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                <div className="p-2 bg-blue-50 rounded-lg text-sky-500">
                   <CreditCard size={20} />
                 </div>
-                <span className="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded">오늘 집행</span>
+                <span className="text-xs font-medium text-blue-500 bg-blue-50 px-2 py-1 rounded">오늘 집행</span>
               </div>
               <h3 className="text-sm font-medium text-gray-500">총 광고 집행 금액</h3>
               <div className="mt-2 flex items-baseline space-x-2">
-                <span className="text-2xl font-bold text-gray-900">{(summary.totalSpend || 0).toLocaleString()}원</span>
+                <span className="text-2xl font-medium text-slate-700">{(summary.totalSpend || 0).toLocaleString()}원</span>
               </div>
             </div>
 
@@ -298,11 +298,11 @@ const AdManagement = () => {
                 <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
                   <Target size={20} />
                 </div>
-                <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">오늘 매출</span>
+                <span className="text-xs font-medium text-emerald-500 bg-emerald-50 px-2 py-1 rounded">오늘 매출</span>
               </div>
               <h3 className="text-sm font-medium text-gray-500">총 광고 매출</h3>
               <div className="mt-2 flex items-baseline space-x-2">
-                <span className="text-2xl font-bold text-gray-900">{(summary.totalRevenue || 0).toLocaleString()}원</span>
+                <span className="text-2xl font-medium text-slate-700">{(summary.totalRevenue || 0).toLocaleString()}원</span>
               </div>
             </div>
 
@@ -312,14 +312,14 @@ const AdManagement = () => {
                   <BarChart3 size={20} />
                 </div>
                 {(summary.roasDiff || 0) < 0 && (
-                  <span className="flex items-center text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded animate-pulse">
+                  <span className="flex items-center text-[10px] font-medium text-red-600 bg-red-50 px-2 py-1 rounded animate-pulse">
                     <AlertCircle size={10} className="mr-1" /> 특이점 발생
                   </span>
                 )}
               </div>
               <h3 className="text-sm font-medium text-gray-500">평균 ROAS</h3>
               <div className="mt-2 flex items-baseline space-x-2">
-                <span className="text-2xl font-bold text-gray-900">{(summary.roas || 0)}%</span>
+                <span className="text-2xl font-medium text-slate-700">{(summary.roas || 0)}%</span>
                 {summary.roasDiff && (
                   <span className={`text-xs font-medium flex items-center ${summary.roasDiff < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                     {summary.roasDiff < 0 ? <TrendingDown size={12} className="mr-0.5" /> : <TrendingUp size={12} className="mr-0.5" />} 
@@ -335,7 +335,7 @@ const AdManagement = () => {
             {/* 성과 테이블 (2/3 영역) */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 flex items-center">
+                <h3 className="font-medium text-slate-700 flex items-center">
                   <BarChart3 size={18} className="mr-2 text-blue-500" />
                   상품별 광고 성과
                 </h3>
@@ -365,14 +365,14 @@ const AdManagement = () => {
                   <tbody className="divide-y divide-gray-50">
                     {products.filter(p => p.name.includes(searchTerm)).map(item => (
                       <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-800">{item.name}</td>
+                        <td className="px-6 py-4 font-medium text-slate-700">{item.name}</td>
                         <td className="px-4 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${item.rank <= 10 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.rank <= 10 ? 'bg-amber-100 text-amber-700' : 'bg-slate-50 text-gray-600'}`}>
                             {item.rank}위
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right font-mono">{(item.spend || 0).toLocaleString()}원</td>
-                        <td className={`px-4 py-4 text-right font-bold ${(item.roas || 0) < 200 ? 'text-red-500' : 'text-blue-600'}`}>{item.roas || 0}%</td>
+                        <td className={`px-4 py-4 text-right font-medium ${(item.roas || 0) < 200 ? 'text-red-500' : 'text-sky-500'}`}>{item.roas || 0}%</td>
                         <td className="px-4 py-4 text-right font-medium">{item.cvr || 0}%</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center space-x-3">
@@ -401,7 +401,7 @@ const AdManagement = () => {
             <div className="space-y-6">
               {/* 저효율 키워드 추출 */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                <h3 className="font-medium text-slate-700 mb-4 flex items-center">
                   <TrendingDown size={18} className="mr-2 text-red-500" />
                   저효율 키워드 추출
                 </h3>
@@ -410,12 +410,12 @@ const AdManagement = () => {
                     <div key={i} className="p-4 bg-red-50/50 rounded-xl border border-red-100 relative group">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-bold text-red-900 text-sm mb-1">{kw.keyword}</p>
-                          <p className="text-xs text-red-700">클릭 {kw.clicks} / 지출 {kw.spend.toLocaleString()}원</p>
+                          <p className="font-medium text-red-900 text-sm mb-1">{kw.keyword}</p>
+                          <p className="text-xs text-rose-500">클릭 {kw.clicks} / 지출 {kw.spend.toLocaleString()}원</p>
                         </div>
                         <button 
                           onClick={() => handleExcludeKeyword('C123', kw.keyword)}
-                          className="p-1 px-2 bg-red-600 text-white text-[10px] rounded hover:bg-red-700 transition-colors shadow-sm font-bold"
+                          className="p-1 px-2 bg-red-600 text-white text-[10px] rounded hover:bg-red-700 transition-colors shadow-sm font-medium"
                         >
                           제외하기
                         </button>
@@ -430,7 +430,7 @@ const AdManagement = () => {
 
               {/* 랭킹-광고 연동 차트 */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                <h3 className="font-medium text-slate-700 mb-4 flex items-center">
                   <LineChart size={18} className="mr-2 text-purple-500" />
                   랭킹 - 광고 노출 분석
                 </h3>

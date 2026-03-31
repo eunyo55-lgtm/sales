@@ -126,7 +126,7 @@ export default function InventoryStatus() {
         statusColor = 'bg-gray-800 text-white';
       } else if (p.daysOfInventory < 7) {
         status = '위험';
-        statusColor = 'bg-red-100 text-red-800';
+        statusColor = 'bg-red-100 text-rose-600';
       } else if (p.daysOfInventory < 14) {
         status = '부족';
         statusColor = 'bg-yellow-100 text-yellow-800';
@@ -393,7 +393,7 @@ export default function InventoryStatus() {
         {/* Charts Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-b border-gray-100 flex-none bg-gray-50/30">
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[300px]">
-            <h3 className="font-bold text-gray-800 mb-2">시즌별 재고 현황</h3>
+            <h3 className="font-medium text-slate-700 mb-2">시즌별 재고 현황</h3>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
@@ -417,7 +417,7 @@ export default function InventoryStatus() {
             </div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-[300px]">
-            <h3 className="font-bold text-gray-800 mb-2">카테고리별 재고 현황 (상위 10개)</h3>
+            <h3 className="font-medium text-slate-700 mb-2">카테고리별 재고 현황 (상위 10개)</h3>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryStock} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
@@ -436,7 +436,7 @@ export default function InventoryStatus() {
 
         {/* Controls Bar */}
         <div className="p-6 border-b border-gray-100 flex flex-wrap gap-4 items-center justify-between shadow-sm sticky top-0 z-40 bg-gray-50/50 flex-none relative">
-          <h3 className="font-semibold text-gray-800 flex flex-wrap items-center">
+          <h3 className="font-semibold text-slate-700 flex flex-wrap items-center">
             재고 흐름 모니터링
             <span className="text-sm font-normal text-gray-500 ml-2">
               (상위 {visibleCount}개 / 전체 {filteredGroups.length}개)
@@ -498,76 +498,76 @@ export default function InventoryStatus() {
               <tr>
                 <th className={`px-2 py-3 bg-gray-50 sticky z-30 ${W_TOGGLE} ${L_TOGGLE}`}></th>
                 <th className={`px-2 py-3 bg-gray-50 sticky z-30 ${W_IMG} ${L_IMG} text-center whitespace-nowrap`}>이미지</th>
-                <th className={`px-4 py-3 bg-gray-50 sticky z-30 ${W_NAME} ${L_NAME} cursor-pointer hover:bg-gray-100 whitespace-nowrap shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)]`}>
+                <th className={`px-4 py-3 bg-gray-50 sticky z-30 ${W_NAME} ${L_NAME} cursor-pointer hover:bg-slate-50 whitespace-nowrap shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)]`}>
                   <div className="flex items-center justify-between">
                     <span onClick={() => handleSort('name')}>상품명 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
-                    <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('name', '상품명'); }} />
+                    <Copy size={14} className="text-gray-400 hover:text-sky-500 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('name', '상품명'); }} />
                   </div>
                 </th>
 
-                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 font-bold text-blue-600 whitespace-nowrap bg-blue-50/30">
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-50 font-medium text-sky-500 whitespace-nowrap bg-blue-50/30">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('totalSales')}>{viewMode === 'qty' ? '누적 판매량' : '누적 판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
-                    <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('totalSales', '누적판매량'); }} />
+                    <Copy size={14} className="text-gray-400 hover:text-sky-500 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('totalSales', '누적판매량'); }} />
                   </div>
                 </th>
 
-                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-50 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('hqStock')}>{viewMode === 'qty' ? '본사재고량' : '본사재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-50 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('coupangStock')}>{viewMode === 'qty' ? '쿠팡재고량(합계)' : '쿠팡재고액(합계)'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-slate-50 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('fcStock')}>{viewMode === 'qty' ? 'FC재고량' : 'FC재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-gray-100 whitespace-nowrap">
+                <th className="px-4 py-3 text-right text-sm cursor-pointer hover:bg-slate-50 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('vfStock')}>{viewMode === 'qty' ? 'VF재고량' : 'VF재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-teal-600 whitespace-nowrap">
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-50 text-teal-600 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('sales7Days')}>{viewMode === 'qty' ? '7일 판매량' : '7일 판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
                   </div>
                 </th>
 
-                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-red-600 whitespace-nowrap">
+                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-50 text-red-600 whitespace-nowrap">
                   <div className="flex items-center justify-end">
                     <span onClick={() => handleSort('minDaysOfInventory')}>소진 예상일 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></span>
-                    <Copy size={14} className="text-gray-400 hover:text-blue-600 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('minDaysOfInventory', '소진 예상'); }} />
+                    <Copy size={14} className="text-gray-400 hover:text-sky-500 ml-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleCopyColumn('minDaysOfInventory', '소진 예상'); }} />
                   </div>
                 </th>
 
                 {uniqueDates.map(date => (
-                  <th key={date} className={`px-2 py-3 hover:bg-gray-100 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
+                  <th key={date} className={`px-2 py-3 hover:bg-slate-50 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
                     {formatDateHeader(date)}
                   </th>
                 ))}
               </tr>
-              <tr className="bg-gray-100 font-bold border-b border-gray-200">
-                <th className={`px-2 py-2 sticky z-20 bg-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></th>
-                <th className={`px-2 py-2 sticky z-20 bg-gray-100 ${W_IMG} ${L_IMG}`}></th>
-                <th className={`px-4 py-2 sticky z-20 bg-gray-100 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
+              <tr className="bg-slate-50 font-medium border-b border-gray-200">
+                <th className={`px-2 py-2 sticky z-20 bg-slate-50 ${W_TOGGLE} ${L_TOGGLE}`}></th>
+                <th className={`px-2 py-2 sticky z-20 bg-slate-50 ${W_IMG} ${L_IMG}`}></th>
+                <th className={`px-4 py-2 sticky z-20 bg-slate-50 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
 
-                <th className="px-4 py-2 text-right text-blue-600 bg-blue-100/30">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-sky-500 bg-blue-100/30">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
 
-                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-gray-100">{viewMode === 'qty' ? totalStats.coupangStock.toLocaleString() : totalStats.coupangStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-sm bg-gray-100">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-sm bg-gray-100">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-slate-50">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right bg-slate-50">{viewMode === 'qty' ? totalStats.coupangStock.toLocaleString() : totalStats.coupangStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-sm bg-slate-50">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
+                <th className="px-4 py-2 text-right text-sm bg-slate-50">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
                 <th className="px-4 py-2 text-right text-teal-600 bg-teal-50/50">
                   {viewMode === 'qty' ? filteredGroups.reduce((acc, g) => acc + g.sales7Days, 0).toLocaleString() : filteredGroups.reduce((acc, g) => acc + g.children.reduce((cAcc, c) => cAcc + (c.sales7Days * (c.cost || 0)), 0), 0).toLocaleString()}
                 </th>
-                <th className="px-4 py-2 bg-gray-100"></th>
+                <th className="px-4 py-2 bg-slate-50"></th>
                 {uniqueDates.map(date => (
-                  <th key={date} className="px-2 py-2 text-center text-sm bg-gray-100">
+                  <th key={date} className="px-2 py-2 text-center text-sm bg-slate-50">
                     {totalStats.dailyStock[date] ? (viewMode === 'qty' ? totalStats.dailyStock[date].toLocaleString() : totalStats.dailyStockValue[date].toLocaleString()) : '-'}
                   </th>
                 ))}
@@ -585,9 +585,9 @@ export default function InventoryStatus() {
                   </span>
                 );
                 if (g.minDaysOfInventory <= 7) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-red-100 text-red-700 animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-red-100 text-rose-500 animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
                 } else if (g.minDaysOfInventory <= 14) {
-                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-orange-100 text-orange-800">2주 이내</span>;
+                  BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-orange-100 text-orange-800">2주 이내</span>;
                 } else if (g.minDaysOfInventory <= 30) {
                   BurnRateBadge = <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-yellow-100 text-yellow-800">1달 이내</span>;
                 } else if (g.minDaysOfInventory <= 90) {
@@ -602,11 +602,11 @@ export default function InventoryStatus() {
                         {isExpanded ? <ChevronDown size={14} className="text-gray-500 mx-auto" /> : <ChevronRight size={14} className="text-gray-400 mx-auto" />}
                       </td>
                       <td className={`px-2 py-2 text-center sticky z-20 ${W_IMG} ${L_IMG} ${stickyBg} border-b border-gray-100`}>
-                        {g.imageUrl ? <img src={g.imageUrl} alt="" className="w-8 h-8 rounded mx-auto object-cover bg-gray-100 border border-gray-200" /> : <div className="w-8 h-8 rounded mx-auto bg-gray-100 border border-gray-200" />}
+                        {g.imageUrl ? <img src={g.imageUrl} alt="" className="w-8 h-8 rounded mx-auto object-cover bg-slate-50 border border-gray-200" /> : <div className="w-8 h-8 rounded mx-auto bg-slate-50 border border-gray-200" />}
                       </td>
-                      <td className={`px-4 py-2 font-bold text-gray-900 text-sm whitespace-nowrap sticky z-20 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME} ${stickyBg} border-b border-gray-100`}>
+                      <td className={`px-4 py-2 font-medium text-slate-700 text-sm whitespace-nowrap sticky z-20 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME} ${stickyBg} border-b border-gray-100`}>
                         <span
-                          className="cursor-pointer hover:text-blue-600 hover:underline"
+                          className="cursor-pointer hover:text-sky-500 hover:underline"
                           onClick={(e) => openChartModal(g.name, e)}
                         >
                           {g.name}
@@ -614,10 +614,10 @@ export default function InventoryStatus() {
                         <span className="ml-1 text-sm font-normal text-gray-500">[{g.children.length}]</span>
                       </td>
 
-                      <td className="px-4 py-2 text-right font-bold text-blue-600 bg-blue-50/10 whitespace-nowrap">{viewMode === 'qty' ? g.totalSales.toLocaleString() : g.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right font-medium text-sky-500 bg-blue-50/10 whitespace-nowrap">{viewMode === 'qty' ? g.totalSales.toLocaleString() : g.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}</td>
 
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.hqStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right text-gray-900 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.coupangStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-slate-700 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.hqStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right text-slate-700 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.coupangStock.toLocaleString() : g.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-600 font-mono text-sm whitespace-nowrap">{viewMode === 'qty' ? g.fcStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.fcStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-gray-600 font-mono text-sm whitespace-nowrap">{viewMode === 'qty' ? g.vfStock.toLocaleString() : g.children.reduce((acc, c) => acc + ((c.vfStock || 0) * (c.cost || 0)), 0).toLocaleString()}</td>
                       <td className="px-4 py-2 text-right text-teal-600 font-mono whitespace-nowrap">{viewMode === 'qty' ? g.sales7Days.toLocaleString() : g.children.reduce((acc, c) => acc + (c.sales7Days * (c.cost || 0)), 0).toLocaleString()}</td>
@@ -626,7 +626,7 @@ export default function InventoryStatus() {
                         {BurnRateBadge}
                       </td>
                       {uniqueDates.map(date => (
-                        <td key={date} className={`px-2 py-2 text-center text-sm min-w-[50px] ${g.dailyStock[date] ? 'font-bold text-gray-900' : 'text-gray-300'}`}>
+                        <td key={date} className={`px-2 py-2 text-center text-sm min-w-[50px] ${g.dailyStock[date] ? 'font-medium text-slate-700' : 'text-gray-300'}`}>
                           {g.dailyStock[date] ? (viewMode === 'qty' ? g.dailyStock[date].toLocaleString() : g.children.reduce((acc, c) => acc + ((c.dailyStock[date] || 0) * (c.cost || 0)), 0).toLocaleString()) : '-'}
                         </td>
                       ))}
@@ -688,9 +688,9 @@ export default function InventoryStatus() {
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <h3 className="text-lg font-medium text-slate-700 flex items-center">
                 <TrendingUp size={20} className="text-blue-500 mr-2" />
-                <span className="text-blue-600 mr-2">{selectedGroupForChart}</span> 일별 재고 추이 (올해 1월 1일 ~)
+                <span className="text-sky-500 mr-2">{selectedGroupForChart}</span> 일별 재고 추이 (올해 1월 1일 ~)
               </h3>
               <button
                 onClick={() => setChartModalOpen(false)}

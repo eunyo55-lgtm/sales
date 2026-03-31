@@ -9,7 +9,7 @@ function SortIcon({ currentSort, targetKey }: { currentSort: { key: string, dire
     return (
         <ArrowUpDown 
             size={12} 
-            className={`transition-colors ${isActive ? 'text-blue-600' : 'text-gray-300 opacity-50 hover:opacity-100'}`} 
+            className={`transition-colors ${isActive ? 'text-sky-500' : 'text-gray-300 opacity-50 hover:opacity-100'}`} 
         />
     );
 }
@@ -286,23 +286,23 @@ export default function SupplyStatus() {
             {/* Header & Main Filters */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center space-x-2">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <div className="p-2 bg-blue-50 text-sky-500 rounded-lg">
                         <BarChart2 size={20} />
                     </div>
-                    <h1 className="text-xl font-bold text-gray-900">공급/입고 성과 대시보드</h1>
+                    <h1 className="text-xl font-medium text-slate-700">공급/입고 성과 대시보드</h1>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <div className="flex bg-slate-50 p-1 rounded-lg">
                         <button
                             onClick={() => setViewType('weekly')}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewType === 'weekly' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewType === 'weekly' ? 'bg-white text-slate-700 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             주차별
                         </button>
                         <button
                             onClick={() => setViewType('monthly')}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewType === 'monthly' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewType === 'monthly' ? 'bg-white text-slate-700 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             월별
                         </button>
@@ -327,7 +327,7 @@ export default function SupplyStatus() {
             {/* Visualization: Trend Chart */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                    <h3 className="text-lg font-medium text-slate-700 flex items-center">
                         <TrendingUp size={18} className="mr-2 text-blue-500" />
                         수량 기준 공급/입고 트렌드
                     </h3>
@@ -354,7 +354,7 @@ export default function SupplyStatus() {
             {/* Summary Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900 flex items-center">
+                    <h3 className="font-medium text-slate-700 flex items-center">
                         <Calendar size={18} className="mr-2 text-gray-500" />
                         기간별 요약 데이터
                     </h3>
@@ -363,67 +363,67 @@ export default function SupplyStatus() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50/50 border-b border-gray-100">
                             <tr>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('key')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('key')}>
                                     <div className="flex items-center space-x-1">
                                         <span>기간</span>
                                         <SortIcon currentSort={summarySort} targetKey="key" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('orderQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('orderQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>발주수량</span>
                                         <SortIcon currentSort={summarySort} targetKey="orderQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('confirmedQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('confirmedQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>공급수량</span>
                                         <SortIcon currentSort={summarySort} targetKey="confirmedQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receivedQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('receivedQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>입고수량</span>
                                         <SortIcon currentSort={summarySort} targetKey="receivedQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidQty')}>
+                                <th className="px-4 py-3 font-semibold text-sky-500 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>미납수량</span>
                                         <SortIcon currentSort={summarySort} targetKey="unpaidQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('orderAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('orderAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>발주액</span>
                                         <SortIcon currentSort={summarySort} targetKey="orderAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('confirmedAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('confirmedAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>확정액</span>
                                         <SortIcon currentSort={summarySort} targetKey="confirmedAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receivedAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('receivedAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>입고액</span>
                                         <SortIcon currentSort={summarySort} targetKey="receivedAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-blue-600 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidAmount')}>
+                                <th className="px-4 py-3 font-semibold text-sky-500 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortSummary('unpaidAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>미납액</span>
                                         <SortIcon currentSort={summarySort} targetKey="unpaidAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('supplyRate')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('supplyRate')}>
                                     <div className="flex items-center justify-center space-x-1">
                                         <span>공급률</span>
                                         <SortIcon currentSort={summarySort} targetKey="supplyRate" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortSummary('receiveRate')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortSummary('receiveRate')}>
                                     <div className="flex items-center justify-center space-x-1">
                                         <span>입고율</span>
                                         <SortIcon currentSort={summarySort} targetKey="receiveRate" />
@@ -434,22 +434,22 @@ export default function SupplyStatus() {
                         <tbody className="divide-y divide-gray-50">
                             {tableData.map((item) => (
                                 <tr key={item.key} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{item.key}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{item.key}</td>
                                     <td className="px-4 py-3">{item.orderQty.toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.confirmedQty.toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.receivedQty.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-blue-600 font-bold">{item.unpaidQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-sky-500 font-medium">{item.unpaidQty.toLocaleString()}</td>
                                     <td className="px-4 py-3 text-right">{item.orderAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-right">{item.confirmedAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-right">{item.receivedAmount.toLocaleString()}원</td>
-                                    <td className="px-4 py-3 text-right text-blue-600 font-bold">{item.unpaidAmount.toLocaleString()}원</td>
+                                    <td className="px-4 py-3 text-right text-sky-500 font-medium">{item.unpaidAmount.toLocaleString()}원</td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.supplyRate >= 90 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${item.supplyRate >= 90 ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                                             {item.supplyRate.toFixed(1)}%
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.receiveRate >= 95 ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
+                                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${item.receiveRate >= 95 ? 'bg-blue-50 text-sky-500' : 'bg-gray-50 text-gray-500'}`}>
                                             {item.receiveRate.toFixed(1)}%
                                         </span>
                                     </td>
@@ -464,27 +464,27 @@ export default function SupplyStatus() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <h3 className="font-bold text-gray-900 flex items-center">
+                        <h3 className="font-medium text-slate-700 flex items-center">
                             <TrendingUp size={18} className="mr-2 text-rose-500" />
                             공급 부진 품목 분석 (제품별 그룹)
                         </h3>
                         <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                            <div className="flex bg-slate-50 p-1 rounded-lg">
                                 <button
                                     onClick={() => setProductPeriod('week')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'week' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'week' ? 'bg-white text-sky-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     주간
                                 </button>
                                 <button
                                     onClick={() => setProductPeriod('month')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'month' ? 'bg-white text-sky-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     월간
                                 </button>
                                 <button
                                     onClick={() => setProductPeriod('all')}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${productPeriod === 'all' ? 'bg-white text-sky-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     누적
                                 </button>
@@ -508,67 +508,67 @@ export default function SupplyStatus() {
                             <tr>
                                 <th className="px-4 py-3 font-semibold text-gray-600 w-10"></th>
                                 <th className="px-4 py-3 font-semibold text-gray-600 w-16 text-center">이미지</th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 min-w-[200px] cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('name')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 min-w-[200px] cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('name')}>
                                     <div className="flex items-center space-x-1">
                                         <span>제품명 / 바코드</span>
                                         <SortIcon currentSort={productSort} targetKey="name" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('orderQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('orderQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>발주수량</span>
                                         <SortIcon currentSort={productSort} targetKey="orderQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('confirmedQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('confirmedQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>공급수량</span>
                                         <SortIcon currentSort={productSort} targetKey="confirmedQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receivedQty')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('receivedQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>입고수량</span>
                                         <SortIcon currentSort={productSort} targetKey="receivedQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidQty')}>
+                                <th className="px-4 py-3 font-semibold text-sky-500 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidQty')}>
                                     <div className="flex items-center space-x-1">
                                         <span>미납수량</span>
                                         <SortIcon currentSort={productSort} targetKey="unpaidQty" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('orderAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('orderAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>발주액</span>
                                         <SortIcon currentSort={productSort} targetKey="orderAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('confirmedAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('confirmedAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>확정액</span>
                                         <SortIcon currentSort={productSort} targetKey="confirmedAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receivedAmount')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-right cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('receivedAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>입고액</span>
                                         <SortIcon currentSort={productSort} targetKey="receivedAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-blue-600 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidAmount')}>
+                                <th className="px-4 py-3 font-semibold text-sky-500 text-right cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleSortProduct('unpaidAmount')}>
                                     <div className="flex items-center justify-end space-x-1">
                                         <span>미납액</span>
                                         <SortIcon currentSort={productSort} targetKey="unpaidAmount" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('supplyRate')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('supplyRate')}>
                                     <div className="flex items-center justify-center space-x-1">
                                         <span>공급률</span>
                                         <SortIcon currentSort={productSort} targetKey="supplyRate" />
                                     </div>
                                 </th>
-                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSortProduct('receiveRate')}>
+                                <th className="px-4 py-3 font-semibold text-gray-600 text-center cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleSortProduct('receiveRate')}>
                                     <div className="flex items-center justify-center space-x-1">
                                         <span>입고율</span>
                                         <SortIcon currentSort={productSort} targetKey="receiveRate" />
@@ -580,7 +580,7 @@ export default function SupplyStatus() {
                             {visibleGroups.map((g) => (
                                 <React.Fragment key={g.name}>
                                     <tr 
-                                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${expandedGroups.has(g.name) ? 'bg-blue-50/30 font-bold' : ''}`}
+                                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${expandedGroups.has(g.name) ? 'bg-blue-50/30 font-medium' : ''}`}
                                         onClick={() => toggleGroup(g.name)}
                                     >
                                         <td className="px-4 py-3 text-center">
@@ -595,22 +595,22 @@ export default function SupplyStatus() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
+                                        <td className="px-4 py-3 font-medium text-slate-700">{g.name}</td>
                                         <td className="px-4 py-3">{g.orderQty.toLocaleString()}</td>
                                         <td className="px-4 py-3">{g.confirmedQty.toLocaleString()}</td>
                                         <td className="px-4 py-3">{g.receivedQty.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-blue-600 font-bold">{g.unpaidQty.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-sky-500 font-medium">{g.unpaidQty.toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right">{g.orderAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-right">{g.confirmedAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-right">{g.receivedAmount.toLocaleString()}원</td>
-                                        <td className="px-4 py-3 text-right text-blue-600 font-bold">{g.unpaidAmount.toLocaleString()}원</td>
+                                        <td className="px-4 py-3 text-right text-sky-500 font-medium">{g.unpaidAmount.toLocaleString()}원</td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className={`px-2 py-1 rounded-md text-xs font-bold ${g.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${g.supplyRate < 50 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
                                                 {g.supplyRate.toFixed(1)}%
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs font-bold">
+                                            <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs font-medium">
                                                 {g.receiveRate.toFixed(1)}%
                                             </span>
                                         </td>
@@ -672,7 +672,7 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
             <div>
                 <p className="text-xs text-gray-400 font-medium mb-1">{title}</p>
                 <div className="flex items-baseline space-x-1">
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                    <h3 className="text-2xl font-black text-slate-700 tracking-tight">
                         {isPercent ? value.toFixed(1) : Math.round(value).toLocaleString()}
                     </h3>
                     <span className="text-sm text-gray-400 font-normal">{unit}</span>
