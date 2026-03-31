@@ -311,7 +311,7 @@ export default function SupplyStatus() {
             </div>
 
             {/* Incoming Stock Animation Widget */}
-            <IncomingStockWidget products={products} />
+            <IncomingStockWidget orders={orders} barcodeMap={barcodeMap} />
 
             {/* Incoming Timeline Widget */}
             <IncomingTimeline orders={orders} barcodeMap={barcodeMap} />
@@ -688,8 +688,28 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
     );
 }
 
-function IncomingStockWidget({ products }: { products: ProductStats[] }) {
-    const incoming = useMemo(() => products.filter(p => (p.incomingStock || 0) > 0), [products]);
+function IncomingStockWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
+    const incoming = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const filtered = orders.filter(o => (o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today);
+        
+        const map = new Map<string, any>();
+        filtered.forEach(o => {
+            const meta = barcodeMap.get(o.barcode);
+            const key = o.barcode;
+            if (!map.has(key)) {
+                map.set(key, { 
+                    ...o, 
+                    name: meta?.name || o.barcode, 
+                    imageUrl: meta?.image, 
+                    option: meta?.option,
+                    totalIncoming: 0 
+                });
+            }
+            map.get(key).totalIncoming += o.confirmed_qty;
+        });
+        return Array.from(map.values());
+    }, [orders, barcodeMap]);
 
     if (incoming.length === 0) return null;
 
@@ -725,7 +745,7 @@ function IncomingStockWidget({ products }: { products: ProductStats[] }) {
                             <p className="text-[11px] text-slate-400 mb-1.5 truncate">{p.option || '-'}</p>
                             <div className="mt-auto flex">
                                 <span className="inline-flex items-center bg-sky-50 text-sky-600 text-[11px] px-2 py-0.5 rounded border border-sky-100/50 font-medium">
-                                    +{p.incomingStock.toLocaleString()}개 수송중
+                                    +{p.totalIncoming.toLocaleString()}개 수송중
                                 </span>
                             </div>
                         </div>
@@ -748,10 +768,11 @@ function IncomingStockWidget({ products }: { products: ProductStats[] }) {
 function IncomingTimeline({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
     const timelineData = useMemo(() => {
         const groups: Record<string, any[]> = {};
+        const today = new Date().toISOString().split('T')[0];
         
         orders.forEach(o => {
-            // Logic: Received is 0 and Confirmed is >= 1
-            if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1) {
+            // Logic: Received is 0, Confirmed is >= 1, and Expected Date is NOT in the past
+            if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today) {
                 const date = o.order_date;
                 if (!groups[date]) groups[date] = [];
                 groups[date].push(o);
