@@ -190,7 +190,7 @@ export default function Dashboard() {
         const theme = themeStyles[colorTheme] || themeStyles.blue;
 
         return (
-            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 ease-out relative overflow-hidden">
+            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-slate-200 hover:-translate-y-1.5 transition-all duration-500 ease-out relative overflow-hidden">
                 {/* Ambient glow */}
                 <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${theme.gradient} rounded-full opacity-[0.05] group-hover:opacity-[0.15] blur-3xl transition-opacity duration-500 pointer-events-none`} />
                 
@@ -211,7 +211,7 @@ export default function Dashboard() {
                         {sub && <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100/50 inline-block px-2 py-1 rounded-md">{sub}</p>}
                         {yoyEl}
                     </div>
-                    <div className={`p-4 rounded-2xl ${theme.bg} shadow-inner`}>
+                    <div className={`p-4 rounded-2xl ${theme.bg}`}>
                         <Icon size={28} className={theme.text} strokeWidth={2.5}/>
                     </div>
                 </div>
@@ -253,13 +253,13 @@ export default function Dashboard() {
             </div>
 
             {/* Daily Trend Chart (Glassmorphism) */}
-            <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.06)] transition-shadow duration-500">
+            <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-slate-200 transition-shadow duration-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h3 className="text-xl font-extrabold text-slate-800 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-600">
                         <Activity size={22} className="mr-2 text-indigo-500 stroke-[2.5px]" />
                         판매 다이내믹 뷰
                     </h3>
-                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-white shadow-sm gap-2">
+                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2">
                         <CustomDatePicker value={trendStartDate} onChange={setTrendStartDate} disabled={loadingTrend} />
                         <span className="text-slate-300 font-bold px-1">~</span>
                         <CustomDatePicker value={trendEndDate} onChange={setTrendEndDate} disabled={loadingTrend} />
@@ -295,7 +295,7 @@ export default function Dashboard() {
                             />
                             <YAxis fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
                             <Tooltip 
-                                contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
+                                contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
                             />
                             <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
                             <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#4f46e5" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 8, strokeWidth: 0 }} />
@@ -307,16 +307,16 @@ export default function Dashboard() {
             </div>
 
             {/* Combined Rankings Row (Unified Best 10) */}
-            <div className="bg-white/70 backdrop-blur-xl rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60 flex flex-col h-auto overflow-hidden">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[24px] border border-slate-200 flex flex-col h-auto overflow-hidden">
                 <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
                     <div className="flex items-center space-x-3">
-                        <div className="bg-amber-100 p-2 rounded-xl text-amber-500 shadow-inner">
+                        <div className="bg-amber-100 p-2 rounded-xl text-amber-500">
                             <Trophy size={20} className="stroke-[2.5px]"/>
                         </div>
                         <h3 className="text-lg font-extrabold text-slate-800">퍼포먼스 랭킹 보드</h3>
                         <button 
                             onClick={() => setShowAmountGroups(!showAmountGroups)}
-                            className={`ml-3 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+                            className={`ml-3 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-300 hover:-translate-y-0.5 ${
                                 showAmountGroups 
                                 ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white' 
                                 : 'bg-slate-100 text-slate-600 hover:bg-white border border-slate-200'
@@ -325,7 +325,7 @@ export default function Dashboard() {
                             {showAmountGroups ? '판매액 옵션 OFF' : '판매액 옵션 ON'}
                         </button>
                     </div>
-                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full shadow-sm gap-2 border border-slate-100">
+                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
                         <span className="text-slate-300 font-bold px-1">~</span>
                         <CustomDatePicker value={endDate} onChange={setEndDate} disabled={loadingRankings} />
@@ -414,7 +414,7 @@ export default function Dashboard() {
                                     <td className="px-5 py-3.5 border-r border-slate-50 text-sm">
                                         <div className="flex items-center space-x-4">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-14 h-14 rounded-xl bg-white object-cover flex-none shadow-sm border border-slate-100 group-hover:scale-110 transition-transform duration-300" />
+                                                <img src={item.imageUrl} alt="" className="w-14 h-14 rounded-xl bg-white object-cover flex-none border border-slate-200 group-hover:scale-110 transition-transform duration-300" />
                                             ) : (
                                                 <div className="w-14 h-14 rounded-xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
@@ -460,7 +460,7 @@ export default function Dashboard() {
                     <div className="flex justify-center p-4 bg-white/50 backdrop-blur-md border-t border-white rounded-b-[24px]">
                         <button 
                             onClick={() => setDisplayLimit(p => p + 10)} 
-                            className="group px-6 py-2.5 bg-white border border-slate-200 shadow-sm rounded-full text-sm font-bold text-indigo-600 hover:bg-slate-50 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                            className="group px-6 py-2.5 bg-white border border-slate-200 rounded-full text-sm font-bold text-indigo-600 hover:bg-slate-50 hover:-translate-y-0.5 transition-all flex items-center gap-2"
                         >
                             더 보기 (+10) 
                             <span className="text-slate-400 font-medium text-xs bg-slate-100 px-2 py-0.5 rounded-full group-hover:bg-slate-200 transition-colors">

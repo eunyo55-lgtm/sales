@@ -44,11 +44,11 @@ function App() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Sidebar - Glassmorphism Light */}
-      <aside className={`relative z-20 bg-white/70 backdrop-blur-xl border-r border-white/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] flex-shrink-0 ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
+      <aside className={`relative z-20 bg-white/70 backdrop-blur-xl border-r border-white/60 transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] flex-shrink-0 ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
         <div className="w-64 h-full relative flex flex-col">
           <div className="p-6 pb-2">
             <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-all duration-300 group-hover:scale-105">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
                 <span className="text-xl text-white">🚀</span>
               </div>
               <div className="flex flex-col">
@@ -77,8 +77,8 @@ function App() {
                     onClick={() => setActiveTab(item.id as any)}
                     className={`group w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all duration-300 overflow-hidden relative ${
                       isActive
-                        ? 'bg-white shadow-sm border border-slate-100 text-indigo-600 font-bold'
-                        : 'text-slate-500 hover:bg-white/50 hover:text-slate-800 font-medium hover:shadow-sm hover:translate-x-1'
+                        ? 'bg-white border border-slate-100 text-indigo-600 font-bold'
+                        : 'text-slate-500 hover:bg-white/50 hover:text-slate-800 font-medium hover:translate-x-1'
                     }`}
                   >
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-md"></div>}
@@ -97,7 +97,7 @@ function App() {
           </div>
 
           <div className="w-full p-6 mt-auto">
-            <div className="bg-white/60 border border-slate-100 rounded-xl p-4 flex items-center space-x-3 shadow-sm backdrop-blur-md">
+            <div className="bg-white/60 border border-slate-100 rounded-xl p-4 flex items-center space-x-3 backdrop-blur-md">
               <div className="relative flex items-center justify-center">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 z-10"></div>
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
@@ -114,11 +114,11 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 relative z-10 flex flex-col h-screen overflow-hidden">
         {/* Header - Glassmorphism */}
-        <header className="bg-white/60 backdrop-blur-xl border-b border-white/50 px-8 py-4 flex justify-between items-center z-50 sticky top-0 shadow-[0_4px_30px_rgba(0,0,0,0.01)] transition-all">
+        <header className="bg-white/60 backdrop-blur-xl border-b border-white/50 px-8 py-4 flex justify-between items-center z-50 sticky top-0 transition-all">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 -ml-2 text-slate-500 hover:bg-slate-100/80 rounded-xl transition-colors hover:shadow-sm"
+              className="p-2 -ml-2 text-slate-500 hover:bg-slate-100/80 rounded-xl transition-colors"
             >
               <Menu size={22} className={!isSidebarOpen ? "scale-110" : ""} />
             </button>
@@ -140,7 +140,7 @@ function App() {
 
         {/* Content Area */}
         <div className="p-8 overflow-y-auto flex-1 h-full scroll-smooth">
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="w-full">
             <Suspense fallback={<PageLoader />}>
               {activeTab === 'dashboard' && <Dashboard />}
               {activeTab === 'products' && <ProductStatus />}
