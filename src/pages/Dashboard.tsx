@@ -22,7 +22,7 @@ export default function Dashboard() {
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
     const [sortDesc, setSortDesc] = useState(true);
     const [displayLimit, setDisplayLimit] = useState(10);
-    const [showAmountGroups, setShowAmountGroups] = useState(false);
+    const showAmountGroups = true;
 
     useEffect(() => {
         loadData();
@@ -259,7 +259,7 @@ export default function Dashboard() {
                         <Activity size={22} className="mr-2 text-indigo-500 stroke-[2.5px]" />
                         판매 다이내믹 뷰
                     </h3>
-                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2">
+                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2 relative z-50">
                         <CustomDatePicker value={trendStartDate} onChange={setTrendStartDate} disabled={loadingTrend} />
                         <span className="text-slate-300 font-bold px-1">~</span>
                         <CustomDatePicker value={trendEndDate} onChange={setTrendEndDate} disabled={loadingTrend} />
@@ -314,18 +314,8 @@ export default function Dashboard() {
                             <Trophy size={20} className="stroke-[2.5px]"/>
                         </div>
                         <h3 className="text-lg font-extrabold text-slate-800">퍼포먼스 랭킹 보드</h3>
-                        <button 
-                            onClick={() => setShowAmountGroups(!showAmountGroups)}
-                            className={`ml-3 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-300 hover:-translate-y-0.5 ${
-                                showAmountGroups 
-                                ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white' 
-                                : 'bg-slate-100 text-slate-600 hover:bg-white border border-slate-200'
-                            }`}
-                        >
-                            {showAmountGroups ? '판매액 옵션 OFF' : '판매액 옵션 ON'}
-                        </button>
                     </div>
-                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200">
+                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200 relative z-50">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
                         <span className="text-slate-300 font-bold px-1">~</span>
                         <CustomDatePicker value={endDate} onChange={setEndDate} disabled={loadingRankings} />
@@ -343,27 +333,27 @@ export default function Dashboard() {
                     <table className="w-full text-sm text-left whitespace-nowrap">
                         <thead className="text-[13px] font-bold text-slate-500 bg-slate-50/80 sticky top-0 backdrop-blur-md">
                             <tr>
-                                <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">Rank</th>
-                                <th className="px-5 py-4 tracking-wider uppercase">Product</th>
+                                <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
+                                <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_2y')}>
-                                    '24 Quantity {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                    '24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_1y')}>
-                                    '25 Quantity {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                    '25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer text-indigo-700 hover:text-indigo-900 transition-colors" onClick={() => handleSort('qty_0y')}>
-                                    '26 Quantity {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                    '26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 {showAmountGroups && (
                                     <>
                                         <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
-                                            '24 Revenue
+                                            '24년 판매액
                                         </th>
                                         <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('amt_1y')}>
-                                            '25 Revenue
+                                            '25년 판매액
                                         </th>
                                         <th className="px-5 py-4 text-right cursor-pointer text-blue-700 transition-colors" onClick={() => handleSort('amt_0y')}>
-                                            '26 Revenue
+                                            '26년 판매액
                                         </th>
                                     </>
                                 )}
@@ -372,7 +362,7 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
                                 <tr className="bg-indigo-50/80 font-extrabold border-b border-indigo-100 backdrop-blur-sm">
-                                    <td colSpan={2} className="px-5 py-3 text-center text-indigo-900 border-r border-indigo-100/50 uppercase tracking-widest text-xs">Total Insights</td>
+                                    <td colSpan={2} className="px-5 py-3 text-center text-indigo-900 border-r border-indigo-100/50 tracking-widest text-xs font-bold">전체 합계</td>
                                     <td className="px-5 py-3 text-right text-slate-600">{totals.qty_2y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-slate-600">{totals.qty_1y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-indigo-700 text-[15px]">{totals.qty_0y.toLocaleString()}건</td>
