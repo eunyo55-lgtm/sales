@@ -1532,12 +1532,12 @@ ${sampleText}
         const kstNow = new Date(Date.now() + (9 * 60 * 60 * 1000));
         const today = kstNow.toISOString().split('T')[0];
 
-        // Fetch pending orders (confirmed >= 1, received = 0) from Today and beyond
+        // Fetch pending orders (confirmed >= 1, received = 0 or null) from Today and beyond
         const { data, error } = await supabase
             .from('coupang_orders')
             .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
             .gte('order_date', today)
-            .eq('received_qty', 0)
+            .or('received_qty.eq.0,received_qty.is.null')
             .gte('confirmed_qty', 1)
             .order('order_date', { ascending: true });
 

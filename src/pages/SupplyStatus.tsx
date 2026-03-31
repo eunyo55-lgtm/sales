@@ -710,8 +710,15 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
         const today = kstNow.toISOString().split('T')[0];
         
         orders.forEach(o => {
-            if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today) {
-                const date = o.order_date;
+            const confirmedQty = Number(o.confirmed_qty || 0);
+            const receivedQty = Number(o.received_qty || 0);
+            
+            // Normalize date format from YYYY.MM.DD to YYYY-MM-DD
+            const normalizedDate = o.order_date ? o.order_date.replace(/\./g, '-') : '';
+
+            // Fetch pending orders (received = 0 or null)
+            if (receivedQty === 0 && confirmedQty >= 1 && normalizedDate >= today) {
+                const date = normalizedDate;
                 const meta = barcodeMap.get(o.barcode);
                 const name = meta?.name || o.barcode || 'Unknown';
                 
@@ -719,21 +726,22 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 
                 const existing = groups[date].find(item => item.name === name);
                 if (existing) {
-                    existing.confirmed_qty += o.confirmed_qty;
+                    existing.confirmed_qty += confirmedQty;
                     // Add to detailed breakdown for hover
                     existing.details.push({
                         option: meta?.option || 'Default',
-                        qty: o.confirmed_qty,
+                        qty: confirmedQty,
                         barcode: o.barcode
                     });
                 } else {
                     groups[date].push({ 
                         ...o, 
                         name,
+                        confirmed_qty: confirmedQty,
                         imageUrl: meta?.image,
                         details: [{
                             option: meta?.option || 'Default',
-                            qty: o.confirmed_qty,
+                            qty: confirmedQty,
                             barcode: o.barcode
                         }]
                     });
@@ -749,63 +757,76 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
     if (timelineData.length === 0) return null;
 
     return (
-        <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-6 relative z-10">
-                <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
-                    <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mr-3 shadow-sm border border-orange-100">
-                        <Truck size={18} className="text-orange-500 animate-[bounce_2s_infinite]" />
+        <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-3xl shadow-sm border border-gray-100 relative overflow-visible my-12">
+            <div className="flex items-center justify-between mb-10 relative z-10">
+                <h3 className="text-[20px] font-bold text-slate-800 flex items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center mr-4 shadow-sm border border-sky-100">
+                        <Truck size={24} className="text-sky-500 animate-[bounce_3s_infinite]" />
                     </div>
-                    본사 ➔ 쿠팡 로켓그로스 <span className="text-orange-500 ml-1">입고 진행 명세 (제품별 결합)</span>
+                    본사 ➔ 쿠팡 <span className="text-sky-500 ml-2">이동 중 상품</span>
                 </h3>
+                <div className="hidden md:block">
+                   <span className="text-[12px] text-slate-400 font-medium bg-white px-4 py-2 rounded-full border border-slate-100 italic">Expected Shipments</span>
+                </div>
             </div>
 
-            <div className="space-y-4 relative z-10 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-8 relative z-10">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="flex flex-col md:flex-row md:items-center gap-3 bg-white/40 backdrop-blur-sm p-2 rounded-2xl group transition-all hover:bg-white/80 border border-transparent hover:border-orange-100">
-                        <div className="md:w-28 flex-shrink-0 flex md:flex-col items-center md:items-start justify-between md:justify-center px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl relative overflow-hidden">
-                           <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Expected</p>
-                           <p className="text-sm font-black text-slate-700">{group.date.substring(5, 10).replace('-', '/')}</p>
-                           <p className="hidden md:block text-[9px] text-slate-300 font-medium">{group.date.substring(0, 4)}Y</p>
+                    <div key={group.date} className="flex flex-col md:flex-row md:items-start gap-6 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] border border-slate-50 transition-all hover:bg-white/90 hover:border-sky-100">
+                        {/* Date Left Column - Larger */}
+                        <div className="md:w-36 flex-shrink-0 flex md:flex-col items-center md:items-start justify-center px-4 py-5 bg-gradient-to-tr from-slate-50 to-white border border-slate-100 rounded-2xl shadow-sm">
+                           <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest mb-1">Expected</p>
+                           <p className="text-lg font-black text-slate-800 tracking-tight">{group.date.substring(5, 10).replace('-', '/')}</p>
+                           <p className="text-[10px] text-sky-400 font-bold mt-1 uppercase">{new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'long'})}</p>
                         </div>
 
-                        <div className="flex-1 overflow-x-auto pb-1 scrollbar-hide">
-                            <div className="flex space-x-3 items-center">
+                        {/* Items Horizontal Scroll - Larger Cards */}
+                        <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide">
+                            <div className="flex space-x-5 items-center py-10">
                                 {group.items.map((item, idx) => (
-                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white border border-slate-100 p-2 rounded-xl flex items-center space-x-3 min-w-[200px] max-w-[220px] shadow-sm transform transition hover:scale-[1.02] hover:border-orange-200">
-                                        <div className="w-10 h-10 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
+                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white border border-slate-100 p-4 rounded-2xl flex items-center space-x-4 min-w-[260px] max-w-[300px] shadow-sm hover:shadow-md transform transition-all hover:scale-[1.02] hover:border-sky-200 cursor-default">
+                                        <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100 p-0.5">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <Package size={16} className="text-slate-200" />
+                                                    <Package size={20} className="text-slate-200" />
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[12px] font-bold text-slate-700 truncate line-clamp-1">{item.name}</p>
-                                            <div className="flex items-center justify-between mt-0.5">
-                                                <span className="text-[10px] text-slate-400 font-medium">상세내역 (Hover)</span>
-                                                <span className="text-[11px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
+                                            <p className="text-[13px] font-black text-slate-700 truncate mb-1">{item.name}</p>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-slate-400 font-bold flex items-center opacity-60">
+                                                    <div className="w-1 h-1 bg-sky-400 rounded-full mr-1.5"></div>
+                                                    상세 보기 (Hover)
+                                                </span>
+                                                <span className="text-[13px] font-black text-sky-500 bg-sky-50 px-2 py-0.5 rounded-lg border border-sky-100/50">
                                                     +{item.confirmed_qty.toLocaleString()}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Hover Tooltip Breakdown */}
-                                        <div className="hidden group-hover/card:block absolute bottom-full left-0 mb-2 z-50 bg-slate-800 text-white p-3 rounded-xl shadow-xl border border-slate-700 min-w-[200px] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                            <p className="text-[11px] font-bold border-b border-slate-600 pb-1.5 mb-1.5 text-slate-300">옵션별 입고 내역</p>
-                                            <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                                        {/* Hover Tooltip - Improved Visibility */}
+                                        <div className="hidden group-hover/card:block absolute bottom-full left-0 mb-4 z-[100] bg-slate-900/95 backdrop-blur text-white p-4 rounded-2xl shadow-2xl border border-white/10 min-w-[240px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-2.5">
+                                                <p className="text-[11px] font-black text-sky-400 uppercase tracking-tighter">Option Breakdown</p>
+                                                <p className="text-[10px] text-white/50">{item.details.length} SKU</p>
+                                            </div>
+                                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                                                 {item.details.map((d: any, dIdx: number) => (
                                                     <div key={dIdx} className="flex justify-between items-center text-[11px]">
-                                                        <span className="text-slate-400 capitalize truncate max-w-[120px]">{d.option}</span>
-                                                        <span className="font-bold text-orange-400 ml-2">+{d.qty.toLocaleString()}</span>
+                                                        <span className="text-white/70 font-medium truncate max-w-[150px]">{d.option}</span>
+                                                        <span className="font-bold text-sky-400 ml-3">+{d.qty.toLocaleString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-1.5 pt-1.5 border-t border-slate-600 flex justify-between text-[11px] font-black">
-                                                <span className="text-slate-400">총 수량</span>
-                                                <span className="text-white">{item.confirmed_qty.toLocaleString()}계</span>
+                                            <div className="mt-3 pt-3 border-t border-white/10 flex justify-between text-[12px] font-black">
+                                                <span className="text-white/40">Total Confirmed</span>
+                                                <span className="text-white text-lg">{item.confirmed_qty.toLocaleString()}</span>
                                             </div>
+                                            {/* Tooltip Arrow */}
+                                            <div className="absolute top-full left-6 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-slate-900/95"></div>
                                         </div>
                                     </div>
                                 ))}
@@ -815,8 +836,8 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 ))}
             </div>
 
-            <div className="absolute right-0 bottom-0 opacity-[0.02] pointer-events-none transform translate-x-12 translate-y-12">
-                <Package size={240} />
+            <div className="absolute right-0 bottom-0 opacity-[0.03] pointer-events-none transform translate-x-12 translate-y-12">
+                <Truck size={300} />
             </div>
         </div>
     );
