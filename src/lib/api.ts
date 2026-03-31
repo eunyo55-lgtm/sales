@@ -1529,30 +1529,40 @@ ${sampleText}
     },
 
     async getCoupangOrderStats() {
-        // Sequential fetch is safer for high row counts and ensures stable order
         const BATCH_SIZE = 1000;
-        const allData: any[] = [];
-        let i = 0;
-        let isDone = false;
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const startDate = oneYearAgo.toISOString().split('T')[0];
 
-        while (!isDone) {
-            const { data, error } = await supabase
-                .from('coupang_orders')
-                .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
-                .order('order_date', { ascending: false })
-                .order('id', { ascending: false }) // Stable sort tie-breaker
-                .range(i, i + BATCH_SIZE - 1);
+        // 1. Get total count for parallel planning
+        const { count, error: countError } = await supabase
+            .from('coupang_orders')
+            .select('*', { count: 'exact', head: true })
+            .gte('order_date', startDate);
 
-            if (error) throw error;
-            if (data && data.length > 0) {
-                allData.push(...data);
-            }
-            if (!data || data.length < BATCH_SIZE) {
-                isDone = true;
-            }
-            i += BATCH_SIZE;
-            if (i > 100000) break; // Safety
+        if (countError) throw countError;
+        const total = count || 0;
+
+        // 2. Fetch in parallel batches
+        const promises = [];
+        for (let i = 0; i < total; i += BATCH_SIZE) {
+            promises.push(
+                supabase
+                    .from('coupang_orders')
+                    .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
+                    .gte('order_date', startDate)
+                    .order('order_date', { ascending: false })
+                    .range(i, i + BATCH_SIZE - 1)
+            );
         }
+
+        const results = await Promise.all(promises);
+        const allData: any[] = [];
+        results.forEach(res => {
+            if (res.error) throw res.error;
+            if (res.data) allData.push(...res.data);
+        });
+
         return allData;
     },
 

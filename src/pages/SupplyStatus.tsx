@@ -310,11 +310,8 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
-            {/* Incoming Stock Animation Widget */}
-            <IncomingStockWidget orders={orders} barcodeMap={barcodeMap} />
-
-            {/* Incoming Timeline Widget */}
-            <IncomingTimeline orders={orders} barcodeMap={barcodeMap} />
+            {/* Unified Incoming Stock Widget (Date Rows + Product Scrolls) */}
+            <IncomingUnifiedWidget orders={orders} barcodeMap={barcodeMap} />
 
             {/* Stat Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -688,84 +685,7 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
     );
 }
 
-function IncomingStockWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
-    const incoming = useMemo(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const filtered = orders.filter(o => (o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today);
-        
-        const map = new Map<string, any>();
-        filtered.forEach(o => {
-            const meta = barcodeMap.get(o.barcode);
-            const key = o.barcode;
-            if (!map.has(key)) {
-                map.set(key, { 
-                    ...o, 
-                    name: meta?.name || o.barcode, 
-                    imageUrl: meta?.image, 
-                    option: meta?.option,
-                    totalIncoming: 0 
-                });
-            }
-            map.get(key).totalIncoming += o.confirmed_qty;
-        });
-        return Array.from(map.values());
-    }, [orders, barcodeMap]);
-
-    if (incoming.length === 0) return null;
-
-    return (
-        <div className="bg-gradient-to-r from-[#f0f9ff] to-[#f5f3ff] p-5 rounded-2xl shadow-sm border border-sky-100/50 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4 relative z-10 w-full overflow-hidden">
-                <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center mr-2 shadow-inner">
-                        <Truck size={16} className="text-sky-500 animate-bounce" />
-                    </div>
-                    본사 ➔ 쿠팡 로켓그로스 <span className="text-sky-500 ml-1">입고 진행 중</span>
-                </h3>
-                <span className="bg-white/80 backdrop-blur text-sky-600 text-[13px] px-3 py-1 rounded-full font-medium border border-sky-100/50 shadow-sm whitespace-nowrap">
-                    총 {incoming.length}개 품목 이동 중
-                </span>
-            </div>
-            
-            {/* Custom scrollbar class assumed to be global, or we just rely on standard tailwind scrollbar plugins if present. Otherwise default horizontal flow. */}
-            <div className="flex overflow-x-auto space-x-3 pb-2 relative z-10" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {incoming.map(p => (
-                    <div key={p.barcode} className="flex-shrink-0 bg-white/70 backdrop-blur-md p-3.5 rounded-xl border border-white shadow-sm min-w-[220px] max-w-[240px] flex items-center space-x-3 transform transition hover:-translate-y-1 hover:shadow-md hover:bg-white">
-                        <div className="w-[50px] h-[50px] bg-slate-50 rounded-lg overflow-hidden border border-gray-100/60 flex-shrink-0">
-                             {p.imageUrl ? (
-                                 <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                             ) : (
-                                 <div className="w-full h-full flex items-center justify-center">
-                                    <Package size={20} className="text-gray-300" />
-                                 </div>
-                             )}
-                        </div>
-                        <div className="flex flex-col min-w-0 flex-1">
-                            <p className="text-[13px] font-medium text-slate-700 truncate">{p.name}</p>
-                            <p className="text-[11px] text-slate-400 mb-1.5 truncate">{p.option || '-'}</p>
-                            <div className="mt-auto flex">
-                                <span className="inline-flex items-center bg-sky-50 text-sky-600 text-[11px] px-2 py-0.5 rounded border border-sky-100/50 font-medium">
-                                    +{p.totalIncoming.toLocaleString()}개 수송중
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Background Decorative Element */}
-            <div className="absolute right-0 bottom-0 opacity-[0.03] pointer-events-none transform translate-x-6 translate-y-6">
-                <Truck size={150} />
-            </div>
-            
-            {/* Road decoration */}
-            <div className="absolute left-0 bottom-0 w-full h-[3px] bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-50 z-0"></div>
-            <div className="absolute left-10 bottom-0 w-[40px] h-[3px] bg-sky-400 opacity-30 z-0 animate-[ping_3s_infinite]"></div>
-        </div>
-    );
-}
-
-function IncomingTimeline({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
+function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
     const timelineData = useMemo(() => {
         const groups: Record<string, any[]> = {};
         const today = new Date().toISOString().split('T')[0];
@@ -775,7 +695,14 @@ function IncomingTimeline({ orders, barcodeMap }: { orders: any[], barcodeMap: M
             if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today) {
                 const date = o.order_date;
                 if (!groups[date]) groups[date] = [];
-                groups[date].push(o);
+                
+                // Deduplicate items on the same date for the visual card
+                const existing = groups[date].find(item => item.barcode === o.barcode);
+                if (existing) {
+                    existing.confirmed_qty += o.confirmed_qty;
+                } else {
+                    groups[date].push({ ...o });
+                }
             }
         });
 
@@ -787,52 +714,71 @@ function IncomingTimeline({ orders, barcodeMap }: { orders: any[], barcodeMap: M
     if (timelineData.length === 0) return null;
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-2 mb-6">
-                <div className="p-2 bg-emerald-50 text-emerald-500 rounded-lg">
-                    <Calendar size={18} />
+        <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 relative z-10">
+                <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
+                    <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mr-3 shadow-sm border border-orange-100">
+                        <Truck size={18} className="text-orange-500 animate-[bounce_2s_infinite]" />
+                    </div>
+                    본사 ➔ 쿠팡 로켓그로스 <span className="text-orange-500 ml-1">입고 진행 명세</span>
+                </h3>
+                <div className="hidden md:flex items-center space-x-2">
+                    <span className="text-[12px] text-slate-400 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm font-medium">
+                        총 {timelineData.reduce((acc, curr) => acc + curr.items.length, 0)}개 품목 대기 중
+                    </span>
                 </div>
-                <h3 className="text-lg font-semibold text-slate-700">날짜별 입고 예정 일정</h3>
             </div>
 
-            <div className="flex overflow-x-auto space-x-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
+            {/* Scrollable Rows Container */}
+            <div className="space-y-4 relative z-10 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="flex-shrink-0 w-80 bg-slate-50/50 rounded-xl border border-gray-100 overflow-hidden flex flex-col">
-                        <div className="bg-slate-100/80 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                            <span className="text-sm font-bold text-slate-700">{group.date}</span>
-                            <span className="text-[11px] bg-white px-2 py-0.5 rounded-full border border-gray-200 text-slate-500">
-                                {group.items.length} 품목
-                            </span>
+                    <div key={group.date} className="flex flex-col md:flex-row md:items-center gap-3 bg-white/40 backdrop-blur-sm p-2 rounded-2xl group transition-all hover:bg-white/80 border border-transparent hover:border-orange-100 shadow-none hover:shadow-sm">
+                        {/* Date Left Column */}
+                        <div className="md:w-28 flex-shrink-0 flex md:flex-col items-center md:items-start justify-between md:justify-center px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl relative overflow-hidden">
+                           <div className="absolute top-0 right-0 w-8 h-8 bg-orange-100/30 rounded-full -translate-y-4 translate-x-4"></div>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Expected</p>
+                           <p className="text-sm font-black text-slate-700 tracking-tight">{group.date.substring(5, 10).replace('-', '/')}</p>
+                           <p className="hidden md:block text-[9px] text-slate-300 font-medium">{group.date.substring(0, 4)}Y</p>
                         </div>
-                        <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[300px]">
-                            {group.items.map((item, idx) => {
-                                const meta = barcodeMap.get(item.barcode);
-                                return (
-                                    <div key={`${item.barcode}-${idx}`} className="bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-slate-50 rounded border border-gray-100 flex-shrink-0 overflow-hidden">
-                                            {meta?.image ? (
-                                                <img src={meta.image} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                    <Package size={16} />
+
+                        {/* Items Horizontal Scroll */}
+                        <div className="flex-1 overflow-x-auto pb-1 scrollbar-hide">
+                            <div className="flex space-x-3 items-center">
+                                {group.items.map((item, idx) => {
+                                    const meta = barcodeMap.get(item.barcode);
+                                    return (
+                                        <div key={`${item.barcode}-${idx}`} className="flex-shrink-0 bg-white border border-slate-100 p-2 rounded-xl flex items-center space-x-3 min-w-[200px] max-w-[220px] shadow-sm transform transition hover:scale-[1.02]">
+                                            <div className="w-10 h-10 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
+                                                {meta?.image ? (
+                                                    <img src={meta.image} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Package size={16} className="text-slate-200" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[12px] font-bold text-slate-700 truncate line-clamp-1">{meta?.name || item.barcode}</p>
+                                                <div className="flex items-center justify-between mt-0.5">
+                                                    <span className="text-[10px] text-slate-400 font-medium truncate max-w-[100px]">{meta?.option || '-'}</span>
+                                                    <span className="text-[11px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
+                                                        +{item.confirmed_qty.toLocaleString()}
+                                                    </span>
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[12px] font-medium text-slate-700 truncate">{meta?.name || item.barcode}</p>
-                                            <p className="text-[10px] text-slate-400 truncate">{meta?.option || '-'}</p>
-                                            <div className="flex justify-between items-center mt-1">
-                                                <span className="text-[11px] font-bold text-sky-500">
-                                                    {item.confirmed_qty?.toLocaleString()}개 확정
-                                                </span>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 ))}
+            </div>
+
+            {/* Background Decorative Element */}
+            <div className="absolute right-0 bottom-0 opacity-[0.02] pointer-events-none transform translate-x-12 translate-y-12">
+                <Package size={240} />
             </div>
         </div>
     );
