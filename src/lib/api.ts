@@ -1528,11 +1528,28 @@ ${sampleText}
         }
     },
 
-    async getCoupangOrderStats() {
+    async getIncomingOrders() {
+        const kstNow = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const today = kstNow.toISOString().split('T')[0];
+
+        // Fetch pending orders (confirmed >= 1, received = 0) from Today and beyond
+        const { data, error } = await supabase
+            .from('coupang_orders')
+            .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
+            .gte('order_date', today)
+            .eq('received_qty', 0)
+            .gte('confirmed_qty', 1)
+            .order('order_date', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async getCoupangOrderStats(monthsLimit = 12) {
         const BATCH_SIZE = 1000;
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const startDate = oneYearAgo.toISOString().split('T')[0];
+        const startDateDate = new Date();
+        startDateDate.setMonth(startDateDate.getMonth() - monthsLimit);
+        const startDate = startDateDate.toISOString().split('T')[0];
 
         // 1. Get total count for parallel planning
         const { count, error: countError } = await supabase

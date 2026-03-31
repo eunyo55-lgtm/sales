@@ -15,9 +15,11 @@ function SortIcon({ currentSort, targetKey }: { currentSort: { key: string, dire
 }
 
 export default function SupplyStatus() {
+    const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
     const [products, setProducts] = useState<ProductStats[]>([]);
     const [loading, setLoading] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const [viewType, setViewType] = useState<'weekly' | 'monthly'>('weekly');
     const [productPeriod, setProductPeriod] = useState<'week' | 'month' | 'all'>('week');
     const [searchTerm, setSearchTerm] = useState('');
@@ -39,16 +41,24 @@ export default function SupplyStatus() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [orderData, productData] = await Promise.all([
-                api.getCoupangOrderStats(),
+            // Phase 1: Load Essential UI components (Products & Immediate Incoming)
+            const [incomingData, productData] = await Promise.all([
+                api.getIncomingOrders(),
                 api.getProductStats()
             ]);
-            setOrders(orderData || []);
+            setIncomingOrders(incomingData || []);
             setProducts(productData || []);
+            setLoading(false); // First render happens here (FAST!)
+
+            // Phase 2: Load Deep History in background (SLOW!)
+            setHistoryLoading(true);
+            const historicalData = await api.getCoupangOrderStats(24); // Load 2 years for broad analysis
+            setOrders(historicalData || []);
+            setHistoryLoading(false);
         } catch (e) {
             console.error(e);
-        } finally {
             setLoading(false);
+            setHistoryLoading(false);
         }
     };
 
@@ -310,8 +320,7 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
-            {/* Unified Incoming Stock Widget (Date Rows + Product Scrolls) */}
-            <IncomingUnifiedWidget orders={orders} barcodeMap={barcodeMap} />
+
 
             {/* Stat Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -353,6 +362,8 @@ export default function SupplyStatus() {
                     </ResponsiveContainer>
                 </div>
             </div>
+            {/* Unified Incoming Stock Widget (Date Rows + Product Scrolls) */}
+            <IncomingUnifiedWidget orders={incomingOrders} barcodeMap={barcodeMap} />
 
             {/* Summary Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -650,7 +661,6 @@ export default function SupplyStatus() {
                         </tbody>
                     </table>
                 </div>
-
                 {visibleCount < groupedPerformance.length && (
                     <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
                         <button 
@@ -662,6 +672,13 @@ export default function SupplyStatus() {
                     </div>
                 )}
             </div>
+
+            {historyLoading && (
+                <div className="fixed bottom-4 right-4 bg-white/80 backdrop-blur border border-blue-100 px-4 py-2 rounded-full shadow-lg flex items-center space-x-2 z-50">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-[11px] font-bold text-slate-600">상세 이력 데이터를 불러오는 중...</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -688,13 +705,11 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
 function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
     const timelineData = useMemo(() => {
         const groups: Record<string, any[]> = {};
-        // Get today's date in local YYYY-MM-DD format (KST)
         const now = new Date();
         const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
         const today = kstNow.toISOString().split('T')[0];
         
         orders.forEach(o => {
-            // Logic: Received is 0, Confirmed is >= 1, and Expected Date is TODAY or FUTURE
             if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today) {
                 const date = o.order_date;
                 const meta = barcodeMap.get(o.barcode);
@@ -702,96 +717,104 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 
                 if (!groups[date]) groups[date] = [];
                 
-                // Group by NAME instead of barcode to reduce visual clutter
                 const existing = groups[date].find(item => item.name === name);
                 if (existing) {
                     existing.confirmed_qty += o.confirmed_qty;
+                    // Add to detailed breakdown for hover
+                    existing.details.push({
+                        option: meta?.option || 'Default',
+                        qty: o.confirmed_qty,
+                        barcode: o.barcode
+                    });
                 } else {
                     groups[date].push({ 
                         ...o, 
                         name,
                         imageUrl: meta?.image,
-                        option: meta?.option 
+                        details: [{
+                            option: meta?.option || 'Default',
+                            qty: o.confirmed_qty,
+                            barcode: o.barcode
+                        }]
                     });
                 }
             }
         });
 
-        const result = Object.entries(groups)
+        return Object.entries(groups)
             .map(([date, items]) => ({ date, items }))
             .sort((a, b) => a.date.localeCompare(b.date));
-        
-        // Debug
-        console.log("[SupplyStatus] Timeline Data:", result);
-        return result;
     }, [orders, barcodeMap]);
 
     if (timelineData.length === 0) return null;
 
     return (
         <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6 relative z-10">
                 <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
                     <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mr-3 shadow-sm border border-orange-100">
                         <Truck size={18} className="text-orange-500 animate-[bounce_2s_infinite]" />
                     </div>
-                    본사 ➔ 쿠팡 로켓그로스 <span className="text-orange-500 ml-1">입고 진행 명세</span>
+                    본사 ➔ 쿠팡 로켓그로스 <span className="text-orange-500 ml-1">입고 진행 명세 (제품별 결합)</span>
                 </h3>
-                <div className="hidden md:flex items-center space-x-2">
-                    <span className="text-[12px] text-slate-400 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm font-medium">
-                        총 {timelineData.reduce((acc, curr) => acc + curr.items.length, 0)}개 품목 대기 중
-                    </span>
-                </div>
             </div>
 
-            {/* Scrollable Rows Container */}
             <div className="space-y-4 relative z-10 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="flex flex-col md:flex-row md:items-center gap-3 bg-white/40 backdrop-blur-sm p-2 rounded-2xl group transition-all hover:bg-white/80 border border-transparent hover:border-orange-100 shadow-none hover:shadow-sm">
-                        {/* Date Left Column */}
+                    <div key={group.date} className="flex flex-col md:flex-row md:items-center gap-3 bg-white/40 backdrop-blur-sm p-2 rounded-2xl group transition-all hover:bg-white/80 border border-transparent hover:border-orange-100">
                         <div className="md:w-28 flex-shrink-0 flex md:flex-col items-center md:items-start justify-between md:justify-center px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl relative overflow-hidden">
-                           <div className="absolute top-0 right-0 w-8 h-8 bg-orange-100/30 rounded-full -translate-y-4 translate-x-4"></div>
-                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Expected</p>
-                           <p className="text-sm font-black text-slate-700 tracking-tight">{group.date.substring(5, 10).replace('-', '/')}</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Expected</p>
+                           <p className="text-sm font-black text-slate-700">{group.date.substring(5, 10).replace('-', '/')}</p>
                            <p className="hidden md:block text-[9px] text-slate-300 font-medium">{group.date.substring(0, 4)}Y</p>
                         </div>
 
-                        {/* Items Horizontal Scroll */}
                         <div className="flex-1 overflow-x-auto pb-1 scrollbar-hide">
                             <div className="flex space-x-3 items-center">
-                                {group.items.map((item, idx) => {
-                                    const meta = barcodeMap.get(item.barcode);
-                                    return (
-                                        <div key={`${item.barcode}-${idx}`} className="flex-shrink-0 bg-white border border-slate-100 p-2 rounded-xl flex items-center space-x-3 min-w-[200px] max-w-[220px] shadow-sm transform transition hover:scale-[1.02]">
-                                            <div className="w-10 h-10 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
-                                                {meta?.image ? (
-                                                    <img src={meta.image} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <Package size={16} className="text-slate-200" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] font-bold text-slate-700 truncate line-clamp-1">{meta?.name || item.barcode}</p>
-                                                <div className="flex items-center justify-between mt-0.5">
-                                                    <span className="text-[10px] text-slate-400 font-medium truncate max-w-[100px]">{meta?.option || '-'}</span>
-                                                    <span className="text-[11px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
-                                                        +{item.confirmed_qty.toLocaleString()}
-                                                    </span>
+                                {group.items.map((item, idx) => (
+                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white border border-slate-100 p-2 rounded-xl flex items-center space-x-3 min-w-[200px] max-w-[220px] shadow-sm transform transition hover:scale-[1.02] hover:border-orange-200">
+                                        <div className="w-10 h-10 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
+                                            {item.imageUrl ? (
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Package size={16} className="text-slate-200" />
                                                 </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] font-bold text-slate-700 truncate line-clamp-1">{item.name}</p>
+                                            <div className="flex items-center justify-between mt-0.5">
+                                                <span className="text-[10px] text-slate-400 font-medium">상세내역 (Hover)</span>
+                                                <span className="text-[11px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
+                                                    +{item.confirmed_qty.toLocaleString()}
+                                                </span>
                                             </div>
                                         </div>
-                                    );
-                                })}
+
+                                        {/* Hover Tooltip Breakdown */}
+                                        <div className="hidden group-hover/card:block absolute bottom-full left-0 mb-2 z-50 bg-slate-800 text-white p-3 rounded-xl shadow-xl border border-slate-700 min-w-[200px] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                            <p className="text-[11px] font-bold border-b border-slate-600 pb-1.5 mb-1.5 text-slate-300">옵션별 입고 내역</p>
+                                            <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                                                {item.details.map((d: any, dIdx: number) => (
+                                                    <div key={dIdx} className="flex justify-between items-center text-[11px]">
+                                                        <span className="text-slate-400 capitalize truncate max-w-[120px]">{d.option}</span>
+                                                        <span className="font-bold text-orange-400 ml-2">+{d.qty.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-1.5 pt-1.5 border-t border-slate-600 flex justify-between text-[11px] font-black">
+                                                <span className="text-slate-400">총 수량</span>
+                                                <span className="text-white">{item.confirmed_qty.toLocaleString()}계</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Background Decorative Element */}
             <div className="absolute right-0 bottom-0 opacity-[0.02] pointer-events-none transform translate-x-12 translate-y-12">
                 <Package size={240} />
             </div>
