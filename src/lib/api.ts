@@ -1256,25 +1256,24 @@ ${sampleText}
             // [DISABLED] User requested to stop adding unknown items to the master.
             // await this.syncMissingBarcodes();
 
-            // 1. Fetch Products (Master + Stock)
-            const products = await this._getRawProducts();
+            const historyD = new Date(anchorDateStr);
+            historyD.setDate(historyD.getDate() - 14);
+            const historyStartStr = historyD.toISOString().split('T')[0];
+
+            // 1. Fetch Products, RPC Stats, and Daily Sales in PARALLEL
+            const [products, salesStats, rawDailySales] = await Promise.all([
+                this._getRawProducts(),
+                this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr }),
+                this._getRawDailySales(historyStartStr)
+            ]);
 
             if (!products) return []; // Ensure products is an array for subsequent operations
 
-            // 2. Fetch Pre-calculated Stats via RPC - SEQUENTIAL
-            const salesStats = await this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr });
             const statsMap = new Map();
             salesStats?.forEach((s: any) => {
                 if (s.barcode) statsMap.set(s.barcode.trim(), s);
             });
 
-            // 3. Optional: Fetch Daily Sales for recent history (LATEST 14 DAYS ONLY for table visibility)
-            const historyD = new Date(anchorDateStr);
-            historyD.setDate(historyD.getDate() - 14);
-            const historyStartStr = historyD.toISOString().split('T')[0];
-            
-            const rawDailySales = await this._getRawDailySales(historyStartStr);
-            
             const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
             rawDailySales.forEach((row: any) => {
                 const b = (row.barcode || '').trim();
