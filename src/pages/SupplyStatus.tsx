@@ -310,6 +310,9 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
+            {/* Incoming Stock Animation Widget */}
+            <IncomingStockWidget products={products} />
+
             {/* Stat Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard title="총 발주액" value={totalOrderAmount} unit="원" icon={<Package className="text-blue-500" />} />
@@ -678,6 +681,63 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
                     <span className="text-sm text-gray-400 font-normal">{unit}</span>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function IncomingStockWidget({ products }: { products: ProductStats[] }) {
+    const incoming = useMemo(() => products.filter(p => (p.incomingStock || 0) > 0), [products]);
+
+    if (incoming.length === 0) return null;
+
+    return (
+        <div className="bg-gradient-to-r from-[#f0f9ff] to-[#f5f3ff] p-5 rounded-2xl shadow-sm border border-sky-100/50 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-4 relative z-10 w-full overflow-hidden">
+                <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center mr-2 shadow-inner">
+                        <Truck size={16} className="text-sky-500 animate-bounce" />
+                    </div>
+                    본사 ➔ 쿠팡 로켓그로스 <span className="text-sky-500 ml-1">입고 진행 중</span>
+                </h3>
+                <span className="bg-white/80 backdrop-blur text-sky-600 text-[13px] px-3 py-1 rounded-full font-medium border border-sky-100/50 shadow-sm whitespace-nowrap">
+                    총 {incoming.length}개 품목 이동 중
+                </span>
+            </div>
+            
+            {/* Custom scrollbar class assumed to be global, or we just rely on standard tailwind scrollbar plugins if present. Otherwise default horizontal flow. */}
+            <div className="flex overflow-x-auto space-x-3 pb-2 relative z-10" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {incoming.map(p => (
+                    <div key={p.barcode} className="flex-shrink-0 bg-white/70 backdrop-blur-md p-3.5 rounded-xl border border-white shadow-sm min-w-[220px] max-w-[240px] flex items-center space-x-3 transform transition hover:-translate-y-1 hover:shadow-md hover:bg-white">
+                        <div className="w-[50px] h-[50px] bg-slate-50 rounded-lg overflow-hidden border border-gray-100/60 flex-shrink-0">
+                             {p.imageUrl ? (
+                                 <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                             ) : (
+                                 <div className="w-full h-full flex items-center justify-center">
+                                    <Package size={20} className="text-gray-300" />
+                                 </div>
+                             )}
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                            <p className="text-[13px] font-medium text-slate-700 truncate">{p.name}</p>
+                            <p className="text-[11px] text-slate-400 mb-1.5 truncate">{p.option || '-'}</p>
+                            <div className="mt-auto flex">
+                                <span className="inline-flex items-center bg-sky-50 text-sky-600 text-[11px] px-2 py-0.5 rounded border border-sky-100/50 font-medium">
+                                    +{p.incomingStock.toLocaleString()}개 수송중
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Background Decorative Element */}
+            <div className="absolute right-0 bottom-0 opacity-[0.03] pointer-events-none transform translate-x-6 translate-y-6">
+                <Truck size={150} />
+            </div>
+            
+            {/* Road decoration */}
+            <div className="absolute left-0 bottom-0 w-full h-[3px] bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-50 z-0"></div>
+            <div className="absolute left-10 bottom-0 w-[40px] h-[3px] bg-sky-400 opacity-30 z-0 animate-[ping_3s_infinite]"></div>
         </div>
     );
 }

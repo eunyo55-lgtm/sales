@@ -327,7 +327,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                         <form onSubmit={handleAddKeyword} className="space-y-4 mb-6 bg-gray-50 p-4 rounded-lg">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">분류</label>
+                                <label className="block text-sm font-medium text-gray-600 mb-1">분류</label>
                                 <input
                                     type="text"
                                     value={newCategory}
@@ -337,7 +337,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">키워드</label>
+                                <label className="block text-sm font-medium text-gray-600 mb-1">키워드</label>
                                 <input
                                     type="text"
                                     value={newKeyword}
@@ -348,7 +348,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                 />
                             </div>
                             <div className="relative">
-                                <label className="block text-xs font-medium text-gray-600 mb-1">연결 상품명 검색 (선택)</label>
+                                <label className="block text-sm font-medium text-gray-600 mb-1">연결 상품명 검색 (선택)</label>
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -383,7 +383,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Coupang Product ID</label>
+                                <label className="block text-sm font-medium text-gray-600 mb-1">Coupang Product ID</label>
                                 <input
                                     type="text"
                                     value={newCoupangId}
@@ -422,13 +422,13 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                             <h3 className="text-lg font-medium text-slate-700">단축 명령</h3>
                             <button
                                 onClick={() => setShowManualSync(true)}
-                                className="px-3 py-1.5 bg-slate-50 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition border border-gray-200"
+                                className="px-3 py-1.5 bg-slate-50 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md transition border border-gray-200"
                             >
                                 ⚡ 수동 순위 집계
                             </button>
                             <button
                                 onClick={() => setShowNaverSync(true)}
-                                className="ml-2 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-md transition border border-green-200"
+                                className="ml-2 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium rounded-md transition border border-green-200"
                             >
                                 📊 네이버 조회수 갱신
                             </button>
@@ -437,14 +437,14 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         {showManualSync && (
                             <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
                                 <h4 className="font-medium text-slate-700 mb-2">수동으로 순위 집계하기</h4>
-                                <p className="text-gray-600 mb-3 text-xs leading-relaxed">
+                                <p className="text-gray-600 mb-3 text-sm leading-relaxed">
                                     현재 쿠팡의 강력한 봇 차단(방화벽) 정책으로 인해 외부 서버(GitHub)에서의 자동 수집이 불가능합니다. 순위를 갱신하시려면 <b>대표님의 PC</b>에서 직접 수집기를 작동시켜야 합니다.
                                 </p>
-                                <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-4 border border-blue-100">
+                                <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 mb-4 border border-blue-100">
                                     <b>사용 방법:</b> 바탕화면에 만들어진 <b>[쿠팡 키워드 랭킹 수집기]</b> 아이콘을 더블클릭하세요. 실제 크롬 브라우저 창이 열리며 사람처럼 안전하게 순위를 수집하고 자동으로 닫힙니다. (수집 완료 후 이 화면을 새로고침 하시면 반영됩니다.)
                                 </div>
                                 <div className="flex justify-end">
-                                    <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-sky-500 rounded text-xs font-medium hover:bg-blue-100">닫기</button>
+                                    <button onClick={() => setShowManualSync(false)} className="px-3 py-1 bg-blue-50 text-sky-500 rounded text-sm font-medium hover:bg-blue-100">닫기</button>
                                 </div>
                             </div>
                         )}
@@ -452,10 +452,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         {showNaverSync && (
                             <div className="absolute top-16 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-[60] w-80 text-sm">
                                 <h4 className="font-medium text-slate-700 mb-2">네이버 조회수 수동 갱신</h4>
-                                <p className="text-gray-600 mb-3 text-xs leading-relaxed">
+                                <p className="text-gray-600 mb-3 text-sm leading-relaxed">
                                     네이버 광고시스템의 보안 정책으로 인해 서버에서 자동 수집이 어렵습니다. 아래 순서대로 직접 실행해 주세요.
                                 </p>
-                                <div className="bg-green-50 p-3 rounded text-xs text-green-800 mb-4 border border-green-100">
+                                <div className="bg-green-50 p-3 rounded text-sm text-green-800 mb-4 border border-green-100">
                                     <b>사용 방법:</b>
                                     <ol className="list-decimal ml-4 mt-1 space-y-1">
                                         <li>바탕화면의 <b>[네이버 조회수 수집기]</b>를 실행합니다.</li>
@@ -465,7 +465,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                     </ol>
                                 </div>
                                 <div className="flex justify-end">
-                                    <button onClick={() => setShowNaverSync(false)} className="px-3 py-1 bg-green-50 text-green-600 rounded text-xs font-medium hover:bg-green-100">닫기</button>
+                                    <button onClick={() => setShowNaverSync(false)} className="px-3 py-1 bg-green-50 text-green-600 rounded text-sm font-medium hover:bg-green-100">닫기</button>
                                 </div>
                             </div>
                         )}
@@ -479,13 +479,13 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                         <div className="overflow-auto max-h-[calc(100vh-250px)]">
                             <table className="w-full text-left border-collapse whitespace-nowrap min-w-max relative">
                                 <thead className="sticky top-0 z-20 shadow-sm">
-                                    <tr className="text-gray-500 border-b border-gray-200 text-xs">
+                                    <tr className="text-gray-500 border-b border-gray-200 text-sm">
                                         <th
                                             style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 30 }}
                                             className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('category')}
                                         >
-                                            <div className="flex items-center text-xs">
+                                            <div className="flex items-center text-sm">
                                                 분류
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'category' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -495,7 +495,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('keyword')}
                                         >
-                                            <div className="flex items-center text-xs">
+                                            <div className="flex items-center text-sm">
                                                 키워드
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'keyword' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -505,7 +505,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky bg-gray-50 shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('product')}
                                         >
-                                            <div className="flex items-center text-xs">
+                                            <div className="flex items-center text-sm">
                                                 연결 상품명
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'product' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -515,7 +515,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 border-x border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesLastWeek')}
                                         >
-                                            <div className="flex items-center justify-center text-xs leading-tight">
+                                            <div className="flex items-center justify-center text-sm leading-tight">
                                                 판매량<br/>(지난주)
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesLastWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -525,7 +525,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesThisWeek')}
                                         >
-                                            <div className="flex items-center justify-center text-xs leading-tight">
+                                            <div className="flex items-center justify-center text-sm leading-tight">
                                                 판매량<br/>(이번주)
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesThisWeek' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -535,7 +535,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-1 border-r border-gray-200 bg-gray-50 text-gray-700 text-center font-medium cursor-pointer hover:bg-slate-50 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('salesWoW')}
                                         >
-                                            <div className="flex items-center justify-center text-xs">
+                                            <div className="flex items-center justify-center text-sm">
                                                 전주대비
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'salesWoW' ? 'text-blue-500' : 'text-gray-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -545,7 +545,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 font-medium bg-green-50 text-green-700 border-x border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('views_prev')}
                                         >
-                                            <div className="flex items-center justify-center text-xs leading-tight">
+                                            <div className="flex items-center justify-center text-sm leading-tight">
                                                 조회수<br/>(지난주)
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_prev' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -555,7 +555,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-2 font-medium bg-green-50 text-green-700 border-r border-green-100 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[1px_0_0_#e5e7eb]"
                                             onClick={() => handleSort('views_latest')}
                                         >
-                                            <div className="flex items-center justify-center text-xs leading-tight">
+                                            <div className="flex items-center justify-center text-sm leading-tight">
                                                 조회수<br/>(이번주)
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'views_latest' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -565,7 +565,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             className="py-3 px-1 font-medium bg-green-50 text-green-700 cursor-pointer hover:bg-green-100 transition-colors group select-none sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200"
                                             onClick={() => handleSort('trend')}
                                         >
-                                            <div className="flex items-center justify-center text-xs">
+                                            <div className="flex items-center justify-center text-sm">
                                                 추이
                                                 <ArrowUpDown className={`w-3 h-3 ml-1 ${sortConfig?.key === 'trend' ? 'text-green-600' : 'text-green-300 opacity-0 group-hover:opacity-100'} transition-opacity`} />
                                             </div>
@@ -594,14 +594,14 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                             >
                                                 <td
                                                     style={{ left: 0, width: 70, minWidth: 70, maxWidth: 70, zIndex: 10 }}
-                                                    className="py-3 px-2 text-xs font-normal text-gray-700 bg-gray-50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
+                                                    className="py-3 px-2 text-sm font-normal text-gray-700 bg-gray-50 cursor-pointer hover:bg-white sticky shadow-[1px_0_0_#e5e7eb]"
                                                     onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}
                                                 >
                                                     {editingCategory?.id === kw.id ? (
                                                         <input
                                                             autoFocus
                                                             type="text"
-                                                            className="w-full px-1 py-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                                                            className="w-full px-1 py-1 border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                                                             value={editingCategory?.value || ''}
                                                             onChange={(e) => setEditingCategory(prev => prev ? { ...prev, value: e.target.value } : null)}
                                                             onBlur={() => { if (editingCategory) handleUpdateCategory(kw.id, editingCategory.value); }}
@@ -619,13 +619,13 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                 </td>
                                                 <td
                                                     style={{ left: 70, width: 110, minWidth: 110, maxWidth: 110, zIndex: 10 }}
-                                                    className="py-3 px-2 font-medium text-blue-900 text-xs sticky bg-white shadow-[1px_0_0_#e5e7eb]"
+                                                    className="py-3 px-2 font-medium text-blue-900 text-sm sticky bg-white shadow-[1px_0_0_#e5e7eb]"
                                                 >
                                                     <div className="truncate w-full" title={kw.keyword}>{kw.keyword}</div>
                                                 </td>
                                                 <td
                                                     style={{ left: 180, width: 150, minWidth: 150, maxWidth: 150, zIndex: 10 }}
-                                                    className="py-3 px-2 text-gray-600 text-xs cursor-pointer hover:text-sky-500 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb]"
+                                                    className="py-3 px-2 text-gray-600 text-sm cursor-pointer hover:text-sky-500 hover:underline sticky bg-white shadow-[1px_0_0_#e5e7eb]"
                                                     title="클릭하여 순위 추이 보기"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -658,7 +658,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         <>
                                                             <td 
                                                                 style={{ left: 330, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className={`py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesLastWeek >= 100 ? 'font-medium' : ''}`}
+                                                                className={`py-3 px-2 text-center border-x border-gray-100 text-gray-500 text-sm bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesLastWeek >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -668,7 +668,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 415, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className={`py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesThisWeek >= 100 ? 'font-medium' : ''}`}
+                                                                className={`py-3 px-2 text-center border-r border-gray-100 text-gray-500 text-sm bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && salesThisWeek >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -678,7 +678,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 500, width: 65, minWidth: 65, maxWidth: 65, zIndex: 10 }}
-                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-xs bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && Math.abs(wow) >= 100 ? 'font-medium' : ''} ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
+                                                                className={`py-3 px-1 text-center border-r border-gray-100 text-sm bg-white sticky shadow-[1px_0_0_#e5e7eb] ${hasProduct && Math.abs(wow) >= 100 ? 'font-medium' : ''} ${wow > 0 ? 'text-red-500' : wow < 0 ? 'text-blue-500' : 'text-gray-400'}`}
                                                             >
                                                                 {loadingStats ? (
                                                                     <span className="inline-block animate-pulse">...</span>
@@ -710,7 +710,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         <>
                                                             <td 
                                                                 style={{ left: 565, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className="py-3 px-2 text-center bg-green-50 border-x border-green-100 text-gray-500 text-xs sticky shadow-[1px_0_0_#e5e7eb]"
+                                                                className="py-3 px-2 text-center bg-green-50 border-x border-green-100 text-gray-500 text-sm sticky shadow-[1px_0_0_#e5e7eb]"
                                                             >
                                                                 <div className="flex flex-col items-center">
                                                                     {prevVol > 0 ? prevVol.toLocaleString() : '-'}
@@ -728,7 +728,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 650, width: 85, minWidth: 85, maxWidth: 85, zIndex: 10 }}
-                                                                className="py-3 px-2 text-center bg-green-50 border-r border-green-100 font-medium text-xs sticky shadow-[1px_0_0_#e5e7eb]"
+                                                                className="py-3 px-2 text-center bg-green-50 border-r border-green-100 font-medium text-sm sticky shadow-[1px_0_0_#e5e7eb]"
                                                             >
                                                                 <div className="flex flex-col items-center">
                                                                     {latestVol > 0 ? latestVol.toLocaleString() : '-'}
@@ -746,10 +746,10 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             </td>
                                                             <td 
                                                                 style={{ left: 735, width: 55, minWidth: 55, maxWidth: 55, zIndex: 10 }}
-                                                                className={`py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-xs ${Math.abs(trend) >= 100 ? 'font-medium' : ''}`}
+                                                                className={`py-3 px-1 text-center bg-green-50 sticky shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-gray-200 text-sm ${Math.abs(trend) >= 100 ? 'font-medium' : ''}`}
                                                             >
                                                                 {trend !== 0 && latestVol > 0 && prevVol > 0 ? (
-                                                                    <div className={`flex items-center justify-center text-xs ${Math.abs(trend) >= 100 ? 'font-medium' : ''} ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                                                    <div className={`flex items-center justify-center text-sm ${Math.abs(trend) >= 100 ? 'font-medium' : ''} ${trend > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                                                         {trend > 0 ? '+' : ''}{trend.toLocaleString()}
                                                                     </div>
                                                                 ) : trend === 0 && latestVol > 0 ? (
