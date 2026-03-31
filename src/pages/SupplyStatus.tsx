@@ -688,28 +688,43 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
 function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
     const timelineData = useMemo(() => {
         const groups: Record<string, any[]> = {};
-        const today = new Date().toISOString().split('T')[0];
+        // Get today's date in local YYYY-MM-DD format (KST)
+        const now = new Date();
+        const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+        const today = kstNow.toISOString().split('T')[0];
         
         orders.forEach(o => {
-            // Logic: Received is 0, Confirmed is >= 1, and Expected Date is NOT in the past
+            // Logic: Received is 0, Confirmed is >= 1, and Expected Date is TODAY or FUTURE
             if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1 && o.order_date >= today) {
                 const date = o.order_date;
+                const meta = barcodeMap.get(o.barcode);
+                const name = meta?.name || o.barcode || 'Unknown';
+                
                 if (!groups[date]) groups[date] = [];
                 
-                // Deduplicate items on the same date for the visual card
-                const existing = groups[date].find(item => item.barcode === o.barcode);
+                // Group by NAME instead of barcode to reduce visual clutter
+                const existing = groups[date].find(item => item.name === name);
                 if (existing) {
                     existing.confirmed_qty += o.confirmed_qty;
                 } else {
-                    groups[date].push({ ...o });
+                    groups[date].push({ 
+                        ...o, 
+                        name,
+                        imageUrl: meta?.image,
+                        option: meta?.option 
+                    });
                 }
             }
         });
 
-        return Object.entries(groups)
+        const result = Object.entries(groups)
             .map(([date, items]) => ({ date, items }))
             .sort((a, b) => a.date.localeCompare(b.date));
-    }, [orders]);
+        
+        // Debug
+        console.log("[SupplyStatus] Timeline Data:", result);
+        return result;
+    }, [orders, barcodeMap]);
 
     if (timelineData.length === 0) return null;
 
