@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { LayoutDashboard, Package, Archive, Menu, TrendingUp, BarChart3 } from 'lucide-react';
 import { DataUploader } from './components/DataUploader';
 
