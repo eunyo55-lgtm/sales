@@ -156,7 +156,7 @@ export default function Dashboard() {
 
     const { metrics, anchorDate } = data;
 
-    const StatCard = ({ title, value, amount, sub, icon: Icon, colorTheme, yoyValue }: any) => {
+    const StatCard = ({ title, value, amount, sub, icon: Icon, yoyValue }: any) => {
         let yoyEl = null;
         if (yoyValue !== undefined && yoyValue !== null) {
             const diff = value - yoyValue;
@@ -167,10 +167,10 @@ export default function Dashboard() {
             yoyEl = (
                 <div className="mt-3 flex items-center text-sm">
                     <span className="text-slate-400 font-medium">전년도 대비</span>
-                    <span className={`ml-2 px-2 py-0.5 rounded-full flex items-center font-bold text-xs ${
-                        isUp ? 'bg-emerald-100/80 text-emerald-700' : isDown ? 'bg-rose-100/80 text-rose-700' : 'bg-slate-100 text-slate-500'
+                    <span className={`ml-2 flex items-center font-bold text-sm ${
+                        isUp ? 'text-emerald-500' : isDown ? 'text-rose-500' : 'text-slate-400'
                     }`}>
-                        {isUp ? <ArrowUpRight size={14} className="mr-0.5" /> : isDown ? <ArrowDownRight size={14} className="mr-0.5" /> : null}
+                        {isUp ? <ArrowUpRight size={16} className="mr-0.5" /> : isDown ? <ArrowDownRight size={16} className="mr-0.5" /> : null}
                         {Math.abs(diff).toLocaleString()}건
                         {rate !== 0 && ` (${isUp ? '+' : ''}${rate.toFixed(1)}%)`}
                     </span>
@@ -181,29 +181,18 @@ export default function Dashboard() {
         const avgCost = data?.avgCost || 0;
         const totalAmount = amount !== undefined ? amount : Math.round(value * avgCost);
 
-        const themeStyles: any = {
-            blue: { gradient: "from-blue-500 to-indigo-600", text: "text-blue-500", bg: "bg-blue-50/50" },
-            green: { gradient: "from-teal-400 to-emerald-500", text: "text-emerald-500", bg: "bg-emerald-50/50" },
-            yellow: { gradient: "from-orange-400 to-amber-500", text: "text-amber-500", bg: "bg-amber-50/50" }
-        };
-
-        const theme = themeStyles[colorTheme] || themeStyles.blue;
-
         return (
-            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-slate-200 hover:-translate-y-1.5 transition-all duration-500 ease-out relative overflow-hidden">
-                {/* Ambient glow */}
-                <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${theme.gradient} rounded-full opacity-[0.05] group-hover:opacity-[0.15] blur-3xl transition-opacity duration-500 pointer-events-none`} />
-                
+            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-slate-200 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
                 <div className="flex justify-between items-start relative z-10">
                     <div className="flex-1">
-                        <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">{title}</h3>
-                        <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
-                            <span className="text-4xl font-extrabold text-slate-800 tracking-tight leading-none">{value.toLocaleString()}</span>
-                            <span className="text-sm font-bold text-slate-400">건</span>
+                        <h3 className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-2">{title}</h3>
+                        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1">
+                            <span className="text-3xl font-bold text-slate-800 tracking-tight leading-none">{value.toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-slate-400">건</span>
                         </div>
                         {avgCost > 0 && (
-                            <div className="mt-1.5">
-                                <span className={`text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r ${theme.gradient}`}>
+                            <div className="mt-2">
+                                <span className="text-[13px] font-bold text-slate-500">
                                     약 {totalAmount.toLocaleString()}원
                                 </span>
                             </div>
@@ -211,8 +200,8 @@ export default function Dashboard() {
                         {sub && <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100/50 inline-block px-2 py-1 rounded-md">{sub}</p>}
                         {yoyEl}
                     </div>
-                    <div className={`p-4 rounded-2xl ${theme.bg}`}>
-                        <Icon size={28} className={theme.text} strokeWidth={2.5}/>
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <Icon size={24} className="text-slate-400" strokeWidth={2}/>
                     </div>
                 </div>
             </div>
@@ -255,8 +244,8 @@ export default function Dashboard() {
             {/* Daily Trend Chart (Glassmorphism) */}
             <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-slate-200 transition-shadow duration-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-xl font-extrabold text-slate-800 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-600">
-                        <Activity size={22} className="mr-2 text-indigo-500 stroke-[2.5px]" />
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                        <Activity size={20} className="mr-2 text-slate-800 stroke-[2.5px]" />
                         판매 다이내믹 뷰
                     </h3>
                     <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2 relative z-50">
@@ -298,9 +287,9 @@ export default function Dashboard() {
                                 contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
                             />
                             <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
-                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#4f46e5" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 8, strokeWidth: 0 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#ec4899" strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 3, fill: '#ec4899' }} opacity={0.8} />
-                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#f59e0b" strokeWidth={2.5} strokeDasharray="3 3" dot={{ r: 3, fill: '#f59e0b' }} opacity={0.6} />
+                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#0f172a" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.8} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.6} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -310,10 +299,10 @@ export default function Dashboard() {
             <div className="bg-white/70 backdrop-blur-xl rounded-[24px] border border-slate-200 flex flex-col h-auto overflow-hidden">
                 <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
                     <div className="flex items-center space-x-3">
-                        <div className="bg-amber-100 p-2 rounded-xl text-amber-500">
-                            <Trophy size={20} className="stroke-[2.5px]"/>
+                        <div className="bg-slate-100 border border-slate-200 p-2 rounded-xl text-slate-700">
+                            <Trophy size={20} className="stroke-[2px]"/>
                         </div>
-                        <h3 className="text-lg font-extrabold text-slate-800">퍼포먼스 랭킹 보드</h3>
+                        <h3 className="text-lg font-bold text-slate-800">퍼포먼스 랭킹 보드</h3>
                     </div>
                     <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200 relative z-50">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
@@ -335,24 +324,24 @@ export default function Dashboard() {
                             <tr>
                                 <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
                                 <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
-                                <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_2y')}>
+                                <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_2y')}>
                                     '24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_1y')}>
+                                <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_1y')}>
                                     '25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-5 py-4 text-right cursor-pointer text-indigo-700 hover:text-indigo-900 transition-colors" onClick={() => handleSort('qty_0y')}>
+                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 hover:text-black transition-colors" onClick={() => handleSort('qty_0y')}>
                                     '26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 {showAmountGroups && (
                                     <>
-                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
+                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
                                             '24년 판매액
                                         </th>
-                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('amt_1y')}>
+                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('amt_1y')}>
                                             '25년 판매액
                                         </th>
-                                        <th className="px-5 py-4 text-right cursor-pointer text-blue-700 transition-colors" onClick={() => handleSort('amt_0y')}>
+                                        <th className="px-5 py-4 text-right cursor-pointer text-slate-900 hover:text-black transition-colors" onClick={() => handleSort('amt_0y')}>
                                             '26년 판매액
                                         </th>
                                     </>
@@ -361,20 +350,20 @@ export default function Dashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-indigo-50/80 font-extrabold border-b border-indigo-100 backdrop-blur-sm">
-                                    <td colSpan={2} className="px-5 py-3 text-center text-indigo-900 border-r border-indigo-100/50 tracking-widest text-xs font-bold">전체 합계</td>
-                                    <td className="px-5 py-3 text-right text-slate-600">{totals.qty_2y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-slate-600">{totals.qty_1y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-indigo-700 text-[15px]">{totals.qty_0y.toLocaleString()}건</td>
+                                <tr className="bg-slate-100 font-bold border-b border-slate-200">
+                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-800 border-r border-slate-200 tracking-widest text-xs font-bold">전체 합계</td>
+                                    <td className="px-5 py-3 text-right text-slate-500">{totals.qty_2y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-500">{totals.qty_1y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-800 text-[14px]">{totals.qty_0y.toLocaleString()}건</td>
                                     {showAmountGroups && (
                                         <>
-                                            <td className="px-5 py-3 text-right text-slate-500 border-l border-indigo-100/50">
+                                            <td className="px-5 py-3 text-right text-slate-500 border-l border-slate-200">
                                                 {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
                                             </td>
                                             <td className="px-5 py-3 text-right text-slate-500">
                                                 {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
                                             </td>
-                                            <td className="px-5 py-3 text-right text-blue-700 text-[15px]">
+                                            <td className="px-5 py-3 text-right text-slate-800 text-[14px]">
                                                 {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
                                             </td>
                                         </>
@@ -390,10 +379,10 @@ export default function Dashboard() {
                                 <tr key={item.name} className="group hover:bg-white transition-all bg-slate-50/20 duration-200">
                                     <td className="px-5 py-3.5 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-extrabold text-white shadow-md ${
-                                                idx === 0 ? 'bg-gradient-to-br from-amber-300 to-amber-500 shadow-amber-500/30' : 
-                                                idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 shadow-slate-500/30' : 
-                                                'bg-gradient-to-br from-orange-300 to-orange-500 shadow-orange-500/30'
+                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-bold ${
+                                                idx === 0 ? 'bg-slate-800 text-white' : 
+                                                idx === 1 ? 'bg-slate-500 text-white' : 
+                                                'bg-slate-400 text-white'
                                             }`}>
                                                 {idx + 1}
                                             </span>
@@ -413,11 +402,11 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_2y.toLocaleString()}</td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_1y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right font-extrabold text-slate-800 text-[15px]">
+                                    <td className="px-5 py-3.5 text-right font-extrabold text-slate-800 text-[14px]">
                                         {item.qty_0y.toLocaleString()}
                                         {yoyDiff !== 0 && (
-                                            <div className={`text-xs mt-1 px-1.5 py-0.5 inline-block rounded-md ${yoyDiff > 0 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'} font-bold`}>
-                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}
+                                            <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                {yoyDiff > 0 ? '↑' : '↓'} {Math.abs(yoyDiff).toLocaleString()}
                                             </div>
                                         )}
                                     </td>
@@ -429,11 +418,11 @@ export default function Dashboard() {
                                             <td className="px-5 py-3.5 text-right text-slate-400 font-medium">
                                                 {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() : '-'}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right text-indigo-700 font-bold">
+                                            <td className="px-5 py-3.5 text-right text-slate-800 font-bold">
                                                 {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() : '-'}
                                                 {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
-                                                    <div className={`text-xs mt-1 ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'} font-semibold`}>
-                                                        {yoyDiff > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}
+                                                    <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                        {yoyDiff > 0 ? '↑' : '↓'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}
                                                     </div>
                                                 )}
                                             </td>

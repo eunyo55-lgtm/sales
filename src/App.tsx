@@ -39,21 +39,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans relative">
-      {/* Background ambient gradient for glassmorphism effect */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none" />
+      {/* Ambient background removed for cleaner minimalist look */}
 
       {/* Sidebar - Glassmorphism Light */}
       <aside className={`relative z-20 bg-white/70 backdrop-blur-xl border-r border-white/60 transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] flex-shrink-0 ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
         <div className="w-64 h-full relative flex flex-col">
           <div className="p-6 pb-2">
             <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
-                <span className="text-xl text-white">🚀</span>
+              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
+                <span className="text-xl font-bold text-white tracking-widest">C</span>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-[17px] font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-900 to-slate-700 whitespace-nowrap leading-tight tracking-tight">OzKiz Analytics</h1>
-                <p className="text-[11px] font-semibold text-indigo-400 tracking-wider uppercase mt-0.5">by OzKiz Pro</p>
+                <h1 className="text-[17px] font-extrabold text-slate-800 whitespace-nowrap leading-tight tracking-tight">Coupang Analytics</h1>
+                <p className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">Manager Pro</p>
               </div>
             </div>
           </div>
@@ -77,14 +75,14 @@ function App() {
                     onClick={() => setActiveTab(item.id as any)}
                     className={`group w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all duration-300 overflow-hidden relative ${
                       isActive
-                        ? 'bg-white border border-slate-100 text-indigo-600 font-bold'
-                        : 'text-slate-500 hover:bg-white/50 hover:text-slate-800 font-medium hover:translate-x-1'
+                        ? 'bg-slate-800 text-white font-bold'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 font-medium hover:translate-x-1'
                     }`}
                   >
-                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-md"></div>}
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-400 rounded-r-md"></div>}
                     <div className="flex items-center space-x-3 z-10 w-full">
                       {item.icon ? (
-                        <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-colors ${isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-500'}`} />
+                        <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-500'}`} />
                       ) : (
                         <span className="text-lg w-[18px] text-center">{item.emoji}</span>
                       )}
