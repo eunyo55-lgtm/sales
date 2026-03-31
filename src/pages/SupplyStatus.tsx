@@ -313,6 +313,9 @@ export default function SupplyStatus() {
             {/* Incoming Stock Animation Widget */}
             <IncomingStockWidget products={products} />
 
+            {/* Incoming Timeline Widget */}
+            <IncomingTimeline orders={orders} barcodeMap={barcodeMap} />
+
             {/* Stat Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard title="총 발주액" value={totalOrderAmount} unit="원" icon={<Package className="text-blue-500" />} />
@@ -738,6 +741,78 @@ function IncomingStockWidget({ products }: { products: ProductStats[] }) {
             {/* Road decoration */}
             <div className="absolute left-0 bottom-0 w-full h-[3px] bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-50 z-0"></div>
             <div className="absolute left-10 bottom-0 w-[40px] h-[3px] bg-sky-400 opacity-30 z-0 animate-[ping_3s_infinite]"></div>
+        </div>
+    );
+}
+
+function IncomingTimeline({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
+    const timelineData = useMemo(() => {
+        const groups: Record<string, any[]> = {};
+        
+        orders.forEach(o => {
+            // Logic: Received is 0 and Confirmed is >= 1
+            if ((o.received_qty || 0) === 0 && (o.confirmed_qty || 0) >= 1) {
+                const date = o.order_date;
+                if (!groups[date]) groups[date] = [];
+                groups[date].push(o);
+            }
+        });
+
+        return Object.entries(groups)
+            .map(([date, items]) => ({ date, items }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+    }, [orders]);
+
+    if (timelineData.length === 0) return null;
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+                <div className="p-2 bg-emerald-50 text-emerald-500 rounded-lg">
+                    <Calendar size={18} />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700">날짜별 입고 예정 일정</h3>
+            </div>
+
+            <div className="flex overflow-x-auto space-x-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
+                {timelineData.map((group) => (
+                    <div key={group.date} className="flex-shrink-0 w-80 bg-slate-50/50 rounded-xl border border-gray-100 overflow-hidden flex flex-col">
+                        <div className="bg-slate-100/80 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                            <span className="text-sm font-bold text-slate-700">{group.date}</span>
+                            <span className="text-[11px] bg-white px-2 py-0.5 rounded-full border border-gray-200 text-slate-500">
+                                {group.items.length} 품목
+                            </span>
+                        </div>
+                        <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[300px]">
+                            {group.items.map((item, idx) => {
+                                const meta = barcodeMap.get(item.barcode);
+                                return (
+                                    <div key={`${item.barcode}-${idx}`} className="bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-slate-50 rounded border border-gray-100 flex-shrink-0 overflow-hidden">
+                                            {meta?.image ? (
+                                                <img src={meta.image} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                    <Package size={16} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[12px] font-medium text-slate-700 truncate">{meta?.name || item.barcode}</p>
+                                            <p className="text-[10px] text-slate-400 truncate">{meta?.option || '-'}</p>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <span className="text-[11px] font-bold text-sky-500">
+                                                    {item.confirmed_qty?.toLocaleString()}개 확정
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
