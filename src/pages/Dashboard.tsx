@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
@@ -30,7 +30,6 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!loading && data && data.anchorDate) {
-            // Initial load only if trend dates are not set
             if (!trendStartDate) {
                 const d = new Date(data.anchorDate);
                 const start = new Date(d);
@@ -41,13 +40,11 @@ export default function Dashboard() {
                 setTrendEndDate(data.anchorDate);
                 setStartDate(startStr);
                 setEndDate(data.anchorDate);
-
-                // Instead of fetching custom trends, just clear it to use data.trends.daily
                 setCustomTrendData([]);
                 api.getDashboardCombinedRankings(startStr, data.anchorDate).then(setCombinedRankings);
             }
         }
-    }, [loading, data]); // Only run when main data is ready or anchorDate changes
+    }, [loading, data]);
 
     const loadTrendData = async () => {
         setLoadingTrend(true);
@@ -66,10 +63,8 @@ export default function Dashboard() {
         setLoadingRankings(true);
         setDisplayLimit(10);
         try {
-            console.time('[Dashboard] Load Rankings');
             const list = await api.getDashboardCombinedRankings(startDate, endDate);
             setCombinedRankings(list); 
-            console.timeEnd('[Dashboard] Load Rankings');
         } catch(e) { 
             console.error("[Dashboard] Rankings load failed:", e); 
             setCombinedRankings([]);
@@ -81,7 +76,6 @@ export default function Dashboard() {
     const loadData = async () => {
         try {
             const result = await api.getDashboardAnalytics();
-            console.log("Dashboard Data:", result);
             setData(result);
         } catch (error: any) {
             console.error("Failed to load dashboard data", error);
@@ -121,7 +115,6 @@ export default function Dashboard() {
     }, [sortedRankings, displayLimit]);
 
     const filteredDailyTrends = useMemo(() => {
-        // Use custom loaded trend data if available, otherwise fallback to initial data
         if (customTrendData && customTrendData.length > 0) return customTrendData;
         return data?.trends?.daily || [];
     }, [data, customTrendData]);
@@ -141,24 +134,29 @@ export default function Dashboard() {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <Loader2 className="animate-spin text-blue-500" size={48} />
+                <div className="relative">
+                    <Loader2 className="animate-spin text-indigo-500 relative z-10" size={64} strokeWidth={2.5}/>
+                    <div className="absolute inset-0 bg-indigo-400 blur-xl opacity-30 rounded-full animate-pulse"></div>
+                </div>
             </div>
         );
     }
 
     if (!data) {
         return (
-            <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] text-gray-400">
-                <AlertCircle size={48} className="mb-4" />
-                <p>데이터를 불러올 수 없습니다.</p>
-                <p className="text-sm">엑셀 파일을 업로드해주세요.</p>
+            <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] text-slate-400">
+                <div className="bg-white/60 p-10 rounded-3xl border border-white/50 shadow-xl backdrop-blur-md flex flex-col items-center">
+                    <AlertCircle size={64} className="mb-6 text-rose-400 drop-shadow-sm" />
+                    <h3 className="text-xl font-bold text-slate-700 mb-2">데이터를 불러올 수 없습니다.</h3>
+                    <p className="text-sm font-medium">초기 엑셀 데이터를 먼저 업로드해 주세요.</p>
+                </div>
             </div>
         );
     }
 
     const { metrics, anchorDate } = data;
 
-    const StatCard = ({ title, value, amount, sub, icon: Icon, colorClass, yoyValue }: any) => {
+    const StatCard = ({ title, value, amount, sub, icon: Icon, colorTheme, yoyValue }: any) => {
         let yoyEl = null;
         if (yoyValue !== undefined && yoyValue !== null) {
             const diff = value - yoyValue;
@@ -167,11 +165,14 @@ export default function Dashboard() {
             const isDown = diff < 0;
 
             yoyEl = (
-                <div className={`mt-2 flex items-center text-sm font-medium ${isUp ? 'text-red-500' : isDown ? 'text-blue-500' : 'text-gray-400'}`}>
-                    <span>전년 동기대비(요일기준)</span>
-                    <span className="ml-1 flex items-center">
-                        {isUp ? '▲' : isDown ? '▼' : '-'} {Math.abs(diff).toLocaleString()}건
-                        {value > 0 || yoyValue > 0 ? ` (${isUp ? '+' : ''}${rate.toFixed(1)}%)` : ''}
+                <div className="mt-3 flex items-center text-sm">
+                    <span className="text-slate-400 font-medium">전년도 대비</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full flex items-center font-bold text-xs ${
+                        isUp ? 'bg-emerald-100/80 text-emerald-700' : isDown ? 'bg-rose-100/80 text-rose-700' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                        {isUp ? <ArrowUpRight size={14} className="mr-0.5" /> : isDown ? <ArrowDownRight size={14} className="mr-0.5" /> : null}
+                        {Math.abs(diff).toLocaleString()}건
+                        {rate !== 0 && ` (${isUp ? '+' : ''}${rate.toFixed(1)}%)`}
                     </span>
                 </div>
             );
@@ -180,216 +181,210 @@ export default function Dashboard() {
         const avgCost = data?.avgCost || 0;
         const totalAmount = amount !== undefined ? amount : Math.round(value * avgCost);
 
+        const themeStyles: any = {
+            blue: { gradient: "from-blue-500 to-indigo-600", text: "text-blue-500", bg: "bg-blue-50/50" },
+            green: { gradient: "from-teal-400 to-emerald-500", text: "text-emerald-500", bg: "bg-emerald-50/50" },
+            yellow: { gradient: "from-orange-400 to-amber-500", text: "text-amber-500", bg: "bg-amber-50/50" }
+        };
+
+        const theme = themeStyles[colorTheme] || themeStyles.blue;
+
         return (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-                <div>
-                    <h3 className="text-gray-500 text-sm font-medium mb-1">{title}</h3>
-                    <div className="flex items-baseline space-x-2">
-                        <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
-                        <span className="text-sm font-normal text-gray-400">건</span>
+            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 ease-out relative overflow-hidden">
+                {/* Ambient glow */}
+                <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${theme.gradient} rounded-full opacity-[0.05] group-hover:opacity-[0.15] blur-3xl transition-opacity duration-500 pointer-events-none`} />
+                
+                <div className="flex justify-between items-start relative z-10">
+                    <div className="flex-1">
+                        <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-2">{title}</h3>
+                        <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                            <span className="text-4xl font-extrabold text-slate-800 tracking-tight leading-none">{value.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-slate-400">건</span>
+                        </div>
                         {avgCost > 0 && (
-                            <span className="text-sm font-bold text-blue-500 ml-2">
-                                (약 {totalAmount.toLocaleString()}원)
-                            </span>
+                            <div className="mt-1.5">
+                                <span className={`text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r ${theme.gradient}`}>
+                                    약 {totalAmount.toLocaleString()}원
+                                </span>
+                            </div>
                         )}
+                        {sub && <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100/50 inline-block px-2 py-1 rounded-md">{sub}</p>}
+                        {yoyEl}
                     </div>
-                    {sub && <p className="text-sm text-gray-400 mt-1">{sub}</p>}
-                    {yoyEl}
-                </div>
-                <div className={`p-3 rounded-full ${colorClass}`}>
-                    <Icon size={24} />
+                    <div className={`p-4 rounded-2xl ${theme.bg} shadow-inner`}>
+                        <Icon size={28} className={theme.text} strokeWidth={2.5}/>
+                    </div>
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="space-y-6 pb-10 relative">
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
-            </div>
-
-            {/* Top Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-8 pb-12">
+            {/* Top Stat Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
-                    title="최신 일자 판매량"
+                    title="최신 일자 판매"
                     value={metrics.yesterday}
                     amount={metrics.yesterdayAmount}
                     yoyValue={metrics.yesterdayPrevYear}
-                    sub={anchorDate ? `${anchorDate} 기준 (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
+                    sub={anchorDate ? `${anchorDate} (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
                     icon={TrendingUp}
-                    colorClass="bg-blue-50 text-blue-600"
+                    colorTheme="blue"
                 />
                 <StatCard
-                    title="주간 판매량 (금~목)"
+                    title="주간 판매 누적"
                     value={metrics.weekly}
                     amount={metrics.weeklyAmount}
                     yoyValue={metrics.weeklyPrevYear}
                     sub={`FC: ${metrics.fcWeekly?.toLocaleString() || 0} / VF: ${metrics.vfWeekly?.toLocaleString() || 0}`}
                     icon={Calendar}
-                    colorClass="bg-green-50 text-green-600"
+                    colorTheme="green"
                 />
                 <StatCard
-                    title="연간 판매량 (올해)"
+                    title="2026 연간 스코어"
                     value={metrics.yearly}
                     amount={metrics.yearlyAmount}
                     yoyValue={metrics.yearlyPrevYear}
-                    sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적`}
+                    sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적 실적`}
                     icon={Trophy}
-                    colorClass="bg-yellow-50 text-yellow-600"
+                    colorTheme="yellow"
                 />
             </div>
 
-            {/* Daily Trend Chart */}
-            <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-[350px] flex flex-col">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                        <h3 className="font-bold text-gray-800 flex items-center">
-                            <Activity size={18} className="mr-2 text-blue-500" />
-                            일별 판매 추이
-                        </h3>
-                        <div className="flex items-center space-x-2 text-sm">
-                            <CustomDatePicker 
-                                value={trendStartDate} 
-                                onChange={setTrendStartDate} 
-                                disabled={loadingTrend}
-                            />
-                            <span className="text-gray-400">~</span>
-                            <CustomDatePicker 
-                                value={trendEndDate} 
-                                onChange={setTrendEndDate} 
-                                disabled={loadingTrend}
-                            />
-                            <button 
-                                onClick={loadTrendData} 
-                                title="조회"
-                                disabled={loadingTrend || !trendStartDate || !trendEndDate}
-                                className={`p-1.5 text-gray-400 hover:text-blue-600 transition-colors ml-1 ${loadingTrend ? 'animate-spin' : ''}`}
-                            >
-                                <RefreshCw size={14} />
-                            </button>
+            {/* Daily Trend Chart (Glassmorphism) */}
+            <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.06)] transition-shadow duration-500">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-xl font-extrabold text-slate-800 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-600">
+                        <Activity size={22} className="mr-2 text-indigo-500 stroke-[2.5px]" />
+                        판매 다이내믹 뷰
+                    </h3>
+                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-white shadow-sm gap-2">
+                        <CustomDatePicker value={trendStartDate} onChange={setTrendStartDate} disabled={loadingTrend} />
+                        <span className="text-slate-300 font-bold px-1">~</span>
+                        <CustomDatePicker value={trendEndDate} onChange={setTrendEndDate} disabled={loadingTrend} />
+                        <button 
+                            onClick={loadTrendData} 
+                            disabled={loadingTrend || !trendStartDate || !trendEndDate}
+                            className={`p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full transition-all ml-1 ${loadingTrend ? 'animate-spin' : 'hover:scale-105 active:scale-95'}`}
+                        >
+                            <RefreshCw size={16} strokeWidth={2.5}/>
+                        </button>
+                    </div>
+                </div>
+                <div className="relative h-[380px] w-full">
+                    {loadingTrend && (
+                        <div className="absolute inset-0 z-10 bg-white/40 backdrop-blur-[2px] rounded-xl flex justify-center items-center">
+                            <Loader2 className="animate-spin text-indigo-500" size={40} strokeWidth={2.5} />
                         </div>
-                    </div>
-                    <div className="relative flex-1 min-h-0">
-                        {loadingTrend && (
-                            <div className="absolute inset-0 z-10 bg-white/50 flex justify-center items-center">
-                                <Loader2 className="animate-spin text-blue-500" size={32} />
-                            </div>
-                        )}
-                        <ResponsiveContainer width="100%" height="100%" className="-ml-4">
-                            <LineChart data={filteredDailyTrends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                <CartesianGrid stroke="#f0f0f0" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={({ x, y, payload }) => (
-                                        <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#dc2626" : "#666"} fontSize={12}>
-                                            {payload.value}
-                                        </text>
-                                    )}
-                                />
-                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                <Legend />
-                                <Line type="monotone" dataKey="quantity" name="26년 판매량" stroke="#3b82f6" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                                <Line type="monotone" dataKey="prevYearQuantity" name="25년 판매량" stroke="#a855f7" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2 }} opacity={0.7} />
-                                <Line type="monotone" dataKey="prev2YearQuantity" name="24년 판매량" stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 3" dot={{ r: 2 }} opacity={0.5} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                    )}
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={filteredDailyTrends} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
+                            <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                fontSize={11}
+                                fontWeight={600}
+                                tickLine={false}
+                                axisLine={false}
+                                tick={({ x, y, payload }) => (
+                                    <text x={x} y={y} dy={20} textAnchor="middle" fill={isRedDay(payload.value) ? "#ef4444" : "#64748b"} fontSize={11}>
+                                        {payload.value}
+                                    </text>
+                                )}
+                            />
+                            <YAxis fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
+                            />
+                            <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
+                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#4f46e5" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 8, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#ec4899" strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 3, fill: '#ec4899' }} opacity={0.8} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#f59e0b" strokeWidth={2.5} strokeDasharray="3 3" dot={{ r: 3, fill: '#f59e0b' }} opacity={0.6} />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
 
             {/* Combined Rankings Row (Unified Best 10) */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-auto">
-                <div className="p-4 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-2">
-                        <Trophy size={18} className="text-yellow-500" />
-                        <h3 className="font-bold text-gray-800">판매베스트</h3>
+            <div className="bg-white/70 backdrop-blur-xl rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60 flex flex-col h-auto overflow-hidden">
+                <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
+                    <div className="flex items-center space-x-3">
+                        <div className="bg-amber-100 p-2 rounded-xl text-amber-500 shadow-inner">
+                            <Trophy size={20} className="stroke-[2.5px]"/>
+                        </div>
+                        <h3 className="text-lg font-extrabold text-slate-800">퍼포먼스 랭킹 보드</h3>
                         <button 
                             onClick={() => setShowAmountGroups(!showAmountGroups)}
-                            className={`ml-4 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors duration-200 ${showAmountGroups ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            className={`ml-3 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+                                showAmountGroups 
+                                ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-white border border-slate-200'
+                            }`}
                         >
-                            {showAmountGroups ? '판매액 숨기기 (간략히)' : '판매액 보기 (상세히)'}
+                            {showAmountGroups ? '판매액 옵션 OFF' : '판매액 옵션 ON'}
                         </button>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm">
-                        <CustomDatePicker 
-                            value={startDate} 
-                            onChange={setStartDate} 
-                            disabled={loadingRankings}
-                        />
-                        <span className="text-gray-400">~</span>
-                        <CustomDatePicker 
-                            value={endDate} 
-                            onChange={setEndDate} 
-                            disabled={loadingRankings}
-                        />
+                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full shadow-sm gap-2 border border-slate-100">
+                        <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
+                        <span className="text-slate-300 font-bold px-1">~</span>
+                        <CustomDatePicker value={endDate} onChange={setEndDate} disabled={loadingRankings} />
                         <button 
                             onClick={loadCombinedRankings} 
-                            title="조회"
                             disabled={loadingRankings || !startDate || !endDate}
-                            className={`p-1.5 text-gray-400 hover:text-blue-600 transition-colors ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
+                            className={`p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
                         >
-                            <RefreshCw size={14} />
+                            <RefreshCw size={14} strokeWidth={2.5}/>
                         </button>
                     </div>
                 </div>
                 
-                <div className="overflow-x-auto p-2">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="text-sm text-gray-500 bg-gray-50">
+                        <thead className="text-[13px] font-bold text-slate-500 bg-slate-50/80 sticky top-0 backdrop-blur-md">
                             <tr>
-                                <th className="px-4 py-3 text-center w-12 border-r border-gray-100">순위</th>
-                                <th className="px-4 py-3 border-r border-gray-100 min-w-[200px]">상품명</th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_2y')}>
-                                    24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">Rank</th>
+                                <th className="px-5 py-4 tracking-wider uppercase">Product</th>
+                                <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_2y')}>
+                                    '24 Quantity {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('qty_1y')}>
-                                    25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('qty_1y')}>
+                                    '25 Quantity {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 border-r border-gray-100" onClick={() => handleSort('qty_0y')}>
-                                    26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                <th className="px-5 py-4 text-right cursor-pointer text-indigo-700 hover:text-indigo-900 transition-colors" onClick={() => handleSort('qty_0y')}>
+                                    '26 Quantity {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 {showAmountGroups && (
                                     <>
-                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_2y')}>
-                                            24년 판매액 {sortKey === 'amt_2y' && (sortDesc ? '▼' : '▲')}
+                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
+                                            '24 Revenue
                                         </th>
-                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_1y')}>
-                                            25년 판매액 {sortKey === 'amt_1y' && (sortDesc ? '▼' : '▲')}
+                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('amt_1y')}>
+                                            '25 Revenue
                                         </th>
-                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-blue-600" onClick={() => handleSort('amt_0y')}>
-                                            26년 판매액 {sortKey === 'amt_0y' && (sortDesc ? '▼' : '▲')}
+                                        <th className="px-5 py-4 text-right cursor-pointer text-blue-700 transition-colors" onClick={() => handleSort('amt_0y')}>
+                                            '26 Revenue
                                         </th>
                                     </>
                                 )}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-blue-50/80 font-bold border-b-2 border-blue-100">
-                                    <td colSpan={2} className="px-4 py-1.5 text-center text-blue-800 border-r border-blue-100 text-sm">전체 합계</td>
-                                    <td className="px-4 py-1.5 text-right text-gray-800 text-sm">
-                                        {totals.qty_2y.toLocaleString()}건
-                                    </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-800 text-sm">
-                                        {totals.qty_1y.toLocaleString()}건
-                                    </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-900 border-r border-blue-100 text-sm">
-                                        {totals.qty_0y.toLocaleString()}건
-                                    </td>
+                                <tr className="bg-indigo-50/80 font-extrabold border-b border-indigo-100 backdrop-blur-sm">
+                                    <td colSpan={2} className="px-5 py-3 text-center text-indigo-900 border-r border-indigo-100/50 uppercase tracking-widest text-xs">Total Insights</td>
+                                    <td className="px-5 py-3 text-right text-slate-600">{totals.qty_2y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-600">{totals.qty_1y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-indigo-700 text-[15px]">{totals.qty_0y.toLocaleString()}건</td>
                                     {showAmountGroups && (
                                         <>
-                                            <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
+                                            <td className="px-5 py-3 text-right text-slate-500 border-l border-indigo-100/50">
                                                 {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
                                             </td>
-                                            <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
+                                            <td className="px-5 py-3 text-right text-slate-500">
                                                 {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
                                             </td>
-                                            <td className="px-4 py-1.5 text-right text-blue-700 text-sm">
+                                            <td className="px-5 py-3 text-right text-blue-700 text-[15px]">
                                                 {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
                                             </td>
                                         </>
@@ -397,56 +392,58 @@ export default function Dashboard() {
                                 </tr>
                             )}
                             {loadingRankings ? (
-                                <tr><td colSpan={8} className="text-center py-10"><Loader2 className="animate-spin text-blue-500 mx-auto" size={24} /></td></tr>
+                                <tr><td colSpan={8} className="text-center py-16"><Loader2 className="animate-spin text-indigo-500 mx-auto" size={32} strokeWidth={2.5}/></td></tr>
                             ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
                                 const yoyDiff = item.qty_0y - item.qty_1y;
                                 
                                 return (
-                                <tr key={item.name} className="hover:bg-gray-50 transition-colors border-b border-gray-50">
-                                    <td className="px-4 py-3 text-center font-medium text-gray-600 border-r border-gray-100 text-sm">
+                                <tr key={item.name} className="group hover:bg-white transition-all bg-slate-50/20 duration-200">
+                                    <td className="px-5 py-3.5 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
+                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-extrabold text-white shadow-md ${
+                                                idx === 0 ? 'bg-gradient-to-br from-amber-300 to-amber-500 shadow-amber-500/30' : 
+                                                idx === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 shadow-slate-500/30' : 
+                                                'bg-gradient-to-br from-orange-300 to-orange-500 shadow-orange-500/30'
+                                            }`}>
                                                 {idx + 1}
                                             </span>
-                                        ) : idx + 1}
+                                        ) : (
+                                            <span className="font-bold text-slate-400">{idx + 1}</span>
+                                        )}
                                     </td>
-                                    <td className="px-4 py-3 border-r border-gray-100 text-sm">
+                                    <td className="px-5 py-3.5 border-r border-slate-50 text-sm">
                                         <div className="flex items-center space-x-4">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-16 h-16 rounded-md bg-gray-100 object-cover flex-none border border-gray-200" />
+                                                <img src={item.imageUrl} alt="" className="w-14 h-14 rounded-xl bg-white object-cover flex-none shadow-sm border border-slate-100 group-hover:scale-110 transition-transform duration-300" />
                                             ) : (
-                                                <div className="w-16 h-16 rounded-md bg-gray-100 flex-none border border-gray-200" />
+                                                <div className="w-14 h-14 rounded-xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
-                                            <p className="font-semibold text-gray-800 break-words whitespace-normal leading-snug">{item.name}</p>
+                                            <p className="font-bold text-slate-800 break-words whitespace-normal leading-snug hover:text-indigo-600 transition-colors cursor-pointer">{item.name}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-600 font-medium text-sm">
-                                        {(item.qty_2y || 0).toLocaleString()}건
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-gray-600 font-medium text-sm">
-                                        {(item.qty_1y || 0).toLocaleString()}건
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-gray-900 font-bold border-r border-gray-100 text-sm">
-                                        {(item.qty_0y || 0).toLocaleString()}건
+                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_2y.toLocaleString()}</td>
+                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_1y.toLocaleString()}</td>
+                                    <td className="px-5 py-3.5 text-right font-extrabold text-slate-800 text-[15px]">
+                                        {item.qty_0y.toLocaleString()}
                                         {yoyDiff !== 0 && (
-                                            <div className={`text-sm mt-0.5 ${yoyDiff > 0 ? 'text-red-500' : 'text-blue-500'} font-medium`}>
-                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}건
+                                            <div className={`text-xs mt-1 px-1.5 py-0.5 inline-block rounded-md ${yoyDiff > 0 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'} font-bold`}>
+                                                {yoyDiff > 0 ? '▲' : '▼'} {Math.abs(yoyDiff).toLocaleString()}
                                             </div>
                                         )}
                                     </td>
                                     {showAmountGroups && (
                                         <>
-                                            <td className="px-4 py-3 text-right text-gray-500 text-sm">
-                                                {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() + '원' : '-'}
+                                            <td className="px-5 py-3.5 text-right text-slate-400 font-medium border-l border-slate-50">
+                                                {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() : '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-right text-gray-500 text-sm">
-                                                {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() + '원' : '-'}
+                                            <td className="px-5 py-3.5 text-right text-slate-400 font-medium">
+                                                {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() : '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
-                                                {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
+                                            <td className="px-5 py-3.5 text-right text-indigo-700 font-bold">
+                                                {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() : '-'}
                                                 {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
-                                                    <div className={`text-sm mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
-                                                        {(item.qty_0y - item.qty_1y) > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}원
+                                                    <div className={`text-xs mt-1 ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'} font-semibold`}>
+                                                        {yoyDiff > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}
                                                     </div>
                                                 )}
                                             </td>
@@ -454,15 +451,21 @@ export default function Dashboard() {
                                     )}
                                 </tr>
                             )}) : (
-                                <tr><td colSpan={8} className="text-center py-10 text-gray-400">데이터 없음</td></tr>
+                                <tr><td colSpan={8} className="text-center py-16 text-slate-400 font-medium">데이터가 없습니다.</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
                 {displayLimit < sortedRankings.length && (
-                    <div className="flex justify-center p-3 bg-gray-50 border-t border-gray-100 rounded-b-xl">
-                        <button onClick={() => setDisplayLimit(p => p + 10)} className="px-6 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
-                            더 보기 (+10) <span className="ml-1 text-gray-400 font-normal">({displayLimit} / {sortedRankings.length})</span>
+                    <div className="flex justify-center p-4 bg-white/50 backdrop-blur-md border-t border-white rounded-b-[24px]">
+                        <button 
+                            onClick={() => setDisplayLimit(p => p + 10)} 
+                            className="group px-6 py-2.5 bg-white border border-slate-200 shadow-sm rounded-full text-sm font-bold text-indigo-600 hover:bg-slate-50 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                        >
+                            더 보기 (+10) 
+                            <span className="text-slate-400 font-medium text-xs bg-slate-100 px-2 py-0.5 rounded-full group-hover:bg-slate-200 transition-colors">
+                                {displayLimit} / {sortedRankings.length}
+                            </span>
                         </button>
                     </div>
                 )}
