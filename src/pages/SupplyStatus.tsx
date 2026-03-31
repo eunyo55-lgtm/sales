@@ -705,36 +705,36 @@ function StatCard({ title, value, unit, icon, isPercent = false }: { title: stri
 function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeMap: Map<string, any> }) {
     const timelineData = useMemo(() => {
         const groups: Record<string, any[]> = {};
-        const now = new Date();
-        const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        const today = kstNow.toISOString().split('T')[0];
+        const kstNow = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        kstNow.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
         
         orders.forEach(o => {
             const confirmedQty = Number(o.confirmed_qty || 0);
             const receivedQty = Number(o.received_qty || 0);
             
-            // Normalize date format from YYYY.MM.DD to YYYY-MM-DD
-            const normalizedDate = o.order_date ? o.order_date.replace(/\./g, '-') : '';
+            // Handle both YYYY.MM.DD and YYYY-MM-DD
+            const orderDateStr = (o.order_date || '').replace(/\./g, '-');
+            const orderDate = new Date(orderDateStr);
+            orderDate.setHours(0, 0, 0, 0);
 
-            // Fetch pending orders (received = 0 or null)
-            if (receivedQty === 0 && confirmedQty >= 1 && normalizedDate >= today) {
-                const date = normalizedDate;
+            // Logic: Received is 0, Confirmed >= 1, and Future/Today date
+            if (receivedQty === 0 && confirmedQty >= 1 && orderDate >= kstNow) {
+                const dateKey = orderDateStr; // Keep original-ish string for key
                 const meta = barcodeMap.get(o.barcode);
                 const name = meta?.name || o.barcode || 'Unknown';
                 
-                if (!groups[date]) groups[date] = [];
+                if (!groups[dateKey]) groups[dateKey] = [];
                 
-                const existing = groups[date].find(item => item.name === name);
+                const existing = groups[dateKey].find(item => item.name === name);
                 if (existing) {
                     existing.confirmed_qty += confirmedQty;
-                    // Add to detailed breakdown for hover
                     existing.details.push({
                         option: meta?.option || 'Default',
                         qty: confirmedQty,
                         barcode: o.barcode
                     });
                 } else {
-                    groups[date].push({ 
+                    groups[dateKey].push({ 
                         ...o, 
                         name,
                         confirmed_qty: confirmedQty,
@@ -757,76 +757,78 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
     if (timelineData.length === 0) return null;
 
     return (
-        <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-3xl shadow-sm border border-gray-100 relative overflow-visible my-12">
-            <div className="flex items-center justify-between mb-10 relative z-10">
-                <h3 className="text-[20px] font-bold text-slate-800 flex items-center">
+        <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative my-12 overflow-hidden">
+            <div className="flex items-center justify-between mb-10 relative z-10 px-2">
+                <h3 className="text-[22px] font-black text-slate-800 flex items-center tracking-tight">
                     <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center mr-4 shadow-sm border border-sky-100">
                         <Truck size={24} className="text-sky-500 animate-[bounce_3s_infinite]" />
                     </div>
                     본사 ➔ 쿠팡 <span className="text-sky-500 ml-2">이동 중 상품</span>
                 </h3>
-                <div className="hidden md:block">
-                   <span className="text-[12px] text-slate-400 font-medium bg-white px-4 py-2 rounded-full border border-slate-100 italic">Expected Shipments</span>
+                <div className="hidden md:flex items-center space-x-3">
+                   <div className="flex -space-x-2">
+                       {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center"><div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div></div>)}
+                   </div>
+                   <span className="text-[12px] text-slate-400 font-bold bg-white px-4 py-2 rounded-full border border-slate-100 shadow-sm">Real-time Logistics</span>
                 </div>
             </div>
 
-            <div className="space-y-8 relative z-10">
+            <div className="space-y-6 relative z-10">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="flex flex-col md:flex-row md:items-start gap-6 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] border border-slate-50 transition-all hover:bg-white/90 hover:border-sky-100">
-                        {/* Date Left Column - Larger */}
-                        <div className="md:w-36 flex-shrink-0 flex md:flex-col items-center md:items-start justify-center px-4 py-5 bg-gradient-to-tr from-slate-50 to-white border border-slate-100 rounded-2xl shadow-sm">
-                           <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest mb-1">Expected</p>
-                           <p className="text-lg font-black text-slate-800 tracking-tight">{group.date.substring(5, 10).replace('-', '/')}</p>
-                           <p className="text-[10px] text-sky-400 font-bold mt-1 uppercase">{new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'long'})}</p>
+                    <div key={group.date} className="flex flex-col md:flex-row md:items-stretch gap-6 bg-white/40 backdrop-blur-xl p-3 rounded-[2rem] border border-slate-50/50 transition-all hover:bg-white/90 hover:border-sky-100 hover:shadow-xl hover:shadow-sky-500/5 group/row">
+                        {/* Date Left Column - Fixed Height to match content */}
+                        <div className="md:w-32 flex-shrink-0 flex md:flex-col items-center md:items-center justify-center px-2 py-4 bg-gradient-to-tr from-slate-50 to-white border border-slate-100 rounded-3xl shadow-sm group-hover/row:border-sky-200">
+                           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 opacity-50">Expected</p>
+                           <p className="text-xl font-black text-slate-800 tracking-tighter">{group.date.substring(5, 10).replace('-', '/')}</p>
+                           <p className="text-[10px] text-sky-500 font-bold mt-1 uppercase px-2 py-0.5 bg-sky-50 rounded-full">{new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})}</p>
                         </div>
 
-                        {/* Items Horizontal Scroll - Larger Cards */}
-                        <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide">
-                            <div className="flex space-x-5 items-center py-10">
+                        {/* Items Horizontal Scroll */}
+                        <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar-horizontal overflow-y-visible">
+                            <div className="flex space-x-6 items-center min-h-[140px] py-4 px-2">
                                 {group.items.map((item, idx) => (
-                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white border border-slate-100 p-4 rounded-2xl flex items-center space-x-4 min-w-[260px] max-w-[300px] shadow-sm hover:shadow-md transform transition-all hover:scale-[1.02] hover:border-sky-200 cursor-default">
-                                        <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100 p-0.5">
+                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white border border-slate-100 p-4 rounded-3xl flex items-center space-x-4 min-w-[280px] max-w-[320px] shadow-sm hover:shadow-lg transform transition-all hover:-translate-y-1 hover:border-sky-300 cursor-default">
+                                        <div className="w-16 h-16 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 p-1">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <Package size={20} className="text-slate-200" />
+                                                    <Package size={24} className="text-slate-200" />
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-black text-slate-700 truncate mb-1">{item.name}</p>
+                                            <p className="text-[14px] font-black text-slate-800 truncate mb-1 pr-2">{item.name}</p>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-slate-400 font-bold flex items-center opacity-60">
-                                                    <div className="w-1 h-1 bg-sky-400 rounded-full mr-1.5"></div>
-                                                    상세 보기 (Hover)
-                                                </span>
-                                                <span className="text-[13px] font-black text-sky-500 bg-sky-50 px-2 py-0.5 rounded-lg border border-sky-100/50">
+                                                <div className="flex items-center space-x-1">
+                                                   <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse"></span>
+                                                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Hover to detail</span>
+                                                </div>
+                                                <span className="text-[14px] font-black text-sky-600 bg-sky-50/50 px-3 py-1 rounded-xl border border-sky-100">
                                                     +{item.confirmed_qty.toLocaleString()}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Hover Tooltip - Improved Visibility */}
-                                        <div className="hidden group-hover/card:block absolute bottom-full left-0 mb-4 z-[100] bg-slate-900/95 backdrop-blur text-white p-4 rounded-2xl shadow-2xl border border-white/10 min-w-[240px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
-                                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-2.5">
-                                                <p className="text-[11px] font-black text-sky-400 uppercase tracking-tighter">Option Breakdown</p>
-                                                <p className="text-[10px] text-white/50">{item.details.length} SKU</p>
+                                        {/* Hover Tooltip - Positioned carefully to not clip */}
+                                        <div className="hidden group-hover/card:block absolute bottom-full left-0 mb-5 z-[100] bg-slate-900/95 backdrop-blur-md text-white p-5 rounded-[2rem] shadow-2xl border border-white/10 min-w-[260px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                                            <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-3">
+                                                <p className="text-[11px] font-black text-sky-400 uppercase tracking-widest flex items-center"><Truck size={12} className="mr-2" /> Breakdown</p>
+                                                <div className="bg-white/10 px-2 py-0.5 rounded text-[9px] text-white/50">{item.details.length} SKUs</div>
                                             </div>
-                                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                            <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
                                                 {item.details.map((d: any, dIdx: number) => (
                                                     <div key={dIdx} className="flex justify-between items-center text-[11px]">
-                                                        <span className="text-white/70 font-medium truncate max-w-[150px]">{d.option}</span>
-                                                        <span className="font-bold text-sky-400 ml-3">+{d.qty.toLocaleString()}</span>
+                                                        <span className="text-white/60 font-medium truncate max-w-[160px]">{d.option}</span>
+                                                        <span className="font-extrabold text-sky-400 ml-4 tracking-tighter">+{d.qty.toLocaleString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-3 pt-3 border-t border-white/10 flex justify-between text-[12px] font-black">
-                                                <span className="text-white/40">Total Confirmed</span>
-                                                <span className="text-white text-lg">{item.confirmed_qty.toLocaleString()}</span>
+                                            <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-baseline">
+                                                <span className="text-[11px] font-bold text-white/30 uppercase">Total Sum</span>
+                                                <span className="text-xl font-black text-white tracking-tighter">{item.confirmed_qty.toLocaleString()}<span className="text-[10px] ml-1 opacity-50 font-normal">건</span></span>
                                             </div>
-                                            {/* Tooltip Arrow */}
-                                            <div className="absolute top-full left-6 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-slate-900/95"></div>
+                                            <div className="absolute top-full left-10 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-slate-900/95"></div>
                                         </div>
                                     </div>
                                 ))}
@@ -836,9 +838,42 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 ))}
             </div>
 
-            <div className="absolute right-0 bottom-0 opacity-[0.03] pointer-events-none transform translate-x-12 translate-y-12">
-                <Truck size={300} />
+            {/* Truck Animation "Road" at the bottom */}
+            <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center relative overflow-hidden h-20 group">
+                <div className="w-full h-[2px] bg-slate-100 flex justify-between items-center relative">
+                    {/* Highway dashed lines */}
+                    <div className="absolute inset-0 flex justify-around items-center px-4">
+                        {[...Array(10)].map((_, i) => <div key={i} className="w-8 h-full bg-white"></div>)}
+                    </div>
+                    {/* The Driving Truck */}
+                    <div className="absolute left-0 -translate-y-1/2 animate-[drive_15s_linear_infinite] pointer-events-none">
+                       <div className="relative">
+                          <Truck size={32} className="text-sky-400 fill-sky-50" />
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-rose-400 rounded-full animate-ping"></div>
+                          <div className="absolute -bottom-1 left-2 w-1 h-1 bg-slate-400 rounded-full animate-bounce"></div>
+                       </div>
+                    </div>
+                </div>
+                <div className="mt-6 flex items-center space-x-2 opacity-30">
+                   <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Coupang Logistics Center Transit</p>
+                   <div className="w-22 h-[1px] bg-slate-200"></div>
+                </div>
             </div>
+
+            <style>{`
+                @keyframes drive {
+                    0% { left: -10%; transform: translateY(-50%) translateX(0); }
+                    100% { left: 110%; transform: translateY(-50%) translateX(0); }
+                }
+                .custom-scrollbar-horizontal::-webkit-scrollbar { height: 6px; }
+                .custom-scrollbar-horizontal::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar-horizontal::-webkit-scrollbar-thumb { 
+                    background: #e2e8f0; 
+                    border-radius: 10px; 
+                }
+                .custom-scrollbar-horizontal::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+            `}</style>
         </div>
     );
 }

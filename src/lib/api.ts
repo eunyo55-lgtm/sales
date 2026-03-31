@@ -1528,18 +1528,16 @@ ${sampleText}
         }
     },
 
-    async getIncomingOrders() {
-        const kstNow = new Date(Date.now() + (9 * 60 * 60 * 1000));
-        const today = kstNow.toISOString().split('T')[0];
-
-        // Fetch pending orders (confirmed >= 1, received = 0 or null) from Today and beyond
+    async getIncomingOrders(limit = 3000) {
+        // Fetch pending orders (confirmed >= 1, received = 0 or null)
+        // Removing the backend date filter to ensure no formatting issues (e.g. dots vs dashes) skip data
         const { data, error } = await supabase
             .from('coupang_orders')
             .select('order_date, barcode, order_qty, confirmed_qty, received_qty, unit_cost, center')
-            .gte('order_date', today)
             .or('received_qty.eq.0,received_qty.is.null')
             .gte('confirmed_qty', 1)
-            .order('order_date', { ascending: true });
+            .order('order_date', { ascending: true })
+            .limit(limit);
 
         if (error) throw error;
         return data || [];
