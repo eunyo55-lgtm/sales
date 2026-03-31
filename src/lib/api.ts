@@ -1617,12 +1617,17 @@ ${sampleText}
      */
     async _callAdProxy(method: string, path: string, params?: object, body?: object) {
         // Use direct fetch to avoid Supabase gateway's automatic Authorization header injection
-        // which was causing 401 Unauthorized errors in the browser.
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        
+        // We need customerId for X-Requested-By header which is mandatory for Ad API
+        // Typically it's passed in params or we can try to extract it
+        const customerId = (params as any)?.customerId || (params as any)?.vendorId || '';
+
         const response = await fetch(`${supabaseUrl}/functions/v1/coupang-ad-proxy`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-By': customerId, // Pass to proxy
             },
             body: JSON.stringify({ method, path, params, body })
         });
@@ -1641,12 +1646,24 @@ ${sampleText}
         return data;
     },
 
-    async getAdSummary() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/summary', { period: 'TODAY' });
+    async getAdSummary(customerId: string) {
+        const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/ad-service/reports/summary', { 
+            customerId,
+            startDate: today, 
+            endDate: today, 
+            reportType: 'SUMMARY' 
+        });
     },
 
-    async getAdProductReport() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/products', { period: 'TODAY' });
+    async getAdProductReport(customerId: string) {
+        const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/ad-service/reports/products', { 
+            customerId,
+            startDate: today, 
+            endDate: today, 
+            reportType: 'PRODUCT' 
+        });
     },
 
     async updateAdBid(adId: string, bid: number) {
@@ -1657,7 +1674,18 @@ ${sampleText}
         return this._callAdProxy('POST', `/v2/providers/openapi/apis/api/v4/campaigns/${campaignId}/excluded-keywords`, undefined, { keyword });
     },
 
-    async getAdKeywordReport() {
-        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/reports/keywords', { period: 'LAST_7_DAYS' });
+    async getAdKeywordReport(customerId: string) {
+        const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const endDate = kstNow.toISOString().split('T')[0];
+        const last7Days = new Date(kstNow);
+        last7Days.setDate(kstNow.getDate() - 7);
+        const startDate = last7Days.toISOString().split('T')[0];
+        
+        return this._callAdProxy('GET', '/v2/providers/openapi/apis/api/v4/ad-service/reports/keywords', { 
+            customerId,
+            startDate, 
+            endDate, 
+            reportType: 'KEYWORD' 
+        });
     }
 };

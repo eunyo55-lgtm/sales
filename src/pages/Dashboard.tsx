@@ -22,6 +22,7 @@ export default function Dashboard() {
     const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
     const [sortDesc, setSortDesc] = useState(true);
     const [displayLimit, setDisplayLimit] = useState(10);
+    const [showAmountGroups, setShowAmountGroups] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -307,6 +308,12 @@ export default function Dashboard() {
                     <div className="flex items-center space-x-2">
                         <Trophy size={18} className="text-yellow-500" />
                         <h3 className="font-bold text-gray-800">판매베스트</h3>
+                        <button 
+                            onClick={() => setShowAmountGroups(!showAmountGroups)}
+                            className={`ml-4 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors duration-200 ${showAmountGroups ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        >
+                            {showAmountGroups ? '판매액 숨기기 (간략히)' : '판매액 보기 (상세히)'}
+                        </button>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                         <CustomDatePicker 
@@ -346,15 +353,19 @@ export default function Dashboard() {
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 border-r border-gray-100" onClick={() => handleSort('qty_0y')}>
                                     26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_2y')}>
-                                    24년 판매액 {sortKey === 'amt_2y' && (sortDesc ? '▼' : '▲')}
-                                </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_1y')}>
-                                    25년 판매액 {sortKey === 'amt_1y' && (sortDesc ? '▼' : '▲')}
-                                </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-blue-600" onClick={() => handleSort('amt_0y')}>
-                                    26년 판매액 {sortKey === 'amt_0y' && (sortDesc ? '▼' : '▲')}
-                                </th>
+                                {showAmountGroups && (
+                                    <>
+                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_2y')}>
+                                            24년 판매액 {sortKey === 'amt_2y' && (sortDesc ? '▼' : '▲')}
+                                        </th>
+                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amt_1y')}>
+                                            25년 판매액 {sortKey === 'amt_1y' && (sortDesc ? '▼' : '▲')}
+                                        </th>
+                                        <th className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 text-blue-600" onClick={() => handleSort('amt_0y')}>
+                                            26년 판매액 {sortKey === 'amt_0y' && (sortDesc ? '▼' : '▲')}
+                                        </th>
+                                    </>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -370,15 +381,19 @@ export default function Dashboard() {
                                     <td className="px-4 py-1.5 text-right text-gray-900 border-r border-blue-100 text-sm">
                                         {totals.qty_0y.toLocaleString()}건
                                     </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
-                                        {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
-                                    </td>
-                                    <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
-                                        {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
-                                    </td>
-                                    <td className="px-4 py-1.5 text-right text-blue-700 text-sm">
-                                        {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
-                                    </td>
+                                    {showAmountGroups && (
+                                        <>
+                                            <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
+                                                {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
+                                            </td>
+                                            <td className="px-4 py-1.5 text-right text-gray-600 text-sm">
+                                                {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
+                                            </td>
+                                            <td className="px-4 py-1.5 text-right text-blue-700 text-sm">
+                                                {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
+                                            </td>
+                                        </>
+                                    )}
                                 </tr>
                             )}
                             {loadingRankings ? (
@@ -419,20 +434,24 @@ export default function Dashboard() {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-500 text-sm">
-                                        {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() + '원' : '-'}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-gray-500 text-sm">
-                                        {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() + '원' : '-'}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
-                                        {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
-                                        {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
-                                            <div className={`text-sm mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
-                                                {(item.qty_0y - item.qty_1y) > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}원
-                                            </div>
-                                        )}
-                                    </td>
+                                    {showAmountGroups && (
+                                        <>
+                                            <td className="px-4 py-3 text-right text-gray-500 text-sm">
+                                                {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() + '원' : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-500 text-sm">
+                                                {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() + '원' : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-blue-600 font-medium text-sm">
+                                                {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() + '원' : '-'}
+                                                {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
+                                                    <div className={`text-sm mt-0.5 ${(item.qty_0y - item.qty_1y) > 0 ? 'text-red-500' : 'text-blue-500'} font-normal`}>
+                                                        {(item.qty_0y - item.qty_1y) > 0 ? '▲' : '▼'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}원
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </>
+                                    )}
                                 </tr>
                             )}) : (
                                 <tr><td colSpan={8} className="text-center py-10 text-gray-400">데이터 없음</td></tr>

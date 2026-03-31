@@ -1,14 +1,20 @@
-import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, Archive, Menu, TrendingUp } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
-import ProductStatus from './pages/ProductStatus';
-import InventoryStatus from './pages/InventoryStatus';
-import SmartOrder from './pages/SmartOrder';
-import SupplyStatus from './pages/SupplyStatus';
-import KeywordRanking from './pages/KeywordRanking';
-import AdManagement from './pages/AdManagement';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { LayoutDashboard, Package, Archive, Menu, TrendingUp, BarChart3 } from 'lucide-react';
 import { DataUploader } from './components/DataUploader';
-import { BarChart3 } from 'lucide-react';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ProductStatus = lazy(() => import('./pages/ProductStatus'));
+const InventoryStatus = lazy(() => import('./pages/InventoryStatus'));
+const SmartOrder = lazy(() => import('./pages/SmartOrder'));
+const SupplyStatus = lazy(() => import('./pages/SupplyStatus'));
+const KeywordRanking = lazy(() => import('./pages/KeywordRanking'));
+const AdManagement = lazy(() => import('./pages/AdManagement'));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-[50vh] w-full">
+    <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+  </div>
+);
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'inventory' | 'smartorder' | 'keyword' | 'supply' | 'advertising'>(() => {
@@ -40,7 +46,7 @@ function App() {
             <div className="flex items-start space-x-2">
               <span className="text-xl">🚀</span>
               <div>
-                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap leading-none pt-1">Coupang Manager V2.1 (최신버전)</h1>
+                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap leading-none pt-1">OzKiz Analytics Pro</h1>
                 <p className="text-xs text-gray-400 font-normal mt-1">by OzKiz</p>
               </div>
             </div>
@@ -157,18 +163,20 @@ function App() {
         </header>
 
         <div className="p-8">
-          {activeTab === 'dashboard' && <Dashboard />}
-          {activeTab === 'products' && <ProductStatus />}
-          {activeTab === 'inventory' && <InventoryStatus />}
-          {activeTab === 'smartorder' && <SmartOrder />}
-          {activeTab === 'keyword' && (
-            <KeywordRanking
-              showKeywordManager={showKeywordManager}
-              setShowKeywordManager={setShowKeywordManager}
-            />
-          )}
-          {activeTab === 'supply' && <SupplyStatus />}
-          {activeTab === 'advertising' && <AdManagement />}
+          <Suspense fallback={<PageLoader />}>
+            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'products' && <ProductStatus />}
+            {activeTab === 'inventory' && <InventoryStatus />}
+            {activeTab === 'smartorder' && <SmartOrder />}
+            {activeTab === 'keyword' && (
+              <KeywordRanking
+                showKeywordManager={showKeywordManager}
+                setShowKeywordManager={setShowKeywordManager}
+              />
+            )}
+            {activeTab === 'supply' && <SupplyStatus />}
+            {activeTab === 'advertising' && <AdManagement />}
+          </Suspense>
         </div>
       </main>
     </div>

@@ -5,7 +5,7 @@ import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-test',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-test, x-requested-by',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 }
@@ -88,12 +88,20 @@ serve(async (req) => {
     const seconds = now.getUTCSeconds().toString().padStart(2, '0');
     const datetime = `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
     
-    // Back to openapi provider which is the most standard
     const targetPath = path;
-    const queryString = params ? new URLSearchParams(params as any).toString() : '';
-    const stringToSign = `${datetime}${method}${targetPath}${queryString}`;
     
-    console.log(`[Proxy] Using openapi, StringToSign: ${stringToSign}`);
+    // Sort query parameters as required by Coupang
+    let queryString = '';
+    if (params) {
+      const searchParams = new URLSearchParams(params as any);
+      searchParams.sort();
+      queryString = searchParams.toString();
+    }
+    
+    const stringToSign = `${datetime}${method}${targetPath}${queryString}`;
+    const xRequestedBy = req.headers.get('x-requested-by') || CUSTOMER_ID || '';
+    
+    console.log(`[Proxy] Using path: ${targetPath}, xRequestedBy: ${xRequestedBy}`);
 
     const encoder = new TextEncoder();
     const key = encoder.encode(SECRET_KEY);
@@ -107,7 +115,8 @@ serve(async (req) => {
       ["sign"]
     );
     const signatureBuffer = await crypto.subtle.sign("HMAC", hmacKey, message);
-    const signature = Array.from(new Uint8Array(signatureBuffer))
+    const signatureArr = new Uint8Array(signatureBuffer);
+    const signature = Array.from(signatureArr)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
@@ -120,8 +129,9 @@ serve(async (req) => {
       method,
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json;charset=UTF-8',
         'Authorization': authHeader,
+        'X-Requested-By': xRequestedBy,
         'X-Customer-Id': CUSTOMER_ID || '',
         'User-Agent': 'Coupang-Open-API-SDK-JS/1.0',
       },

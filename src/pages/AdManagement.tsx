@@ -53,7 +53,7 @@ const AdManagement = () => {
     setError(null);
     try {
       // 1. Fetch Summary
-      const summaryData = await api.getAdSummary();
+      const summaryData = await api.getAdSummary(creds.customerId);
       if (summaryData.error === 'CREDENTIALS_REQUIRED') {
         setError('CREDENTIALS_REQUIRED');
         setShowSettings(true);
@@ -64,12 +64,12 @@ const AdManagement = () => {
       setSummary(summaryData);
 
       // 2. Fetch Product Report
-      const productReport = await api.getAdProductReport();
+      const productReport = await api.getAdProductReport(creds.customerId);
       console.log("Product Report:", productReport);
       setProducts(productReport.items || []);
 
       // 3. Fetch Keyword Report
-      const keywordReport = await api.getAdKeywordReport();
+      const keywordReport = await api.getAdKeywordReport(creds.customerId);
       const lowEffKeywords = (keywordReport.items || [])
         .filter((kw: any) => kw.clicks > 50 && kw.purchases === 0)
         .sort((a: any, b: any) => b.clicks - a.clicks);
