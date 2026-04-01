@@ -358,59 +358,7 @@ export default function Dashboard() {
                     </div>
                 </div>
                 
-                {/* NEW: ScatterChart / Bubble Chart Area */}
-                {!loadingRankings && displayedRankings.length > 0 && (
-                    <div className="p-6 border-b border-slate-100 bg-white">
-                        <div className="mb-4">
-                            <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                                <Sparkles size={16} className="text-amber-500" />
-                                상품별 성장 모멘텀 분석
-                            </h4>
-                            <p className="text-xs text-slate-500 mt-1">X축: '25년 기초체급 / Y축: 올해 성장률 / 원 크기: 올해 누적 매출액 기여도</p>
-                        </div>
-                        <div className="h-[280px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                    <XAxis type="number" dataKey="x" name="25년 판매량" tick={{fontSize: 11, fill: '#94a3b8'}} tickLine={false} axisLine={false} tickFormatter={(v) => v.toLocaleString()} />
-                                    <YAxis type="number" dataKey="y" name="성장률" tick={{fontSize: 11, fill: '#94a3b8'}} tickLine={false} axisLine={false} tickFormatter={(v) => v + '%'} />
-                                    <ZAxis type="number" dataKey="z" range={[50, 800]} name="매출액" />
-                                    <Tooltip 
-                                        cursor={{strokeDasharray: '3 3'}}
-                                        content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                                const d = payload[0].payload;
-                                                return (
-                                                    <div className="bg-white/95 backdrop-blur-md p-3 border border-slate-200 rounded-xl shadow-xl z-50 min-w-[180px]">
-                                                        <p className="font-bold text-sm text-slate-800 mb-2 truncate max-w-[200px]">{d.name}</p>
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <span className="text-xs text-slate-500">성장률</span>
-                                                            <span className={`text-xs font-bold ${d.y > 0 ? 'text-blue-600' : 'text-rose-500'}`}>{d.y > 0 ? '+' : ''}{d.y}%</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <span className="text-xs text-slate-500">전년 대비 판매량</span>
-                                                            <span className="text-xs font-semibold text-slate-700">{d.qty_1y.toLocaleString()} ➔ {d.qty_0y.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
-                                                            <span className="text-xs text-slate-500">올해 누적 매출</span>
-                                                            <span className="text-xs font-semibold text-[#386ed9]">{d.salesAmountStr}원</span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            return null;
-                                        }}
-                                    />
-                                    <Scatter name="상품" data={bubbleData}>
-                                        {bubbleData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.y > 0 ? '#386ed9' : '#f43f5e'} fillOpacity={0.6} />
-                                        ))}
-                                    </Scatter>
-                                </ScatterChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                )}
+
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
@@ -418,14 +366,15 @@ export default function Dashboard() {
                             <tr>
                                 <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
                                 <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
+                                <th className="px-5 py-4 font-semibold text-center w-28 text-slate-400">추세</th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_2y')}>
-                                    '24년<br/>판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                    '24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_1y')}>
-                                    '25년<br/>판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                    '25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer text-slate-900 font-bold border-l border-slate-100 hover:text-black transition-colors bg-blue-50/30" onClick={() => handleSort('qty_0y')}>
-                                    '26년<br/>판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                    '26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 font-bold text-center w-36 text-slate-700 bg-slate-50/80 border-l border-slate-100">올해 성장률 (YoY)</th>
                                 {showAmountGroups && (
@@ -446,10 +395,10 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
                                 <tr className="bg-slate-50/50 font-semibold border-b border-slate-100">
-                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
-                                    <td className="px-5 py-3 text-right text-slate-500">{totals.qty_2y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-slate-500">{totals.qty_1y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-slate-900 font-bold bg-blue-50/20">{totals.qty_0y.toLocaleString()}건</td>
+                                    <td colSpan={3} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
+                                    <td className="px-5 py-3 text-right text-slate-500 text-[13px]">{totals.qty_2y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-500 text-[13px]">{totals.qty_1y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-900 font-bold bg-blue-50/20 text-[13px]">{totals.qty_0y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-center text-slate-400 bg-slate-50/30 border-l border-slate-100 font-normal text-xs">-</td>
                                     {showAmountGroups && (
                                         <>
@@ -489,11 +438,21 @@ export default function Dashboard() {
                                 // Data bar width capped at 100% (absolute for UI width calc)
                                 const dataBarWidth = Math.min(Math.abs(growth), 100);
 
+                                // Sparkline calculation
+                                const maxSparkQty = Math.max(qty_2y, qty_1y, qty_0y, 1);
+                                const yMax = 20;
+                                const pts = [
+                                    `0,${yMax - (qty_2y / maxSparkQty * yMax)}`,
+                                    `30,${yMax - (qty_1y / maxSparkQty * yMax)}`,
+                                    `60,${yMax - (qty_0y / maxSparkQty * yMax)}`
+                                ].join(' ');
+                                const trendColor = qty_0y >= qty_1y ? '#386ed9' : '#f43f5e';
+
                                 return (
                                 <tr key={item.name} className={`group hover:bg-white transition-all duration-300 ${isHighlight ? 'bg-blue-600/5' : 'bg-slate-50/10'}`}>
-                                    <td className="px-5 py-8 text-center border-r border-slate-50">
+                                    <td className="px-5 py-6 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl text-base font-bold ${
+                                            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl text-sm font-bold ${
                                                 idx === 0 ? 'bg-[#386ed9] text-white shadow-lg shadow-blue-200' : 
                                                 idx === 1 ? 'bg-slate-200 text-slate-700' : 
                                                 'bg-slate-100 text-slate-600'
@@ -501,49 +460,57 @@ export default function Dashboard() {
                                                 {idx + 1}
                                             </span>
                                         ) : (
-                                            <span className="font-bold text-slate-300 text-lg">{idx + 1}</span>
+                                            <span className="font-bold text-slate-300 text-base">{idx + 1}</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-8 border-r border-slate-50">
-                                        <div className="flex items-center space-x-6 min-w-[300px]">
+                                    <td className="px-6 py-6 border-r border-slate-50">
+                                        <div className="flex items-center space-x-5 min-w-[280px]">
                                             {item.imageUrl ? (
                                                 <div className="relative flex-none group-hover:scale-105 transition-transform duration-500">
-                                                    <img src={item.imageUrl} alt="" className="w-24 h-24 rounded-2xl bg-white object-cover border border-slate-200 shadow-sm" />
+                                                    <img src={item.imageUrl} alt="" className="w-20 h-20 rounded-2xl bg-white object-cover border border-slate-200 shadow-sm" />
                                                     {isHighlight && (
-                                                        <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1.5 rounded-lg shadow-md animate-bounce">
-                                                            <Sparkles size={14} fill="currentColor" />
+                                                        <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1 rounded-lg shadow-md">
+                                                            <Sparkles size={12} fill="currentColor" />
                                                         </div>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-none border border-slate-100" />
+                                                <div className="w-20 h-20 rounded-2xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
                                             <div className="flex flex-col space-y-1">
-                                                <p className="font-bold text-slate-800 text-[17px] break-words whitespace-normal leading-relaxed cursor-pointer group-hover:text-[#386ed9] transition-colors">{item.name}</p>
-                                                <span className="text-xs text-slate-400 font-medium tracking-tight">Coupang Selection</span>
+                                                <p className="font-bold text-slate-800 text-[15px] break-words whitespace-normal leading-relaxed cursor-pointer group-hover:text-[#386ed9] transition-colors">{item.name}</p>
+                                                <span className="text-[10px] text-slate-400 font-medium tracking-tight uppercase">Coupang Selection</span>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-8 text-right text-slate-500 font-bold text-base">{qty_2y.toLocaleString()}</td>
-                                    <td className="px-5 py-8 text-right text-slate-500 font-bold text-base">{qty_1y.toLocaleString()}</td>
+
+                                    <td className="px-4 py-6 text-center">
+                                        <div className="flex justify-center items-center">
+                                            <svg width="60" height="20" className="overflow-visible">
+                                                <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <circle cx="60" cy={yMax - (qty_0y / maxSparkQty * yMax)} r="2.5" fill={trendColor} />
+                                            </svg>
+                                        </div>
+                                    </td>
+
+                                    <td className="px-5 py-6 text-right text-slate-500 font-semibold text-[13px]">{qty_2y.toLocaleString()}</td>
+                                    <td className="px-5 py-6 text-right text-slate-500 font-semibold text-[13px]">{qty_1y.toLocaleString()}</td>
                                     
-                                    <td className="px-5 py-8 text-right font-black text-slate-900 text-lg bg-blue-50/10 border-l border-slate-50">
+                                    <td className="px-5 py-6 text-right font-bold text-slate-900 text-[14px] bg-blue-50/10 border-l border-slate-50">
                                         {qty_0y.toLocaleString()}
                                     </td>
 
                                     {/* Data Bar Cell for YoY % */}
-                                    <td className="px-5 py-8 relative bg-slate-50/50 border-l border-slate-50 overflow-hidden min-w-[140px]">
-                                        <div className="absolute inset-y-4 left-1/2 right-1/2 flex pointer-events-none opacity-25 z-0">
-                                            {/* Right growing bar (+) */}
+                                    <td className="px-5 py-6 relative bg-slate-50/50 border-l border-slate-50 overflow-hidden min-w-[130px]">
+                                        <div className="absolute inset-y-5 left-1/2 right-1/2 flex pointer-events-none opacity-20 z-0">
                                             {!isNegative && growth > 0 && (
                                                 <div className="h-full bg-blue-600 rounded-r-xl transition-all duration-700 ml-[1px]" style={{ width: `${dataBarWidth}%` }}></div>
                                             )}
-                                            {/* Left growing bar (-) */}
                                             {isNegative && (
                                                 <div className="absolute top-0 bottom-0 right-[1px] h-full bg-rose-600 rounded-l-xl transition-all duration-700" style={{ width: `${dataBarWidth}%` }}></div>
                                             )}
                                         </div>
-                                        <div className={`relative z-10 text-center font-black text-sm tracking-widest ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
+                                        <div className={`relative z-10 text-center font-bold text-[12px] tracking-tight ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
                                             {growthText}
                                         </div>
                                     </td>
