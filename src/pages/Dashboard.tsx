@@ -120,10 +120,19 @@ export default function Dashboard() {
     }, [data, customTrendData]);
 
     // Build ID for deployment tracking
-    const BUILD_ID = 'v2026.04.01-03';
+    const BUILD_ID = 'v2026.04.01-04';
     useEffect(() => {
         console.log(`%c[Coupang Analytics] Running Build: ${BUILD_ID}`, 'color: #386ed9; font-weight: bold; font-size: 14px;');
     }, []);
+
+    const handleHardReset = () => {
+        if (window.confirm("브라우저 캐시 및 모든 세션 데이터를 초기화하고 페이지를 새로고침하시겠습니까? (반영 지연 해결용)")) {
+            sessionStorage.clear();
+            localStorage.clear();
+            // Cache busting URL param
+            window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+        }
+    };
 
     const totals = useMemo(() => {
         return sortedRankings.reduce((acc, curr) => {
@@ -312,11 +321,25 @@ export default function Dashboard() {
             {/* Combined Rankings Row (Unified Best 10) */}
             <div className="bg-white/70 backdrop-blur-xl rounded-[24px] border border-slate-200 flex flex-col h-auto overflow-hidden">
                 <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-sky-50 border border-sky-100 p-2 rounded-xl text-sky-500">
-                            <Trophy size={20} className="stroke-[2px]"/>
+                    <div className="flex flex-col md:flex-row md:items-center gap-3">
+                        <div className="flex items-center space-x-3">
+                            <div className="bg-sky-50 border border-sky-100 p-2 rounded-xl text-sky-500">
+                                <Trophy size={20} className="stroke-[2px]"/>
+                            </div>
+                            <h3 className="text-[17px] font-semibold text-slate-700">퍼포먼스 랭킹 보드</h3>
                         </div>
-                        <h3 className="text-[17px] font-semibold text-slate-700">퍼포먼스 랭킹 보드</h3>
+                        {/* VERSION BANNER */}
+                        <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 bg-rose-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-sm shadow-rose-200">
+                                BUILD: {BUILD_ID}
+                            </span>
+                            <button 
+                                onClick={handleHardReset}
+                                className="text-[10px] font-bold text-slate-400 hover:text-rose-500 underline underline-offset-2 transition-colors"
+                            >
+                                반영 안됨?(강제 초기화)
+                            </button>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2 mr-2">
                         <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all ${
@@ -400,7 +423,17 @@ export default function Dashboard() {
                                 </tr>
                             )}
                             {loadingRankings ? (
-                                <tr><td colSpan={10} className="text-center py-16"><Loader2 className="animate-spin text-indigo-500 mx-auto" size={32} strokeWidth={2.5}/></td></tr>
+                                <tr>
+                                    <td colSpan={10} className="text-center py-24">
+                                        <div className="flex flex-col items-center justify-center space-y-4">
+                                            <Loader2 className="animate-spin text-indigo-500" size={48} strokeWidth={2.5}/>
+                                            <div className="flex flex-col items-center space-y-1">
+                                                <p className="text-sm font-bold text-slate-600">고속 데이터 분석 중...</p>
+                                                <p className="text-[11px] text-slate-400">약 2~5초 정도 소요될 수 있습니다. (진행버전: {BUILD_ID})</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
                             ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
                                 const qty_2y = item.qty_2y || 0;
                                 const qty_1y = item.qty_1y || 0;

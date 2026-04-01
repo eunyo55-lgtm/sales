@@ -1598,7 +1598,7 @@ ${sampleText}
     },
 
     async getDashboardCombinedRankings(startDate: string, endDate: string): Promise<any[]> {
-        const cacheKey = `RANKINGS_${startDate}_${endDate}`;
+        const cacheKey = `RANKINGS_V4_${startDate}_${endDate}`;
         
         try {
             const cachedStr = sessionStorage.getItem(cacheKey);
@@ -1612,12 +1612,42 @@ ${sampleText}
             }
         } catch(e) {}
 
-        const rankings = await this._fetchRPCParallel<any>('get_dashboard_combined_rankings_custom', {
-            start_date: startDate,
-            end_date: endDate
+        const sD = new Date(startDate);
+        const eD = new Date(endDate);
+        
+        // Calculate historical date ranges (Matching the SQL function params)
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        
+        const s0 = formatDate(sD);
+        const e0 = formatDate(eD);
+        
+        const sD1 = new Date(sD); sD1.setDate(sD1.getDate() - 364);
+        const eD1 = new Date(eD); eD1.setDate(eD1.getDate() - 364);
+        const s1 = formatDate(sD1);
+        const e1 = formatDate(eD1);
+        
+        const sD2 = new Date(sD); sD2.setDate(sD2.getDate() - 728);
+        const eD2 = new Date(eD); eD2.setDate(eD2.getDate() - 728);
+        const s2 = formatDate(sD2);
+        const e2 = formatDate(eD2);
+
+        // Fetch using the NEW HIGH-SPEED optimized RPC for Top 100
+        const { data, error } = await supabase.rpc('get_dashboard_rankings_fast', {
+            start_0: s0,
+            end_0: e0,
+            start_1: s1,
+            end_1: e1,
+            start_2: s2,
+            end_2: e2,
+            limit_val: 100
         });
 
-        const result = rankings.map((r, index) => ({
+        if (error) {
+            console.error("[API] get_dashboard_rankings_fast error:", error);
+            throw error;
+        }
+
+        const result = data.map((r: any, index: number) => ({
             name: r.name,
             imageUrl: r.image_url,
             qty_0y: Number(r.qty_0y || 0),
