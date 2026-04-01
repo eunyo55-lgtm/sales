@@ -46,8 +46,8 @@ function App() {
         <div className="w-64 h-full relative flex flex-col">
           <div className="p-6 pb-2">
             <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center transition-all duration-300 shadow-sm">
-                <span className="text-sm font-bold text-white tracking-widest">C</span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-sky-300 flex items-center justify-center transition-all duration-300 shadow-md shadow-blue-200">
+                <span className="text-lg drop-shadow-sm">🚀</span>
               </div>
               <div className="flex flex-col">
                 <h1 className="text-[17px] font-semibold text-slate-800 whitespace-nowrap leading-tight tracking-tight">Coupang Analytics</h1>

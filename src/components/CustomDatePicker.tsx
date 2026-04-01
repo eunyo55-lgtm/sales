@@ -62,15 +62,22 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
       days.push(<div key={`empty-${i}`} className="p-2"></div>);
     }
     // Actual days
+    const today = new Date();
+    const isCurrentMonthMonth = today.getFullYear() === year && today.getMonth() === month;
+    const currentDay = today.getDate();
+
     for (let d = 1; d <= totalDays; d++) {
       const isSelected = value === `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isToday = isCurrentMonthMonth && currentDay === d;
+      
       days.push(
         <button
           key={d}
           onClick={() => handleDateSelect(d)}
-          className={`p-2 text-sm rounded-lg hover:bg-blue-50 transition-colors ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700'}`}
+          className={`p-2 text-sm rounded-lg hover:bg-blue-50 transition-colors relative ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : isToday ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-gray-700'}`}
         >
           {d}
+          {isToday && !isSelected && <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-500"></div>}
         </button>
       );
     }

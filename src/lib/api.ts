@@ -257,6 +257,7 @@ export const api = {
         // Also clear persistent session storage
         try {
             sessionStorage.removeItem('DASHBOARD_FULL');
+            sessionStorage.removeItem('DASHBOARD_FULL_V3');
         } catch(e) {}
     },
 
@@ -762,7 +763,7 @@ ${sampleText}
 
         if (!forceRefresh) {
             try {
-                const cachedStr = sessionStorage.getItem('DASHBOARD_FULL');
+                const cachedStr = sessionStorage.getItem('DASHBOARD_FULL_V3');
                 if (cachedStr) {
                     const parsed = JSON.parse(cachedStr);
                     if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
@@ -903,11 +904,22 @@ ${sampleText}
             const inventoryMap = new Map<string, number>();
             let totalCostSum = 0;
             let productCount = 0;
+            let totalStock = 0;
+            let totalFcStock = 0;
+            let totalVfStock = 0;
+            let totalStockAmount = 0;
 
             products_all.forEach(p => {
                 // User requested Coupang Stock Only (current_stock)
                 const coupangStock = p.current_stock || 0;
+                const fcStock = p.fc_stock || 0;
+                const vfStock = p.vf_stock || 0;
                 inventoryMap.set(p.name, (inventoryMap.get(p.name) || 0) + coupangStock);
+
+                totalStock += coupangStock;
+                totalFcStock += fcStock;
+                totalVfStock += vfStock;
+                totalStockAmount += (coupangStock * (p.cost || 0));
 
                 if (p.cost > 0) {
                     totalCostSum += p.cost;
@@ -993,7 +1005,11 @@ ${sampleText}
                     monthlyPrevYear: metricsRes.data?.statMonthlyPrevYear || 0,
                     yearly: metricsRes.data?.statYearly || 0,
                     yearlyAmount: exactAmounts.yearly,
-                    yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0
+                    yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0,
+                    totalStock,
+                    totalFcStock,
+                    totalVfStock,
+                    totalStockAmount
                 },
                 trends: {
                     daily: sortedDaily.map((item: any) => ({
@@ -1022,7 +1038,7 @@ ${sampleText}
 
             this._dashboardCache = result; // Cache the result
             try {
-                sessionStorage.setItem('DASHBOARD_FULL', JSON.stringify({ timestamp: Date.now(), data: result }));
+                sessionStorage.setItem('DASHBOARD_FULL_V3', JSON.stringify({ timestamp: Date.now(), data: result }));
             } catch(e) {}
             if (!isBackground) console.timeEnd("getDashboardAnalytics");
             return result;

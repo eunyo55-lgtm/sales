@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
@@ -211,7 +211,7 @@ export default function Dashboard() {
     return (
         <div className="space-y-8 pb-12">
             {/* Top Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="최신 일자 판매"
                     value={metrics.yesterday}
@@ -238,6 +238,14 @@ export default function Dashboard() {
                     sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적 실적`}
                     icon={Trophy}
                     colorTheme="yellow"
+                />
+                <StatCard
+                    title="전일 기준 총 재고"
+                    value={metrics.totalStock || 0}
+                    amount={metrics.totalStockAmount || 0}
+                    sub={`FC: ${(metrics.totalFcStock || 0).toLocaleString()} / VF: ${(metrics.totalVfStock || 0).toLocaleString()}`}
+                    icon={Archive}
+                    colorTheme="blue"
                 />
             </div>
 
@@ -287,7 +295,7 @@ export default function Dashboard() {
                                 contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
                             />
                             <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
-                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#386ed9" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                             <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.8} />
                             <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#fbcfe8" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.6} />
                         </LineChart>
@@ -375,6 +383,10 @@ export default function Dashboard() {
                             ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
                                 const yoyDiff = item.qty_0y - item.qty_1y;
                                 
+                                // Calculate max value for data bars
+                                const maxQty = Math.max(...displayedRankings.map((r: any) => r.qty_0y || 1));
+                                const barWidth = Math.min(100, Math.max(0, ((item.qty_0y || 0) / maxQty) * 100));
+
                                 return (
                                 <tr key={item.name} className="group hover:bg-white transition-all bg-slate-50/20 duration-200">
                                     <td className="px-5 py-3.5 text-center border-r border-slate-50">
@@ -402,13 +414,16 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_2y.toLocaleString()}</td>
                                     <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_1y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right font-semibold text-slate-700 text-[14px]">
-                                        {item.qty_0y.toLocaleString()}
-                                        {yoyDiff !== 0 && (
-                                            <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                                {yoyDiff > 0 ? '↑' : '↓'} {Math.abs(yoyDiff).toLocaleString()}
-                                            </div>
-                                        )}
+                                    <td className="px-5 py-3.5 text-right font-semibold text-slate-700 text-[14px] relative">
+                                        <div className="absolute top-0 bottom-0 right-0 bg-blue-100/50 z-0 rounded-l-md pointer-events-none" style={{ width: `${barWidth}%` }}></div>
+                                        <div className="relative z-10">
+                                            {item.qty_0y.toLocaleString()}
+                                            {yoyDiff !== 0 && (
+                                                <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                    {yoyDiff > 0 ? '↑' : '↓'} {Math.abs(yoyDiff).toLocaleString()}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     {showAmountGroups && (
                                         <>
