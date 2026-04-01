@@ -492,7 +492,7 @@ export default function Dashboard() {
 
                                 // Sparkline calculation
                                 const maxSparkQty = Math.max(qty_2y, qty_1y, qty_0y, 1);
-                                const xMax = 60; const yMax = 20;
+                                const yMax = 20;
                                 const pts = [
                                     `0,${yMax - (qty_2y / maxSparkQty * yMax)}`,
                                     `30,${yMax - (qty_1y / maxSparkQty * yMax)}`,
