@@ -1598,13 +1598,26 @@ ${sampleText}
     },
 
     async getDashboardCombinedRankings(startDate: string, endDate: string): Promise<any[]> {
+        const cacheKey = `RANKINGS_${startDate}_${endDate}`;
+        
+        try {
+            const cachedStr = sessionStorage.getItem(cacheKey);
+            if (cachedStr) {
+                const parsed = JSON.parse(cachedStr);
+                // Cache valid for 30 mins for rankings
+                if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+                    console.log(`[Session Cache] Rankings HIT for ${cacheKey}`);
+                    return parsed.data;
+                }
+            }
+        } catch(e) {}
+
         const rankings = await this._fetchRPCParallel<any>('get_dashboard_combined_rankings_custom', {
             start_date: startDate,
             end_date: endDate
         });
 
-        // Use the new SQL results which are already joined with products and grouped by name.
-        return rankings.map((r, index) => ({
+        const result = rankings.map((r, index) => ({
             name: r.name,
             imageUrl: r.image_url,
             qty_0y: Number(r.qty_0y || 0),
@@ -1614,6 +1627,12 @@ ${sampleText}
             cost: Number(r.cost || 0),
             rank: index + 1
         }));
+
+        try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: result }));
+        } catch(e) {}
+
+        return result;
     },
 
 

@@ -2,9 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-    ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles, Clock, Info } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
@@ -115,41 +114,16 @@ export default function Dashboard() {
         return sortedRankings.slice(0, displayLimit);
     }, [sortedRankings, displayLimit]);
 
-    const bubbleData = useMemo(() => {
-        return displayedRankings.filter(item => item.qty_0y > 0 || item.qty_1y > 0).map(item => {
-            const qty_1y = item.qty_1y || 0;
-            const qty_0y = item.qty_0y || 0;
-            
-            let growth = 0;
-            if (qty_1y === 0 && qty_0y > 0) {
-                // 작년 판매량 0일때 작은 판매건수는 폭주 방지
-                growth = qty_0y <= 10 ? qty_0y * 10 : 500; 
-            } else if (qty_1y > 0) {
-                growth = ((qty_0y - qty_1y) / qty_1y) * 100;
-            }
-            
-            if (growth > 500) growth = 500;
-            if (growth < -100) growth = -100;
-
-            const salesAmount = qty_0y * (item.cost || 0);
-
-            return {
-                name: item.name,
-                x: qty_1y,
-                y: Number(growth.toFixed(1)),
-                z: salesAmount,
-                salesAmountStr: salesAmount.toLocaleString(),
-                qty_0y,
-                qty_1y,
-                imageUrl: item.imageUrl
-            };
-        });
-    }, [displayedRankings]);
-
     const filteredDailyTrends = useMemo(() => {
         if (customTrendData && customTrendData.length > 0) return customTrendData;
         return data?.trends?.daily || [];
     }, [data, customTrendData]);
+
+    // Build ID for deployment tracking
+    const BUILD_ID = 'v2026.04.01-03';
+    useEffect(() => {
+        console.log(`%c[Coupang Analytics] Running Build: ${BUILD_ID}`, 'color: #386ed9; font-weight: bold; font-size: 14px;');
+    }, []);
 
     const totals = useMemo(() => {
         return sortedRankings.reduce((acc, curr) => {
@@ -343,6 +317,16 @@ export default function Dashboard() {
                             <Trophy size={20} className="stroke-[2px]"/>
                         </div>
                         <h3 className="text-[17px] font-semibold text-slate-700">퍼포먼스 랭킹 보드</h3>
+                    </div>
+                    <div className="flex items-center gap-2 mr-2">
+                        <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all ${
+                            sessionStorage.getItem(`RANKINGS_${startDate}_${endDate}`) 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                : 'bg-slate-50 text-slate-400 border border-slate-100'
+                        }`}>
+                            <Clock size={12} />
+                            {loadingRankings ? '싱크 중...' : (sessionStorage.getItem(`RANKINGS_${startDate}_${endDate}`) ? '빠른 로딩 활성' : '서버 연결 중')}
+                        </div>
                     </div>
                     <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200 relative z-50">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
@@ -547,6 +531,12 @@ export default function Dashboard() {
                         </button>
                     </div>
                 )}
+                
+                {/* Build ID Footer */}
+                <div className="mt-8 flex flex-col items-center justify-center space-y-1 py-10 opacity-30 select-none">
+                    <p className="text-[10px] font-bold tracking-widest text-[#386ed9] uppercase">Coupang Analytics System</p>
+                    <p className="text-[9px] font-medium text-slate-400">Build: v2026.04.01-03 • Last Deploy: {new Date().toLocaleTimeString('ko-KR')}</p>
+                </div>
             </div>
         </div>
     );
