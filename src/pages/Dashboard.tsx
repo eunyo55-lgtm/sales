@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles, Clock, Info } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles, Clock } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
