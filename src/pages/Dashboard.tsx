@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+    ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
@@ -113,6 +114,37 @@ export default function Dashboard() {
     const displayedRankings = useMemo(() => {
         return sortedRankings.slice(0, displayLimit);
     }, [sortedRankings, displayLimit]);
+
+    const bubbleData = useMemo(() => {
+        return displayedRankings.filter(item => item.qty_0y > 0 || item.qty_1y > 0).map(item => {
+            const qty_1y = item.qty_1y || 0;
+            const qty_0y = item.qty_0y || 0;
+            
+            let growth = 0;
+            if (qty_1y === 0 && qty_0y > 0) {
+                // 작년 판매량 0일때 작은 판매건수는 폭주 방지
+                growth = qty_0y <= 10 ? qty_0y * 10 : 500; 
+            } else if (qty_1y > 0) {
+                growth = ((qty_0y - qty_1y) / qty_1y) * 100;
+            }
+            
+            if (growth > 500) growth = 500;
+            if (growth < -100) growth = -100;
+
+            const salesAmount = qty_0y * (item.cost || 0);
+
+            return {
+                name: item.name,
+                x: qty_1y,
+                y: Number(growth.toFixed(1)),
+                z: salesAmount,
+                salesAmountStr: salesAmount.toLocaleString(),
+                qty_0y,
+                qty_1y,
+                imageUrl: item.imageUrl
+            };
+        });
+    }, [displayedRankings]);
 
     const filteredDailyTrends = useMemo(() => {
         if (customTrendData && customTrendData.length > 0) return customTrendData;
@@ -326,20 +358,76 @@ export default function Dashboard() {
                     </div>
                 </div>
                 
+                {/* NEW: ScatterChart / Bubble Chart Area */}
+                {!loadingRankings && displayedRankings.length > 0 && (
+                    <div className="p-6 border-b border-slate-100 bg-white">
+                        <div className="mb-4">
+                            <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                                <Sparkles size={16} className="text-amber-500" />
+                                상품별 성장 모멘텀 분석
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1">X축: '25년 기초체급 / Y축: 올해 성장률 / 원 크기: 올해 누적 매출액 기여도</p>
+                        </div>
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                    <XAxis type="number" dataKey="x" name="25년 판매량" tick={{fontSize: 11, fill: '#94a3b8'}} tickLine={false} axisLine={false} tickFormatter={(v) => v.toLocaleString()} />
+                                    <YAxis type="number" dataKey="y" name="성장률" tick={{fontSize: 11, fill: '#94a3b8'}} tickLine={false} axisLine={false} tickFormatter={(v) => v + '%'} />
+                                    <ZAxis type="number" dataKey="z" range={[50, 800]} name="매출액" />
+                                    <Tooltip 
+                                        cursor={{strokeDasharray: '3 3'}}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const d = payload[0].payload;
+                                                return (
+                                                    <div className="bg-white/95 backdrop-blur-md p-3 border border-slate-200 rounded-xl shadow-xl z-50 min-w-[180px]">
+                                                        <p className="font-bold text-sm text-slate-800 mb-2 truncate max-w-[200px]">{d.name}</p>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs text-slate-500">성장률</span>
+                                                            <span className={`text-xs font-bold ${d.y > 0 ? 'text-blue-600' : 'text-rose-500'}`}>{d.y > 0 ? '+' : ''}{d.y}%</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs text-slate-500">전년 대비 판매량</span>
+                                                            <span className="text-xs font-semibold text-slate-700">{d.qty_1y.toLocaleString()} ➔ {d.qty_0y.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                                                            <span className="text-xs text-slate-500">올해 누적 매출</span>
+                                                            <span className="text-xs font-semibold text-[#386ed9]">{d.salesAmountStr}원</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Scatter name="상품" data={bubbleData}>
+                                        {bubbleData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.y > 0 ? '#386ed9' : '#f43f5e'} fillOpacity={0.6} />
+                                        ))}
+                                    </Scatter>
+                                </ScatterChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
                         <thead className="text-[13px] font-medium text-slate-400 bg-white/50 border-b border-slate-50 sticky top-0 backdrop-blur-md">
                             <tr>
                                 <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
                                 <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
+                                <th className="px-5 py-4 font-semibold text-center w-28 text-slate-500">추세 (24-25-26)</th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_2y')}>
-                                    '24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
+                                    '24년<br/>판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_1y')}>
-                                    '25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
+                                    '25년<br/>판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 hover:text-black transition-colors" onClick={() => handleSort('qty_0y')}>
-                                    '26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
+                                <th className="px-5 py-4 font-bold text-center w-36 text-slate-700 bg-slate-50/50">올해 성장률 (YoY)</th>
+                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 font-bold border-l border-slate-100 hover:text-black transition-colors" onClick={() => handleSort('qty_0y')}>
+                                    '26년<br/>판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 {showAmountGroups && (
                                     <>
@@ -349,7 +437,7 @@ export default function Dashboard() {
                                         <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('amt_1y')}>
                                             '25년 판매액
                                         </th>
-                                        <th className="px-5 py-4 text-right cursor-pointer text-slate-900 hover:text-black transition-colors" onClick={() => handleSort('amt_0y')}>
+                                        <th className="px-5 py-4 text-right cursor-pointer text-slate-900 border-l border-slate-100 hover:text-black transition-colors" onClick={() => handleSort('amt_0y')}>
                                             '26년 판매액
                                         </th>
                                     </>
@@ -359,9 +447,10 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
                                 <tr className="bg-slate-50/50 font-semibold border-b border-slate-100">
-                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
+                                    <td colSpan={3} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_2y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_1y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-center text-slate-400 bg-slate-50/50 border-x border-slate-100 font-normal text-xs">-</td>
                                     <td className="px-5 py-3 text-right text-slate-800 text-[14px]">{totals.qty_0y.toLocaleString()}건</td>
                                     {showAmountGroups && (
                                         <>
@@ -379,22 +468,47 @@ export default function Dashboard() {
                                 </tr>
                             )}
                             {loadingRankings ? (
-                                <tr><td colSpan={8} className="text-center py-16"><Loader2 className="animate-spin text-indigo-500 mx-auto" size={32} strokeWidth={2.5}/></td></tr>
+                                <tr><td colSpan={10} className="text-center py-16"><Loader2 className="animate-spin text-indigo-500 mx-auto" size={32} strokeWidth={2.5}/></td></tr>
                             ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
-                                const yoyDiff = item.qty_0y - item.qty_1y;
+                                const qty_2y = item.qty_2y || 0;
+                                const qty_1y = item.qty_1y || 0;
+                                const qty_0y = item.qty_0y || 0;
                                 
-                                // Calculate max value for data bars
-                                const maxQty = Math.max(...displayedRankings.map((r: any) => r.qty_0y || 1));
-                                const barWidth = Math.min(100, Math.max(0, ((item.qty_0y || 0) / maxQty) * 100));
+                                // Calculate Growth Rate
+                                let growth = 0;
+                                if (qty_1y === 0 && qty_0y > 0) growth = qty_0y <= 10 ? qty_0y * 10 : 500;
+                                else if (qty_1y > 0) growth = ((qty_0y - qty_1y) / qty_1y) * 100;
+
+                                const isHighlight = growth >= 50 && qty_0y >= 10;
+                                const isNegative = growth < 0;
+
+                                let growthText = '-';
+                                if (qty_1y === 0 && qty_0y > 0) growthText = 'New';
+                                else if (growth > 0) growthText = `+${growth > 500 ? '500+' : growth.toFixed(1)}%`;
+                                else if (growth < 0) growthText = `${growth.toFixed(1)}%`;
+
+                                // Data bar width capped at 100% (absolute for UI width calc)
+                                const dataBarWidth = Math.min(Math.abs(growth), 100);
+
+                                // Sparkline calculation
+                                const maxSparkQty = Math.max(qty_2y, qty_1y, qty_0y, 1);
+                                const xMax = 60; const yMax = 20;
+                                const pts = [
+                                    `0,${yMax - (qty_2y / maxSparkQty * yMax)}`,
+                                    `30,${yMax - (qty_1y / maxSparkQty * yMax)}`,
+                                    `60,${yMax - (qty_0y / maxSparkQty * yMax)}`
+                                ].join(' ');
+
+                                const trendColor = qty_0y >= qty_1y ? '#386ed9' : '#f43f5e';
 
                                 return (
-                                <tr key={item.name} className="group hover:bg-white transition-all bg-slate-50/20 duration-200">
+                                <tr key={item.name} className={`group hover:bg-white transition-all duration-200 ${isHighlight ? 'bg-[#386ed9]/5' : 'bg-slate-50/10'}`}>
                                     <td className="px-5 py-3.5 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
                                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-semibold ${
-                                                idx === 0 ? 'bg-sky-100 text-sky-600' : 
-                                                idx === 1 ? 'bg-slate-100 text-slate-500' : 
-                                                'bg-slate-50 text-slate-400'
+                                                idx === 0 ? 'bg-sky-100 text-[#386ed9]' : 
+                                                idx === 1 ? 'bg-slate-200 text-slate-600' : 
+                                                'bg-slate-100 text-slate-500'
                                             }`}>
                                                 {idx + 1}
                                             </span>
@@ -409,37 +523,50 @@ export default function Dashboard() {
                                             ) : (
                                                 <div className="w-14 h-14 rounded-xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
-                                            <p className="font-medium text-slate-700 break-words whitespace-normal leading-snug hover:text-sky-500 transition-colors cursor-pointer">{item.name}</p>
+                                            <p className="font-medium text-slate-700 break-words whitespace-normal leading-snug cursor-pointer group-hover:text-amber-500 max-w-[200px]">{item.name}</p>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_2y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{item.qty_1y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right font-semibold text-slate-700 text-[14px] relative">
-                                        <div className="absolute top-0 bottom-0 right-0 bg-blue-100/50 z-0 rounded-l-md pointer-events-none" style={{ width: `${barWidth}%` }}></div>
-                                        <div className="relative z-10">
-                                            {item.qty_0y.toLocaleString()}
-                                            {yoyDiff !== 0 && (
-                                                <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                                    {yoyDiff > 0 ? '↑' : '↓'} {Math.abs(yoyDiff).toLocaleString()}
-                                                </div>
+                                    <td className="px-5 py-3.5 text-center">
+                                        <div className="flex justify-center items-center">
+                                            <svg width="60" height="20" className="overflow-visible">
+                                                <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <circle cx="60" cy={yMax - (qty_0y / maxSparkQty * yMax)} r="2.5" fill={trendColor} className="drop-shadow-sm" />
+                                            </svg>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{qty_2y.toLocaleString()}</td>
+                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{qty_1y.toLocaleString()}</td>
+                                    
+                                    {/* Data Bar Cell for YoY % */}
+                                    <td className="px-5 py-3.5 relative bg-slate-50/50 border-x border-slate-100 overflow-hidden min-w-[120px]">
+                                        <div className="absolute inset-y-1.5 left-1/2 right-1/2 flex pointer-events-none opacity-20 z-0">
+                                            {/* Right growing bar (+) */}
+                                            {!isNegative && growth > 0 && (
+                                                <div className="h-full bg-blue-600 rounded-r-md transition-all duration-500 ml-[1px]" style={{ width: `${dataBarWidth}%` }}></div>
+                                            )}
+                                            {/* Left growing bar (-) */}
+                                            {isNegative && (
+                                                <div className="absolute top-0 bottom-0 right-[1px] h-full bg-rose-600 rounded-l-md transition-all duration-500" style={{ width: `${dataBarWidth}%` }}></div>
                                             )}
                                         </div>
+                                        <div className={`relative z-10 text-center font-bold text-[13px] tracking-wide ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
+                                            {growthText}
+                                        </div>
+                                    </td>
+
+                                    <td className="px-5 py-3.5 text-right font-bold text-slate-700 text-[14px]">
+                                        {qty_0y.toLocaleString()}
                                     </td>
                                     {showAmountGroups && (
                                         <>
                                             <td className="px-5 py-3.5 text-right text-slate-400 font-medium border-l border-slate-50">
-                                                {item.cost > 0 ? (item.qty_2y * item.cost).toLocaleString() : '-'}
+                                                {item.cost > 0 ? (qty_2y * item.cost).toLocaleString() : '-'}
                                             </td>
                                             <td className="px-5 py-3.5 text-right text-slate-400 font-medium">
-                                                {item.cost > 0 ? (item.qty_1y * item.cost).toLocaleString() : '-'}
+                                                {item.cost > 0 ? (qty_1y * item.cost).toLocaleString() : '-'}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right text-slate-700 font-semibold">
-                                                {item.cost > 0 ? (item.qty_0y * item.cost).toLocaleString() : '-'}
-                                                {item.cost > 0 && (item.qty_0y - item.qty_1y) !== 0 && (
-                                                    <div className={`text-xs mt-1 font-semibold ${yoyDiff > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                                        {yoyDiff > 0 ? '↑' : '↓'} {Math.abs((item.qty_0y - item.qty_1y) * item.cost).toLocaleString()}
-                                                    </div>
-                                                )}
+                                            <td className="px-5 py-3.5 text-right text-slate-700 font-semibold border-l border-slate-50">
+                                                {item.cost > 0 ? (qty_0y * item.cost).toLocaleString() : '-'}
                                             </td>
                                         </>
                                     )}
