@@ -418,17 +418,16 @@ export default function Dashboard() {
                             <tr>
                                 <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
                                 <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
-                                <th className="px-5 py-4 font-semibold text-center w-28 text-slate-500">추세 (24-25-26)</th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_2y')}>
                                     '24년<br/>판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
                                 </th>
                                 <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_1y')}>
                                     '25년<br/>판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
                                 </th>
-                                <th className="px-5 py-4 font-bold text-center w-36 text-slate-700 bg-slate-50/50">올해 성장률 (YoY)</th>
-                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 font-bold border-l border-slate-100 hover:text-black transition-colors" onClick={() => handleSort('qty_0y')}>
+                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 font-bold border-l border-slate-100 hover:text-black transition-colors bg-blue-50/30" onClick={() => handleSort('qty_0y')}>
                                     '26년<br/>판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
                                 </th>
+                                <th className="px-5 py-4 font-bold text-center w-36 text-slate-700 bg-slate-50/80 border-l border-slate-100">올해 성장률 (YoY)</th>
                                 {showAmountGroups && (
                                     <>
                                         <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
@@ -447,11 +446,11 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-50/50">
                             {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
                                 <tr className="bg-slate-50/50 font-semibold border-b border-slate-100">
-                                    <td colSpan={3} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
+                                    <td colSpan={2} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_2y.toLocaleString()}건</td>
                                     <td className="px-5 py-3 text-right text-slate-500">{totals.qty_1y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-center text-slate-400 bg-slate-50/50 border-x border-slate-100 font-normal text-xs">-</td>
-                                    <td className="px-5 py-3 text-right text-slate-800 text-[14px]">{totals.qty_0y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-right text-slate-900 font-bold bg-blue-50/20">{totals.qty_0y.toLocaleString()}건</td>
+                                    <td className="px-5 py-3 text-center text-slate-400 bg-slate-50/30 border-l border-slate-100 font-normal text-xs">-</td>
                                     {showAmountGroups && (
                                         <>
                                             <td className="px-5 py-3 text-right text-slate-500 border-l border-slate-200">
@@ -490,72 +489,63 @@ export default function Dashboard() {
                                 // Data bar width capped at 100% (absolute for UI width calc)
                                 const dataBarWidth = Math.min(Math.abs(growth), 100);
 
-                                // Sparkline calculation
-                                const maxSparkQty = Math.max(qty_2y, qty_1y, qty_0y, 1);
-                                const yMax = 20;
-                                const pts = [
-                                    `0,${yMax - (qty_2y / maxSparkQty * yMax)}`,
-                                    `30,${yMax - (qty_1y / maxSparkQty * yMax)}`,
-                                    `60,${yMax - (qty_0y / maxSparkQty * yMax)}`
-                                ].join(' ');
-
-                                const trendColor = qty_0y >= qty_1y ? '#386ed9' : '#f43f5e';
-
                                 return (
-                                <tr key={item.name} className={`group hover:bg-white transition-all duration-200 ${isHighlight ? 'bg-[#386ed9]/5' : 'bg-slate-50/10'}`}>
-                                    <td className="px-5 py-3.5 text-center border-r border-slate-50">
+                                <tr key={item.name} className={`group hover:bg-white transition-all duration-300 ${isHighlight ? 'bg-blue-600/5' : 'bg-slate-50/10'}`}>
+                                    <td className="px-5 py-8 text-center border-r border-slate-50">
                                         {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-sm font-semibold ${
-                                                idx === 0 ? 'bg-sky-100 text-[#386ed9]' : 
-                                                idx === 1 ? 'bg-slate-200 text-slate-600' : 
-                                                'bg-slate-100 text-slate-500'
+                                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl text-base font-bold ${
+                                                idx === 0 ? 'bg-[#386ed9] text-white shadow-lg shadow-blue-200' : 
+                                                idx === 1 ? 'bg-slate-200 text-slate-700' : 
+                                                'bg-slate-100 text-slate-600'
                                             }`}>
                                                 {idx + 1}
                                             </span>
                                         ) : (
-                                            <span className="font-medium text-slate-300">{idx + 1}</span>
+                                            <span className="font-bold text-slate-300 text-lg">{idx + 1}</span>
                                         )}
                                     </td>
-                                    <td className="px-5 py-3.5 border-r border-slate-50 text-sm">
-                                        <div className="flex items-center space-x-4">
+                                    <td className="px-6 py-8 border-r border-slate-50">
+                                        <div className="flex items-center space-x-6 min-w-[300px]">
                                             {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt="" className="w-14 h-14 rounded-xl bg-white object-cover flex-none border border-slate-200 group-hover:scale-110 transition-transform duration-300" />
+                                                <div className="relative flex-none group-hover:scale-105 transition-transform duration-500">
+                                                    <img src={item.imageUrl} alt="" className="w-24 h-24 rounded-2xl bg-white object-cover border border-slate-200 shadow-sm" />
+                                                    {isHighlight && (
+                                                        <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1.5 rounded-lg shadow-md animate-bounce">
+                                                            <Sparkles size={14} fill="currentColor" />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <div className="w-14 h-14 rounded-xl bg-slate-100 flex-none border border-slate-100" />
+                                                <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-none border border-slate-100" />
                                             )}
-                                            <p className="font-medium text-slate-700 break-words whitespace-normal leading-snug cursor-pointer group-hover:text-amber-500 max-w-[200px]">{item.name}</p>
+                                            <div className="flex flex-col space-y-1">
+                                                <p className="font-bold text-slate-800 text-[17px] break-words whitespace-normal leading-relaxed cursor-pointer group-hover:text-[#386ed9] transition-colors">{item.name}</p>
+                                                <span className="text-xs text-slate-400 font-medium tracking-tight">Coupang Selection</span>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-center">
-                                        <div className="flex justify-center items-center">
-                                            <svg width="60" height="20" className="overflow-visible">
-                                                <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                <circle cx="60" cy={yMax - (qty_0y / maxSparkQty * yMax)} r="2.5" fill={trendColor} className="drop-shadow-sm" />
-                                            </svg>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{qty_2y.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-right text-slate-500 font-semibold">{qty_1y.toLocaleString()}</td>
+                                    <td className="px-5 py-8 text-right text-slate-500 font-bold text-base">{qty_2y.toLocaleString()}</td>
+                                    <td className="px-5 py-8 text-right text-slate-500 font-bold text-base">{qty_1y.toLocaleString()}</td>
                                     
+                                    <td className="px-5 py-8 text-right font-black text-slate-900 text-lg bg-blue-50/10 border-l border-slate-50">
+                                        {qty_0y.toLocaleString()}
+                                    </td>
+
                                     {/* Data Bar Cell for YoY % */}
-                                    <td className="px-5 py-3.5 relative bg-slate-50/50 border-x border-slate-100 overflow-hidden min-w-[120px]">
-                                        <div className="absolute inset-y-1.5 left-1/2 right-1/2 flex pointer-events-none opacity-20 z-0">
+                                    <td className="px-5 py-8 relative bg-slate-50/50 border-l border-slate-50 overflow-hidden min-w-[140px]">
+                                        <div className="absolute inset-y-4 left-1/2 right-1/2 flex pointer-events-none opacity-25 z-0">
                                             {/* Right growing bar (+) */}
                                             {!isNegative && growth > 0 && (
-                                                <div className="h-full bg-blue-600 rounded-r-md transition-all duration-500 ml-[1px]" style={{ width: `${dataBarWidth}%` }}></div>
+                                                <div className="h-full bg-blue-600 rounded-r-xl transition-all duration-700 ml-[1px]" style={{ width: `${dataBarWidth}%` }}></div>
                                             )}
                                             {/* Left growing bar (-) */}
                                             {isNegative && (
-                                                <div className="absolute top-0 bottom-0 right-[1px] h-full bg-rose-600 rounded-l-md transition-all duration-500" style={{ width: `${dataBarWidth}%` }}></div>
+                                                <div className="absolute top-0 bottom-0 right-[1px] h-full bg-rose-600 rounded-l-xl transition-all duration-700" style={{ width: `${dataBarWidth}%` }}></div>
                                             )}
                                         </div>
-                                        <div className={`relative z-10 text-center font-bold text-[13px] tracking-wide ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
+                                        <div className={`relative z-10 text-center font-black text-sm tracking-widest ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
                                             {growthText}
                                         </div>
-                                    </td>
-
-                                    <td className="px-5 py-3.5 text-right font-bold text-slate-700 text-[14px]">
-                                        {qty_0y.toLocaleString()}
                                     </td>
                                     {showAmountGroups && (
                                         <>
