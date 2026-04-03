@@ -463,10 +463,10 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
 
     return (
         <>
-            <div className="bg-slate-900 p-10 rounded-[2.5rem] relative my-12 overflow-hidden border-4 border-white/5 shadow-2xl">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(56,110,217,0.1),transparent)] pointer-events-none"></div>
+        <div className="bg-white p-10 rounded-[2.5rem] relative my-12 overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/40">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(56,110,217,0.03),transparent)] pointer-events-none"></div>
             <div className="flex items-center justify-between mb-8 relative z-10">
-                <h3 className="text-xl font-bold text-white flex items-center tracking-tighter uppercase">
+                <h3 className="text-xl font-bold text-text-secondary flex items-center tracking-tighter uppercase">
                     <Truck size={24} className="mr-4 text-primary animate-pulse" strokeWidth={2.5} />
                     물류 <span className="text-primary mx-2">입고 예정</span> 파이프라인
                 </h3>
@@ -474,31 +474,31 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/5 hover:border-primary/30 transition-all group/row">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                    <div key={group.date} className="bg-slate-50/50 backdrop-blur-xl p-6 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white transition-all group/row">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                             <div>
-                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">도착 예정</p>
-                                <p className="text-xl font-bold text-white tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
+                                <p className="text-[10px] text-text-disabled font-bold uppercase tracking-widest">도착 예정</p>
+                                <p className="text-xl font-bold text-text-primary tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
                             </div>
-                            <div className="bg-primary/20 px-3 py-1 rounded-full border border-primary/30">
+                            <div className="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
                                 <span className="text-item-sub font-bold text-primary">{group.items.length} 품목</span>
                             </div>
                         </div>
                         <div className="space-y-4">
                             {group.items.map((item, idx) => (
-                                <div key={`${item.name}-${idx}`} className="group/card flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-default">
-                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-white/10 flex-shrink-0">
+                                <div key={`${item.name}-${idx}`} className="group/card flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100/50 hover:bg-slate-50 transition-all cursor-default">
+                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60 flex-shrink-0">
                                         {item.imageUrl ? (
                                             <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center opacity-20">
-                                                <Package size={20} className="text-white" />
+                                                <Package size={20} className="text-text-disabled" />
                                             </div>
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-item-main text-white truncate">{item.name}</p>
-                                        <p className="text-[11px] font-bold text-primary mt-1">+{item.confirmed_qty.toLocaleString()} <span className="text-white/20 ml-1">PCS</span></p>
+                                        <p className="text-item-main text-text-primary truncate font-bold">{item.name}</p>
+                                        <p className="text-[11px] font-bold text-primary mt-1">+{item.confirmed_qty.toLocaleString()} <span className="text-text-disabled ml-1">PCS</span></p>
                                     </div>
                                 </div>
                             ))}
@@ -507,9 +507,10 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 ))}
             </div>
         </div>
-        <div className="mt-16 pt-8 flex flex-col items-center opacity-10">
-            <p className="text-[10px] font-bold tracking-[1em] text-white uppercase">자동화된 물류 관리 매트릭스</p>
+        <div className="mt-16 pt-8 flex flex-col items-center opacity-40">
+            <p className="text-[10px] font-bold tracking-[1em] text-text-disabled uppercase">자동화된 물류 관리 매트릭스</p>
         </div>
+
         </>
     );
 }
