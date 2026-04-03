@@ -60,10 +60,10 @@ export default function SupplyStatus() {
     };
 
     const barcodeMap = useMemo(() => {
-        const map = new Map<string, { name: string, option?: string, image?: string }>();
+        const map = new Map<string, { name: string, option?: string, image?: string, cost?: number }>();
         products.forEach(p => {
             if (p.barcode) {
-                map.set(p.barcode.trim(), { name: p.name, option: p.option, image: p.imageUrl });
+                map.set(p.barcode.trim(), { name: p.name, option: p.option, image: p.imageUrl, cost: p.cost });
             }
         });
         return map;
@@ -262,7 +262,6 @@ export default function SupplyStatus() {
                 </div>
             </div>
 
-            <IncomingUnifiedWidget orders={incomingOrders} barcodeMap={barcodeMap} />
 
             <div className="p-0 overflow-hidden relative border-0">
                 <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
@@ -402,6 +401,7 @@ export default function SupplyStatus() {
                     <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">과거 공급 이력 데이터를 불러오는 중...</span>
                 </div>
             )}
+            <IncomingUnifiedWidget orders={incomingOrders} barcodeMap={barcodeMap} />
         </div>
     );
 }
@@ -459,58 +459,96 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
         return Object.entries(groups).map(([date, items]) => ({ date, items })).sort((a, b) => a.date.localeCompare(b.date));
     }, [orders, barcodeMap]);
 
+    const summary = useMemo(() => {
+        let items = new Set<string>();
+        let qty = 0;
+        let cost = 0;
+        orders.forEach(o => {
+            const confirmedQty = Number(o.confirmed_qty || 0);
+            const receivedQty = Number(o.received_qty || 0);
+            if (receivedQty === 0 && confirmedQty >= 1) {
+                items.add(o.barcode);
+                qty += confirmedQty;
+                const meta = barcodeMap.get(o.barcode);
+                cost += confirmedQty * (meta?.cost || 0);
+            }
+        });
+        return { totalItems: items.size, totalQty: qty, totalCost: cost };
+    }, [orders, barcodeMap]);
+
     if (timelineData.length === 0) return null;
 
     return (
         <>
-        <div className="bg-white p-10 rounded-[2.5rem] relative my-12 overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/40">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(56,110,217,0.03),transparent)] pointer-events-none"></div>
-            <div className="flex items-center justify-between mb-8 relative z-10">
-                <h3 className="text-xl font-bold text-text-secondary flex items-center tracking-tighter uppercase">
-                    <Truck size={24} className="mr-4 text-primary animate-pulse" strokeWidth={2.5} />
-                    물류 <span className="text-primary mx-2">입고 예정</span> 파이프라인
-                </h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-                {timelineData.map((group) => (
-                    <div key={group.date} className="bg-slate-50/50 backdrop-blur-xl p-6 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white transition-all group/row">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                            <div>
-                                <p className="text-[10px] text-text-disabled font-bold uppercase tracking-widest">도착 예정</p>
-                                <p className="text-xl font-bold text-text-primary tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
-                            </div>
-                            <div className="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                                <span className="text-item-sub font-bold text-primary">{group.items.length} 품목</span>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            {group.items.map((item, idx) => (
-                                <div key={`${item.name}-${idx}`} className="group/card flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100/50 hover:bg-slate-50 transition-all cursor-default">
-                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60 flex-shrink-0">
-                                        {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center opacity-20">
-                                                <Package size={20} className="text-text-disabled" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-item-main text-text-primary truncate font-bold">{item.name}</p>
-                                        <p className="text-[11px] font-bold text-primary mt-1">+{item.confirmed_qty.toLocaleString()} <span className="text-text-disabled ml-1">PCS</span></p>
-                                    </div>
-                                </div>
-                            ))}
+            <div className="bg-white p-10 rounded-[2.5rem] relative my-12 overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/40">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(56,110,217,0.03),transparent)] pointer-events-none"></div>
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6 relative z-10">
+                    <div className="flex items-center">
+                        <Truck size={24} className="mr-4 text-primary animate-pulse" strokeWidth={2.5} />
+                        <div>
+                            <h3 className="text-xl font-bold text-text-secondary uppercase tracking-tighter">물류 <span className="text-primary">입고 예정</span> 파이프라인</h3>
+                            <p className="text-[10px] text-text-disabled font-bold mt-1 tracking-widest uppercase">실시간 수주 및 입고 대기 현황</p>
                         </div>
                     </div>
-                ))}
-            </div>
-        </div>
-        <div className="mt-16 pt-8 flex flex-col items-center opacity-40">
-            <p className="text-[10px] font-bold tracking-[1em] text-text-disabled uppercase">자동화된 물류 관리 매트릭스</p>
-        </div>
+                    
+                    <div className="flex items-center gap-8 bg-slate-50/80 px-8 py-4 rounded-3xl border border-slate-100">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-text-disabled uppercase tracking-widest mb-1">입고 품목</span>
+                            <span className="text-sm font-bold text-text-primary tracking-tighter">{summary.totalItems.toLocaleString()} <span className="text-[10px] text-text-disabled ml-1">SKU</span></span>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-text-disabled uppercase tracking-widest mb-1">총 입고 수량</span>
+                            <span className="text-sm font-bold text-primary tracking-tighter">{summary.totalQty.toLocaleString()} <span className="text-[10px] text-text-disabled ml-1">PCS</span></span>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-text-disabled uppercase tracking-widest mb-1">총 입고 원가액</span>
+                            <span className="text-sm font-bold text-text-primary tracking-tighter">₩{summary.totalCost.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                    {timelineData.map((group) => (
+                        <div key={group.date} className="bg-slate-50/50 backdrop-blur-xl p-6 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white transition-all group/row">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                                <div>
+                                    <p className="text-[10px] text-text-disabled font-bold uppercase tracking-widest">도착 예정</p>
+                                    <p className="text-xl font-bold text-text-primary tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
+                                </div>
+                                <div className="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                                    <span className="text-item-sub font-bold text-primary">{group.items.length} 품목</span>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                {group.items.map((item, idx) => (
+                                    <div key={`${item.name}-${idx}`} className="group/card flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100/50 hover:bg-slate-50 transition-all cursor-default">
+                                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60 flex-shrink-0">
+                                            {item.imageUrl ? (
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center opacity-20">
+                                                    <Package size={20} className="text-text-disabled" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-item-main text-text-primary truncate font-bold">{item.name}</p>
+                                            <p className="text-[11px] font-bold text-primary mt-1">+{item.confirmed_qty.toLocaleString()} <span className="text-text-disabled ml-1">PCS</span></p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="mt-16 pt-8 flex flex-col items-center opacity-40">
+                <p className="text-[10px] font-bold tracking-[1em] text-text-disabled uppercase">자동화된 물류 관리 매트릭스</p>
+            </div>
         </>
     );
 }
