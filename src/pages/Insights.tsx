@@ -110,27 +110,27 @@ export default function Insights() {
             });
     }, [products, selectedSeason, search, sortConfig]);
 
-    if (loading) return <div className="flex justify-center items-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>;
+    if (loading) return <div className="flex justify-center items-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
 
     return (
         <div className="space-y-6 h-full flex flex-col">
             {/* Header Card */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 p-6 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between flex-none">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100 p-6 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between flex-none">
                 <div className="flex items-start md:items-center space-x-4 mb-4 md:mb-0">
-                    <div className="p-3 bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
+                    <div className="p-3 bg-blue-100 text-blue-600 rounded-full flex-shrink-0">
                         <Lightbulb size={28} />
                     </div>
                     <div>
-                        <h3 className="text-purple-900 font-medium text-lg">악성 재고 (Dead Stock) 인사이트</h3>
-                        <p className="text-purple-700 text-sm mt-1">
+                        <h3 className="text-blue-900 font-medium text-lg">악성 재고 (Dead Stock) 인사이트</h3>
+                        <p className="text-blue-700 text-sm mt-1">
                             재고 수량은 많지만 최근 판매량이 저조한 상품 목록입니다.<br />
                             시즌이 지났거나 정체된 상품은 <b>기획전 제안</b>이나 <b>광고 부스팅</b>을 통해 소진을 유도하세요.
                         </p>
                     </div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100 text-center min-w-[150px]">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-100 text-center min-w-[150px]">
                     <p className="text-sm font-medium text-gray-500 mb-1">총 체화 재고량</p>
-                    <p className="text-2xl font-medium text-purple-700">
+                    <p className="text-2xl font-medium text-blue-700">
                         {deadStockGroups.reduce((acc, g) => acc + g.totalStock, 0).toLocaleString()} <span className="text-sm">개</span>
                     </p>
                 </div>
@@ -146,7 +146,7 @@ export default function Insights() {
                         <select
                             value={selectedSeason}
                             onChange={(e) => setSelectedSeason(e.target.value)}
-                            className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 cursor-pointer font-medium shadow-sm transition-all"
+                            className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer font-medium shadow-sm transition-all"
                         >
                             <option value="ALL">전체 시즌</option>
                             {availableSeasons.map(s => (
@@ -166,7 +166,7 @@ export default function Insights() {
                         placeholder="상품명 검색..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-100 w-64"
+                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 w-64"
                     />
                 </div>
             </div>
@@ -196,7 +196,7 @@ export default function Insights() {
                                         {/* Parent Row */}
                                         <tr
                                             key={group.name}
-                                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${isExpanded ? 'bg-purple-50/20' : ''}`}
+                                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${isExpanded ? 'bg-blue-50/20' : ''}`}
                                             onClick={() => toggleGroup(group.name)}
                                         >
                                             <td className="px-5 py-4 text-gray-400">

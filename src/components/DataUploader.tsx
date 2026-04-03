@@ -116,7 +116,7 @@ export function DataUploader() {
                     </div>
                     <div className="w-40 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-blue-500 transition-all duration-300 ease-out"
+                            className="h-full bg-[#0066FF] transition-all duration-300 ease-out"
                             style={{ width: `${progress}%` }}
                         />
                     </div>
@@ -143,7 +143,7 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-master"
-                    className={`flex items-center space-x-1 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-md text-xs font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-1 px-3 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] text-white rounded-md text-xs font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <FileUp size={14} />
                     <span>상품 마스터</span>
@@ -163,7 +163,7 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-sales"
-                    className={`flex items-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-1 px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-md text-xs font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <Upload size={14} />
                     <span>판매데이터</span>
@@ -223,7 +223,7 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-orders"
-                    className={`flex items-center space-x-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-xs font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-xs font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <Upload size={14} />
                     <span>발주서</span>
@@ -243,7 +243,7 @@ export function DataUploader() {
                 />
                 <label
                     htmlFor="upload-incoming"
-                    className={`flex items-center space-x-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md text-xs font-medium transition-colors cursor-pointer shadow-sm ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center space-x-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md text-xs font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <FileUp size={14} />
                     <span>공급 중 수량</span>

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import type { ProductStats } from '../lib/api';
-// Trigger Vercel Build - 2026-03-12 Deployment Sync
-import { Search, ArrowUpDown, Loader2, ChevronRight, ChevronDown, HelpCircle, X, TrendingUp } from 'lucide-react';
+import { Search, Loader2, ChevronRight, ChevronDown, TrendingUp, Filter, LayoutGrid, X } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { isRedDay } from '../lib/dateUtils';
 
@@ -10,17 +9,17 @@ interface GroupedProduct {
   name: string;
   season: string;
   imageUrl?: string;
-  currentStock: number; // Coupang Stock (Total)
-  fcStock: number;      // FC Stock
-  vfStock: number;      // VF164 Stock
-  hqStock: number;      // HQ Stock
-  totalSales: number;   // Total Sales
-  sales7Days: number;   // [FIX]
-  fcSales: number;      // FC Sales
-  vfSales: number;      // VF164 Sales
+  currentStock: number;
+  fcStock: number;
+  vfStock: number;
+  hqStock: number;
+  totalSales: number;
+  sales7Days: number;
+  fcSales: number;
+  vfSales: number;
   dailySales: Record<string, number>;
-  dailyStock: Record<string, number>; // [NEW]
-  abcGrade: 'A' | 'B' | 'C' | 'D'; // Representative grade (usually max of children or recalculated)
+  dailyStock: Record<string, number>;
+  abcGrade: 'A' | 'B' | 'C' | 'D';
   children: ProductStats[];
 }
 
@@ -31,8 +30,8 @@ export default function ProductStatus() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'totalSales', direction: 'desc' });
   const [selectedSeason, setSelectedSeason] = useState('all');
-  const [selectedGrade, setSelectedGrade] = useState('all'); // ABC Filter
-  const [viewMode, setViewMode] = useState<'qty' | 'amount'>('qty'); // [NEW] View Mode Toggle
+  const [selectedGrade, setSelectedGrade] = useState('all');
+  const [viewMode, setViewMode] = useState<'qty' | 'amount'>('qty');
 
   const [visibleCount, setVisibleCount] = useState(20);
   const [chartModalOpen, setChartModalOpen] = useState(false);
@@ -52,7 +51,6 @@ export default function ProductStatus() {
       if (!group) return;
 
       const historyData = { sales: {} as Record<string, number>, stock: {} as Record<string, number> };
-      
       const promises = group.children.map(c => api.getProductHistory(c.barcode, 90));
       const results = await Promise.all(promises);
 
@@ -74,14 +72,6 @@ export default function ProductStatus() {
   };
 
   useEffect(() => {
-    localStorage.setItem('productStatus_sortHelper', JSON.stringify(sortConfig));
-  }, [sortConfig]);
-
-  useEffect(() => {
-    setVisibleCount(20);
-  }, [search, sortConfig, selectedSeason, selectedGrade]);
-
-  useEffect(() => {
     loadData();
   }, []);
 
@@ -101,7 +91,6 @@ export default function ProductStatus() {
     const VALID_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
 
     products.forEach(p => {
-      // Filter out invalid seasons
       if (!p.season || !VALID_SEASONS.includes(p.season.trim())) return;
 
       const existing = groups.get(p.name);
@@ -118,14 +107,11 @@ export default function ProductStatus() {
         Object.entries(p.dailySales).forEach(([date, qty]) => {
           existing.dailySales[date] = (existing.dailySales[date] || 0) + qty;
         });
-
-        // Sum daily stock across children for each date
         Object.entries(p.dailyStock).forEach(([date, stock]) => {
           if (stock !== undefined && stock !== null) {
             existing.dailyStock[date] = (existing.dailyStock[date] || 0) + stock;
           }
         });
-
         existing.children.push(p);
       } else {
         groups.set(p.name, {
@@ -148,15 +134,12 @@ export default function ProductStatus() {
       }
     });
 
-    // Re-evaluate Group ABC Grade (Take the best grade from children or calculate based on group total)
-    // Simple logic: Group inherits the best grade (A < B < C < D)
     for (const g of groups.values()) {
       if (g.children.some(c => c.abcGrade === 'A')) g.abcGrade = 'A';
       else if (g.children.some(c => c.abcGrade === 'B')) g.abcGrade = 'B';
       else if (g.children.some(c => c.abcGrade === 'C')) g.abcGrade = 'C';
       else g.abcGrade = 'D';
     }
-
     return Array.from(groups.values());
   }, [products]);
 
@@ -172,23 +155,16 @@ export default function ProductStatus() {
 
   const uniqueDates = useMemo(() => {
     if (products.length === 0) return [];
-    
-    // Find absolute latest date among active products
     let latestDateStr = '';
     groupedProducts.forEach(p => {
       Object.keys(p.dailySales).forEach(d => {
         if (d > latestDateStr) latestDateStr = d;
       });
     });
-    
-    if (!latestDateStr) {
-      latestDateStr = new Date().toISOString().split('T')[0];
-    }
-    
+    if (!latestDateStr) latestDateStr = new Date().toISOString().split('T')[0];
     const startDate = new Date(latestDateStr);
     startDate.setDate(startDate.getDate() - 14);
     const endDate = new Date(latestDateStr);
-    
     const dates = [];
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         dates.push(d.toISOString().split('T')[0]);
@@ -206,68 +182,37 @@ export default function ProductStatus() {
   }).sort((a, b) => {
     if (!sortConfig) return 0;
     const key = sortConfig.key;
-
     if (uniqueDates.includes(key)) {
       const aVal = a.dailySales[key] || 0;
       const bVal = b.dailySales[key] || 0;
       return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
     }
-
-    const aValue = a[key as keyof GroupedProduct];
-    const bValue = b[key as keyof GroupedProduct];
-
+    const aValue = a[key as keyof GroupedProduct] as any;
+    const bValue = b[key as keyof GroupedProduct] as any;
     if (aValue === undefined || bValue === undefined) return 0;
-
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
-  }).map(g => ({
-    ...g,
-    children: g.children.sort((a, b) => a.barcode.localeCompare(b.barcode))
-  }));
+  });
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
-      direction = 'asc';
-    }
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') direction = 'asc';
     setSortConfig({ key, direction });
   };
 
   const toggleGroup = (name: string) => {
     const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(name)) {
-      newExpanded.delete(name);
-    } else {
-      newExpanded.add(name);
-    }
+    if (newExpanded.has(name)) newExpanded.delete(name); else newExpanded.add(name);
     setExpandedGroups(newExpanded);
-  };
-
-  const formatDateHeader = (dateStr: string) => {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
-    return dateStr;
   };
 
   const totalStats = useMemo(() => {
     const stats = {
-      hqStock: 0,
-      currentStock: 0,
-      fcStock: 0,
-      vfStock: 0,
-      totalSales: 0,
-      fcSales: 0,
-      vfSales: 0,
-      hqStockValue: 0,
-      currentStockValue: 0,
-      totalSalesValue: 0,
-      fcSalesValue: 0,
-      vfSalesValue: 0,
-      dailySales: {} as Record<string, number>,
-      dailySalesValue: {} as Record<string, number>
+      hqStock: 0, currentStock: 0, fcStock: 0, vfStock: 0, totalSales: 0, fcSales: 0, vfSales: 0,
+      hqStockValue: 0, currentStockValue: 0, totalSalesValue: 0, fcSalesValue: 0, vfSalesValue: 0,
+      dailySales: {} as Record<string, number>, dailySalesValue: {} as Record<string, number>
     };
-
     filteredGroups.forEach(g => {
       g.children.forEach(child => {
         const cost = child.cost || 0;
@@ -278,31 +223,21 @@ export default function ProductStatus() {
         stats.totalSales += (child.totalSales || 0);
         stats.fcSales += (child.fcSales || 0);
         stats.vfSales += (child.vfSales || 0);
-
         stats.hqStockValue += (child.hqStock || 0) * cost;
         stats.currentStockValue += (child.coupangStock || 0) * cost;
         stats.totalSalesValue += (child.totalSales || 0) * cost;
         stats.fcSalesValue += (child.fcSales || 0) * cost;
         stats.vfSalesValue += (child.vfSales || 0) * cost;
-
         Object.entries(child.dailySales || {}).forEach(([date, qty]) => {
           stats.dailySales[date] = (stats.dailySales[date] || 0) + (qty || 0);
           stats.dailySalesValue[date] = (stats.dailySalesValue[date] || 0) + ((qty || 0) * cost);
         });
       });
     });
-
     return stats;
   }, [filteredGroups]);
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c', '#d0ed57', '#83a6ed', '#8dd1e1', '#ffc658'];
-
-  const extractCategory = (name: string) => {
-    if (name.includes('-')) return name.split('-')[0].trim();
-    if (name.includes('_')) return name.split('_')[0].trim();
-    if (name.includes(' ')) return name.split(' ')[0].trim();
-    return '기타';
-  };
+  const COLORS = ['#386ED9', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981'];
 
   const seasonSales = useMemo(() => {
     const map = new Map<string, number>();
@@ -310,282 +245,189 @@ export default function ProductStatus() {
       const s = p.season || '기타';
       map.set(s, (map.get(s) || 0) + p.sales7Days);
     });
-    return Array.from(map.entries())
-      .map(([name, value]) => ({
-        name,
-        value
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [products]);
-
-  const totalSeasonSales = useMemo(() => {
-    return seasonSales.reduce((acc, curr) => acc + curr.value, 0);
-  }, [seasonSales]);
-
-  const categorySales = useMemo(() => {
-    const map = new Map<string, number>();
-    products.forEach(p => {
-      const c = extractCategory(p.name);
-      map.set(c, (map.get(c) || 0) + p.sales7Days);
-    });
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [products]);
 
   const W_TOGGLE = "w-10 min-w-[2.5rem]";
-  const W_IMAGE = "w-12 min-w-[3rem]";
-  const W_SEASON = 'w-24 min-w-[6rem]';
-  const W_NAME = "w-64 min-w-[16rem]";
+  const W_NAME = "w-72 min-w-[18rem]";
 
-  const L_TOGGLE = "left-0";
-  const L_IMAGE = "left-[2.5rem]";
-  const L_SEASON = 'left-[5.5rem]';
-  const L_NAME = 'left-[11.5rem]';
+  if (loading) return (
+    <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)]">
+      <Loader2 className="animate-spin text-primary mb-4" size={48} strokeWidth={2.5} />
+      <p className="text-caption font-bold text-text-disabled">상품 통계 데이터를 분석 중입니다...</p>
+    </div>
+  );
 
-  if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
   return (
-    <div className="space-y-6 flex flex-col h-full">
-      {/* Top Level Charts (Season & Category Sales) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-none">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[260px] flex flex-col">
-          <h3 className="font-medium text-slate-700 mb-2">시즌별 최근 7일 판매량</h3>
+    <div className="space-y-8 pb-20">
+      {/* Visual Analytics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="p-8 border border-slate-100 rounded-3xl lg:col-span-1 h-[320px] flex flex-col bg-white">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-card-title text-text-primary tracking-tighter flex items-center font-semibold">
+              <Filter size={18} className="mr-3 text-primary" />
+              시즌별 판매 비중 (7일)
+            </h3>
+          </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">
+              <PieChart>
+                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} stroke="none">
                   {seasonSales.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(val: any) => val.toLocaleString() + '개'} />
-                <Legend
-                  verticalAlign="middle"
-                  align="right"
-                  layout="vertical"
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: 12 }}
-                  formatter={(value, entry: any) => {
-                    const percent = totalSeasonSales > 0 ? ((entry.payload.value / totalSeasonSales) * 100).toFixed(0) : 0;
-                    return `${value} (${percent}%)`;
-                  }}
-                />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px', fontWeight: 'bold' }} />
+                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-[260px] flex flex-col">
-          <h3 className="font-medium text-slate-700 mb-2">카테고리별 최근 7일 판매량 (상위 10개)</h3>
+        <div className="p-8 border border-slate-100 rounded-3xl lg:col-span-2 h-[320px] flex flex-col bg-white">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-card-title text-text-primary tracking-tighter flex items-center font-semibold">
+              <TrendingUp size={18} className="mr-3 text-primary" />
+              전체 판매 추이 (최근 14일)
+            </h3>
+          </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categorySales} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(val: any) => val.toLocaleString() + '개'} />
-                <Bar dataKey="value" fill="#8884d8" radius={[0, 4, 4, 0]}>
-                  {categorySales.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />)}
-                </Bar>
+              <BarChart data={uniqueDates.map(d => ({ date: d.substring(5), qty: totalStats.dailySales[d] || 0 }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                <Bar dataKey="qty" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col relative flex-1 min-h-[500px]">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-none">
-          <h3 className="font-semibold text-slate-700">
-            상품별 판매 현황 (20개씩 보기)
-            <span className="text-sm font-normal text-gray-500 ml-2">
-              (총 {filteredGroups.length}개 중 {Math.min(visibleCount, filteredGroups.length)}개 표시)
-            </span>
-            <div className="group relative ml-2 inline-flex items-center top-0.5">
-              <HelpCircle size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-gray-800 text-white text-sm rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-                <div className="font-medium mb-2 pb-1 border-b border-gray-600">ABC 등급 기준 (판매량 상위 %)</div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="font-medium text-red-300">A등급</span>
-                    <span>상위 0% ~ 10%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-orange-300">B등급</span>
-                    <span>상위 10% ~ 30%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-yellow-300">C등급</span>
-                    <span>상위 30% ~ 70%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-gray-300">D등급</span>
-                    <span>상위 70% ~ 100% (또는 0)</span>
-                  </div>
-                </div>
-                {/* Triangle Pointer */}
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-              </div>
+      {/* Main Table Section */}
+      <div className="p-0 overflow-hidden relative border-0">
+        <div className="px-8 py-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-slate-50/80">
+          <div>
+            <h3 className="text-section-title text-text-primary flex items-center uppercase tracking-tighter font-bold">
+              <LayoutGrid size={20} className="mr-3 text-primary" strokeWidth={3} />
+              상품별 상세 실적 통계
+            </h3>
+            <p className="text-caption text-text-disabled font-bold mt-1 uppercase">{filteredGroups.length}개 상품 필터링됨</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200">
+              <select className="px-3 py-1.5 text-xs font-bold text-text-secondary bg-transparent uppercase tracking-wider outline-none" value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)}>
+                <option value="all">시즌: 전체</option>
+                {uniqueSeasons.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div className="h-4 w-px bg-slate-200"></div>
+              <select className="px-3 py-1.5 text-xs font-bold text-text-secondary bg-transparent uppercase tracking-wider outline-none" value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)}>
+                <option value="all">등급: 전체</option>
+                <option value="A">A등급 (핵심)</option>
+                <option value="B">B등급 (주력)</option>
+                <option value="C">C등급 (일반)</option>
+                <option value="D">D등급 (비주력)</option>
+              </select>
             </div>
-          </h3>
-          <div className="flex items-center space-x-3">
-            <select
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white min-w-[120px]"
-              value={selectedSeason}
-              onChange={(e) => setSelectedSeason(e.target.value)}
-            >
-              <option value="all">전체 시즌</option>
-              {uniqueSeasons.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <select
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white min-w-[100px]"
-              value={selectedGrade}
-              onChange={(e) => setSelectedGrade(e.target.value)}
-            >
-              <option value="all">전체 등급</option>
-              <option value="A">A등급 (상위 20%)</option>
-              <option value="B">B등급 (20~50%)</option>
-              <option value="C">C등급 (50~100%)</option>
-              <option value="D">D등급 (판매 0)</option>
-            </select>
+            
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="상품명, 바코드, 시즌 검색..."
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 w-64"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-disabled" size={16} />
+              <input type="text" placeholder="상품명, 바코드 검색..." className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-4 focus:ring-primary/10 w-56 outline-none bg-white" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            {/* View Mode Toggle Buttons */}
-            <div className="flex border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-              <button
-                onClick={() => setViewMode('qty')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'qty' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                수량보기
-              </button>
-              <button
-                onClick={() => setViewMode('amount')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${viewMode === 'amount' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                금액보기
-              </button>
+
+            <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button onClick={() => setViewMode('qty')} className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${viewMode === 'qty' ? 'bg-white text-primary' : 'text-text-disabled hover:text-text-secondary'}`}>수량</button>
+              <button onClick={() => setViewMode('amount')} className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${viewMode === 'amount' ? 'bg-white text-primary' : 'text-text-disabled hover:text-text-secondary'}`}>금액</button>
             </div>
           </div>
         </div>
 
-        <div className="overflow-auto flex-1 relative max-h-[calc(100vh-250px)]">
-          <table className="min-w-full whitespace-nowrap min-w-max relative text-sm text-left border-separate border-spacing-0">
-            <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100 sticky top-0 z-40 shadow-sm">
-              <tr className="h-[50px] relative z-40">
-                <th className={`px-2 py-3 bg-gray-50 sticky z-40 ${W_TOGGLE} ${L_TOGGLE}`}></th>
-                <th className={`px-2 py-3 hover:bg-slate-50 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 ${W_IMAGE} ${L_IMAGE}`} onClick={() => handleSort('imageUrl')}>이미지</th>
-                <th className={`px-4 py-3 hover:bg-slate-50 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 ${W_SEASON} ${L_SEASON}`} onClick={() => handleSort('season')}>시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className={`px-4 py-3 hover:bg-slate-50 cursor-pointer select-none whitespace-nowrap bg-gray-50 sticky z-40 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`} onClick={() => handleSort('name')}>상품명(원가) <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-
-                <th className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-right bg-blue-50 select-none whitespace-nowrap" onClick={() => handleSort('hqStock')}>{viewMode === 'qty' ? '본사재고량' : '본사재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-right bg-green-50 select-none whitespace-nowrap" onClick={() => handleSort('currentStock')}>{viewMode === 'qty' ? '쿠팡재고량' : '쿠팡재고액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-right font-medium select-none whitespace-nowrap bg-gray-50" onClick={() => handleSort('totalSales')}>{viewMode === 'qty' ? '누적판매량' : '누적판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-right text-sm select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('fcSales')}>{viewMode === 'qty' ? 'FC판매량' : 'FC판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                <th className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-right text-sm select-none whitespace-nowrap bg-gray-50/50" onClick={() => handleSort('vfSales')}>{viewMode === 'qty' ? 'VF판매량' : 'VF판매액'} <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+        <div className="overflow-auto max-h-[calc(100vh-320px)] relative custom-scrollbar">
+          <table className="saas-table border-separate border-spacing-0">
+            <thead className="sticky top-0 z-40 bg-white">
+              <tr className="h-[52px]">
+                <th className={`sticky left-0 z-50 bg-slate-50 ${W_TOGGLE} border-b border-r border-slate-200`}></th>
+                <th className={`sticky left-[2.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-[10px] font-bold text-text-disabled uppercase tracking-widest px-4`} onClick={() => handleSort('season')}>구분</th>
+                <th className={`sticky left-[8.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-[10px] font-bold text-text-disabled uppercase tracking-widest px-6 border-r ${W_NAME}`} onClick={() => handleSort('name')}>상품명</th>
+                
+                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('hqStock')}>본사재고</th>
+                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('currentStock')}>쿠팡재고</th>
+                <th className="px-4 py-4 text-[10px] font-bold text-primary uppercase tracking-widest border-b-2 border-primary text-right cursor-pointer bg-primary/[0.02]" onClick={() => handleSort('totalSales')}>판매합계</th>
+                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right">전담판매</th>
+                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right">밀크판매</th>
                 {uniqueDates.map(date => (
-                  <th key={date} className={`px-2 py-3 hover:bg-slate-50 cursor-pointer text-center whitespace-nowrap bg-gray-50 group min-w-[50px] ${isRedDay(date) ? 'text-red-600' : ''}`} onClick={() => handleSort(date)}>
-                    {formatDateHeader(date)}
+                  <th key={date} className={`px-2 py-4 text-center border-b border-slate-100 min-w-[65px] ${isRedDay(date) ? 'text-error' : 'text-text-disabled'} text-[10px] font-bold uppercase tracking-tighter`} onClick={() => handleSort(date)}>
+                    {date.substring(5).replace('-', '/')}
                   </th>
                 ))}
               </tr>
-              <tr className="bg-slate-50 font-medium border-b border-gray-200">
-                <th className={`px-2 py-2 sticky z-30 bg-slate-50 ${W_TOGGLE} ${L_TOGGLE}`}></th>
-                <th className={`px-2 py-2 sticky z-30 bg-slate-50 ${W_IMAGE} ${L_IMAGE}`}></th>
-                <th className={`px-2 py-2 sticky z-30 bg-slate-50 ${W_SEASON} ${L_SEASON}`}></th>
-                <th className={`px-4 py-2 sticky z-30 bg-slate-50 text-center shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>합계</th>
-
-                <th className="px-4 py-2 text-right bg-blue-100">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-green-100">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : totalStats.currentStockValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right bg-slate-50">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-sm bg-slate-50/50">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
-                <th className="px-4 py-2 text-right text-sm bg-slate-50/50">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : totalStats.vfSalesValue.toLocaleString()}</th>
+              <tr className="bg-slate-50 font-bold text-[10px] text-text-primary uppercase tracking-widest">
+                <th className="sticky left-0 z-30 bg-slate-100 border-b border-slate-200"></th>
+                <th className="sticky left-8 z-30 bg-slate-100 border-b border-slate-200"></th>
+                 <th className="sticky left-[8.5rem] z-30 bg-slate-100 border-b border-slate-200 border-r text-center">합계</th>
+                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : totalStats.currentStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 text-primary">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : totalStats.vfSalesValue.toLocaleString()}</th>
                 {uniqueDates.map(date => (
-                  <th key={date} className="px-2 py-2 text-center text-sm bg-slate-50">
+                  <th key={date} className="text-center px-2 border-b border-slate-200">
                     {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : totalStats.dailySalesValue[date].toLocaleString()) : '-'}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {filteredGroups.slice(0, visibleCount).map((group) => {
                 const isExpanded = expandedGroups.has(group.name);
-                const stickyBg = isExpanded ? 'bg-[#ecf3ff]' : 'bg-white hover:bg-gray-50';
-
+                const stickyBg = isExpanded ? 'bg-primary/[0.03]' : 'bg-white group-hover/tr:bg-slate-50';
                 return (
                   <React.Fragment key={group.name}>
-                    <tr className={`hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 group ${isExpanded ? 'bg-blue-50/30' : ''}`} onClick={() => toggleGroup(group.name)}>
-                      <td className={`px-2 py-2 text-center sticky z-20 ${W_TOGGLE} ${L_TOGGLE} ${stickyBg} border-b border-gray-100`}>
-                        {isExpanded ? <ChevronDown size={14} className="text-gray-500 mx-auto" /> : <ChevronRight size={14} className="text-gray-400 mx-auto" />}
+                    <tr className={`group/tr transition-colors cursor-pointer ${isExpanded ? 'bg-primary/[0.03]' : ''}`} onClick={() => toggleGroup(group.name)}>
+                      <td className={`sticky left-0 z-20 ${stickyBg} border-b border-r border-slate-100 text-center py-5`}>
+                        {isExpanded ? <ChevronDown size={14} className="text-primary mx-auto" /> : <ChevronRight size={14} className="text-text-disabled mx-auto" />}
                       </td>
-                      <td className={`px-2 py-2 text-center sticky z-20 ${W_IMAGE} ${L_IMAGE} ${stickyBg} border-b border-gray-100`}>
-                        {group.imageUrl ? <img src={group.imageUrl} alt="" className="w-8 h-8 rounded mx-auto object-cover bg-slate-50 border border-gray-200" /> : <div className="w-8 h-8 rounded mx-auto bg-slate-50 border border-gray-200" />}
+                      <td className={`sticky left-[2.5rem] z-20 ${stickyBg} border-b border-slate-100 px-4 py-5 text-[11px] font-bold text-text-secondary uppercase tracking-widest`}>{group.season}</td>
+                      <td className={`sticky left-[8.5rem] z-20 ${stickyBg} border-b border-slate-100 border-r px-6 py-5`}>
+                        <div className="flex flex-col">
+                          <span className="text-item-main text-text-primary leading-tight group-hover/tr:text-primary transition-colors" onClick={(e) => openChartModal(group.name, e)}>{group.name}</span>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[11px] font-bold text-text-disabled uppercase">{(group.children[0]?.cost || 0).toLocaleString()} KRW</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-tighter ${
+                              group.abcGrade === 'A' ? 'text-success' :
+                              group.abcGrade === 'B' ? 'text-warning' :
+                              group.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
+                            }`}>{group.abcGrade}</span>
+                          </div>
+                        </div>
                       </td>
-                      <td className={`px-4 py-2 text-gray-500 text-sm truncate sticky z-20 ${W_SEASON} ${L_SEASON} ${stickyBg} border-b border-gray-100`}>{group.season}</td>
-                      <td className={`px-4 py-2 font-medium text-slate-700 text-sm whitespace-nowrap sticky z-20 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME} ${stickyBg} border-b border-gray-100`}>
-                        <span
-                          className="cursor-pointer hover:text-sky-500 hover:underline"
-                          onClick={(e) => openChartModal(group.name, e)}
-                        >
-                          {group.name}
-                        </span>
-                        <span className="text-gray-500 text-sm ml-1">({(group.children[0]?.cost || 0).toLocaleString()}원)</span>
-                        <span className={`ml-2 text-sm px-1.5 py-0.5 rounded border ${group.abcGrade === 'A' ? 'bg-red-50 text-red-600 border-red-200 font-medium' :
-                          group.abcGrade === 'B' ? 'bg-green-50 text-green-600 border-green-200 font-medium' :
-                            group.abcGrade === 'C' ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                              'bg-gray-50 text-gray-400 border-gray-100'
-                          }`}>
-                          {group.abcGrade}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-2 text-right text-slate-700 font-mono bg-blue-50 whitespace-nowrap">
-                        {viewMode === 'qty' ? group.hqStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-slate-700 font-mono bg-green-50 whitespace-nowrap">
-                        {viewMode === 'qty' ? group.currentStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right font-medium text-sky-500 font-mono whitespace-nowrap">
-                        {viewMode === 'qty' ? group.totalSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-sm whitespace-nowrap">
-                        {viewMode === 'qty' ? group.fcSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.fcSales * (c.cost || 0)), 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-gray-500 font-mono text-sm whitespace-nowrap">
-                        {viewMode === 'qty' ? group.vfSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.vfSales * (c.cost || 0)), 0).toLocaleString()}
-                      </td>
+                      <td className="text-right px-4 text-item-data text-text-secondary">{viewMode === 'qty' ? group.hqStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.hqStock * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="text-right px-4 text-item-data text-text-secondary">{viewMode === 'qty' ? group.currentStock.toLocaleString() : group.children.reduce((acc, c) => acc + (c.coupangStock * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="text-right px-4 text-item-data text-primary bg-primary/[0.01]">{viewMode === 'qty' ? group.totalSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.totalSales * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="text-right px-4 text-item-data text-text-disabled">{viewMode === 'qty' ? group.fcSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.fcSales * (c.cost || 0)), 0).toLocaleString()}</td>
+                      <td className="text-right px-4 text-item-data text-text-disabled">{viewMode === 'qty' ? group.vfSales.toLocaleString() : group.children.reduce((acc, c) => acc + (c.vfSales * (c.cost || 0)), 0).toLocaleString()}</td>
                       {uniqueDates.map(date => (
-                        <td key={date} className={`px-2 py-2 text-center text-sm min-w-[50px] ${group.dailySales[date] ? 'font-medium text-slate-700' : 'text-gray-300'}`}>
+                        <td key={date} className={`text-center py-5 text-item-data ${group.dailySales[date] ? 'text-text-primary' : 'text-slate-100'}`}>
                           {group.dailySales[date] ? (viewMode === 'qty' ? group.dailySales[date].toLocaleString() : group.children.reduce((acc, c) => acc + ((c.dailySales[date] || 0) * (c.cost || 0)), 0).toLocaleString()) : '-'}
                         </td>
                       ))}
                     </tr>
                     {isExpanded && group.children.map(child => (
-                      <tr key={child.barcode} className="bg-gray-50 border-b border-gray-100 text-sm">
-                        <td className={`px-2 py-1 sticky z-20 bg-gray-50 border-b border-gray-100 ${W_TOGGLE} ${L_TOGGLE}`}></td>
-                        <td className={`px-2 py-1 sticky z-20 bg-gray-50 border-b border-gray-100 ${W_IMAGE} ${L_IMAGE}`}></td>
-                        <td className={`px-4 py-1 text-gray-500 font-medium text-sm text-center sticky z-20 bg-gray-50 border-b border-gray-100 ${W_SEASON} ${L_SEASON}`}>
-                          {child.season || '-'}
-                        </td>
-                        <td className={`px-4 py-1 pl-8 text-sm whitespace-nowrap sticky z-20 bg-gray-50 border-b border-gray-100 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.1)] ${W_NAME} ${L_NAME}`}>
+                      <tr key={child.barcode} className="bg-slate-50/50 text-item-sub group/sub transition-colors hover:bg-slate-100/50">
+                        <td className="sticky left-0 bg-slate-50/50 border-b border-slate-100"></td>
+                        <td className="sticky left-[2.5rem] bg-slate-50/50 border-b border-slate-100"></td>
+                        <td className="sticky left-[8.5rem] bg-slate-50/50 border-b border-slate-100 border-r px-8 py-3">
                           <div className="flex flex-col">
-                            <span className="font-mono text-gray-400">{child.barcode}</span>
-                            <span className="text-gray-600 font-medium">{child.option || '-'}</span>
+                            <span className="text-text-disabled font-mono tracking-tighter mb-0.5">{child.barcode}</span>
+                            <span className="text-text-secondary uppercase">{child.option || '-'}</span>
                           </div>
                         </td>
-
-                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.hqStock.toLocaleString() : (child.hqStock * (child.cost || 0)).toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-500 whitespace-nowrap">{viewMode === 'qty' ? child.coupangStock.toLocaleString() : (child.coupangStock * (child.cost || 0)).toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-600 font-medium whitespace-nowrap">{viewMode === 'qty' ? child.totalSales.toLocaleString() : (child.totalSales * (child.cost || 0)).toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-400 text-sm whitespace-nowrap">{viewMode === 'qty' ? child.fcSales.toLocaleString() : (child.fcSales * (child.cost || 0)).toLocaleString()}</td>
-                        <td className="px-4 py-1 text-right text-gray-400 text-sm whitespace-nowrap">{viewMode === 'qty' ? child.vfSales.toLocaleString() : (child.vfSales * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="text-right px-4 text-text-disabled">{viewMode === 'qty' ? child.hqStock.toLocaleString() : (child.hqStock * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="text-right px-4 text-text-disabled">{viewMode === 'qty' ? child.coupangStock.toLocaleString() : (child.coupangStock * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="text-right px-4 text-text-secondary">{viewMode === 'qty' ? child.totalSales.toLocaleString() : (child.totalSales * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="text-right px-4 text-text-disabled/50">{viewMode === 'qty' ? child.fcSales.toLocaleString() : (child.fcSales * (child.cost || 0)).toLocaleString()}</td>
+                        <td className="text-right px-4 text-text-disabled/50">{viewMode === 'qty' ? child.vfSales.toLocaleString() : (child.vfSales * (child.cost || 0)).toLocaleString()}</td>
                         {uniqueDates.map(date => (
-                          <td key={date} className={`px-2 py-1 text-center min-w-[50px] ${child.dailySales[date] ? 'text-gray-700' : 'text-gray-200'}`}>
+                          <td key={date} className={`text-center text-item-sub font-medium ${child.dailySales[date] ? 'text-text-secondary' : 'text-slate-100'}`}>
                             {child.dailySales[date] ? (viewMode === 'qty' ? child.dailySales[date].toLocaleString() : (child.dailySales[date] * (child.cost || 0)).toLocaleString()) : '-'}
                           </td>
                         ))}
@@ -594,110 +436,44 @@ export default function ProductStatus() {
                   </React.Fragment>
                 );
               })}
-              {filteredGroups.length === 0 && (
-                <tr><td colSpan={7 + uniqueDates.length} className="px-6 py-10 text-center text-gray-400">데이터가 없습니다.</td></tr>
-              )}
             </tbody>
           </table>
         </div>
         {visibleCount < filteredGroups.length && (
-          <div className="flex justify-center py-4 bg-gray-50 border-t border-gray-200">
-            <button onClick={() => setVisibleCount(prev => prev + 20)} className="px-8 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              더 보기 (+20) <span className="ml-2 text-gray-400 text-sm">({visibleCount} / {filteredGroups.length})</span>
-            </button>
+          <div className="flex justify-center py-10 bg-slate-50 border-t border-slate-100">
+            <button onClick={() => setVisibleCount(prev => prev + 20)} className="btn-secondary px-8 font-bold uppercase tracking-[0.2em]">상품 데이터 더보기 (+20) <span className="ml-4 opacity-40">{visibleCount} / {filteredGroups.length}</span></button>
           </div>
         )}
       </div>
 
       {/* Chart Modal */}
       {chartModalOpen && selectedGroupForChart && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-medium text-slate-700 flex items-center">
-                <TrendingUp size={20} className="text-blue-500 mr-2" />
-                <span className="text-sky-500 mr-2">{selectedGroupForChart}</span> 누적 판매 추이 (올해 1월 1일 ~)
-              </h3>
-              <button
-                onClick={() => setChartModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition"
-              >
-                <X size={20} />
-              </button>
+        <div className="fixed inset-0 bg-text-primary/60 backdrop-blur-md z-[100] flex justify-center items-center p-4" onClick={() => setChartModalOpen(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-text-primary uppercase tracking-tighter flex items-center">
+                  <TrendingUp size={22} className="text-primary mr-3" strokeWidth={3} />
+                  {selectedGroupForChart} <span className="ml-2 text-primary">실시간 판매 추이</span>
+                </h3>
+              </div>
+              <button onClick={() => setChartModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-all"><X size={20} /></button>
             </div>
-            <div className="p-6 h-[400px] w-full">
-              {(() => {
-                if (loadingHistory) {
-                  return (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                      <Loader2 className="animate-spin text-blue-500 mb-2" size={32} />
-                      <p className="text-sm italic">과거 90일 데이터를 불러오는 중...</p>
-                    </div>
-                  );
-                }
-
-                if (!modalHistory || Object.keys(modalHistory.sales).length === 0) {
-                  return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;
-                }
-
-                const dates = Object.keys(modalHistory.sales).sort();
-                const chartData = dates.map(dStr => ({
-                  date: dStr.substring(5).replace('-', '/'),
-                  sales: modalHistory.sales[dStr] || 0,
-                  stock: modalHistory.stock[dStr] || 0
-                }));
-
-                if (chartData.length === 0) {
-                  return <div className="h-full flex items-center justify-center text-gray-500">데이터가 없습니다.</div>;
-                }
-
-                return (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={10} stroke="#cbd5e1" minTickGap={20} />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickMargin={10}
-                        stroke="#475569"
-                        allowDecimals={false}
-                      />
-                      <Tooltip
-                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        formatter={(value: any, name: any) => {
-                          if (name === 'sales') return [`${value}건`, '판매량'];
-                          if (name === 'stock') return [`${value}개`, '총재고'];
-                          return [value, name];
-                        }}
-                        labelStyle={{ color: '#475569', fontWeight: 'bold', marginBottom: '4px' }}
-                      />
-                      <Legend verticalAlign="top" height={36} />
-                      <Line
-                        type="monotone"
-                        dataKey="sales"
-                        name="판매량"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        dot={false}
-                        activeDot={{ r: 6, stroke: '#059669', strokeWidth: 2, fill: '#fff' }}
-                        animationDuration={1000}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="stock"
-                        name="재고량"
-                        stroke="#8b5cf6"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={false}
-                        opacity={0.8}
-                        activeDot={{ r: 4, stroke: '#7c3aed', strokeWidth: 2, fill: '#fff' }}
-                        animationDuration={1000}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              })()}
+            <div className="p-10 h-[450px]">
+              {loadingHistory ? <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={40} strokeWidth={3} /></div> :
+               modalHistory && Object.keys(modalHistory.sales).length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={Object.keys(modalHistory.sales).sort().map(d => ({ date: d.substring(5).replace('-', '/'), sales: modalHistory.sales[d] || 0, stock: modalHistory.stock[d] || 0 }))}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none' }} />
+                    <Legend verticalAlign="top" height={50} iconType="circle" wrapperStyle={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase' }} />
+                    <Line type="monotone" dataKey="sales" name="일일 판매량" stroke="#22C55E" strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <Line type="monotone" dataKey="stock" name="쿠팡 재고" stroke="#386ED9" strokeWidth={2} strokeDasharray="6 6" dot={false} opacity={0.5} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : <div className="h-full flex items-center justify-center text-text-disabled font-bold uppercase">분석 데이터가 존재하지 않습니다.</div>}
             </div>
           </div>
         </div>

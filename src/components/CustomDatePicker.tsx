@@ -88,14 +88,14 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
     <div className="relative inline-block" ref={containerRef}>
       <div 
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`flex items-center space-x-2 px-2 py-1 cursor-pointer transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-500'}`}
+        className={`flex items-center space-x-3 px-2 py-2 transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:text-primary active:scale-95'}`}
       >
-        <span className="text-sm text-gray-700 min-w-[85px]">{value || '날짜 선택'}</span>
-        <CalendarIcon size={14} className="text-gray-400" />
+        <CalendarIcon size={16} className="opacity-70" />
+        <span className="text-item-data min-w-[85px] font-bold">{value || '날짜 선택'}</span>
       </div>
 
       {isOpen && (
-        <div className="absolute z-[9999] mt-2 bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-xl w-64 p-4 animate-in fade-in zoom-in duration-200 origin-top-right right-0">
+        <div className="absolute z-[9999] mt-2 bg-white/95 backdrop-blur-xl rounded-xl w-64 p-4 animate-in fade-in zoom-in duration-200 origin-top-right right-0">
           <div className="flex items-center justify-between mb-4">
             <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600">
               <ChevronLeft size={18} />

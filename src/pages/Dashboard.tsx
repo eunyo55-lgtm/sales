@@ -3,9 +3,71 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Archive, Sparkles, Clock } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, Search, Calendar, ArrowUpRight, ArrowDownRight, Archive } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
+
+const StatCard = ({ title, value, amount, sub, icon: Icon, yoyValue, comparisonLabel = "전년 대비", avgCost = 0, type = 'sales' }: any) => {
+    let yoyEl = null;
+    if (yoyValue !== undefined && yoyValue !== null) {
+        const diff = value - yoyValue;
+        const rate = yoyValue > 0 ? (diff / yoyValue) * 100 : (value > 0 ? 100 : 0);
+        const isUp = diff > 0;
+        const isDown = diff < 0;
+
+        yoyEl = (
+            <div className="mt-4 flex items-center text-item-data font-bold">
+                <span className="text-text-disabled uppercase font-semibold">{comparisonLabel}</span>
+                <span className={`ml-2 growth-indicator ${isUp ? 'text-success' : isDown ? 'text-error' : 'text-text-disabled'}`}>
+                    {isUp ? <ArrowUpRight size={14} /> : isDown ? <ArrowDownRight size={14} /> : null}
+                    {Math.abs(diff).toLocaleString()}개 ({isUp ? '+' : ''}{rate.toFixed(1)}%)
+                </span>
+            </div>
+        );
+    }
+
+    const totalAmount = amount !== undefined ? amount : Math.round(value * avgCost);
+
+    return (
+        <div className="p-8 border border-slate-100 rounded-3xl group hover:border-primary/50 transition-all cursor-default bg-white">
+            <div className="justify-between items-start flex">
+                <div className="flex-1">
+                    <h3 className="text-item-main text-text-secondary uppercase tracking-[0.15em] mb-4">{title}</h3>
+                    
+                    <div className="space-y-1">
+                        <div className="flex items-baseline space-x-2">
+                            <span className="text-item-main text-text-primary">{type === 'inventory' ? '재고량' : '판매량'}</span>
+                            <span className="text-[18px] font-bold text-text-primary">{value.toLocaleString()}</span>
+                            <span className="text-item-sub font-bold text-text-disabled uppercase">개</span>
+                        </div>
+                        
+                        {(amount !== undefined || avgCost > 0) && (
+                            <div className="flex items-baseline space-x-2">
+                                <span className="text-item-main text-text-secondary">원가액</span>
+                                <span className="text-item-data font-black text-text-primary">
+                                    {totalAmount.toLocaleString()}원
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {sub && (
+                        <div className="mt-4">
+                            <span className="text-item-sub text-text-disabled font-bold uppercase tracking-tight py-1 px-2 bg-slate-50 rounded-lg border border-slate-100">
+                                {sub}
+                            </span>
+                        </div>
+                    )}
+                    
+                    {yoyEl}
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl text-text-disabled group-hover:text-primary transition-colors border border-slate-100">
+                    <Icon size={20} strokeWidth={2.5} />
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
@@ -19,7 +81,7 @@ export default function Dashboard() {
     const [loadingTrend, setLoadingTrend] = useState(false);
     const [combinedRankings, setCombinedRankings] = useState<any[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
-    const [sortKey, setSortKey] = useState<'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y'>('qty_0y');
+    const [sortKey, setSortKey] = useState<'qty_0y' | 'qty_1y' | 'qty_2y' | 'trend' | 'amt_0y' | 'amt_1y' | 'amt_2y'>('qty_0y');
     const [sortDesc, setSortDesc] = useState(true);
     const [displayLimit, setDisplayLimit] = useState(10);
     const showAmountGroups = true;
@@ -35,7 +97,7 @@ export default function Dashboard() {
                 const start = new Date(d);
                 start.setDate(d.getDate() - 30);
                 const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-                
+
                 setTrendStartDate(startStr);
                 setTrendEndDate(data.anchorDate);
                 setStartDate(startStr);
@@ -51,7 +113,7 @@ export default function Dashboard() {
         try {
             const trend = await api.getCustomDailySalesTrend(trendStartDate, trendEndDate);
             setCustomTrendData(trend);
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         } finally {
             setLoadingTrend(false);
@@ -64,9 +126,9 @@ export default function Dashboard() {
         setDisplayLimit(10);
         try {
             const list = await api.getDashboardCombinedRankings(startDate, endDate);
-            setCombinedRankings(list); 
-        } catch(e) { 
-            console.error("[Dashboard] Rankings load failed:", e); 
+            setCombinedRankings(list);
+        } catch (e) {
+            console.error("[Dashboard] Rankings load failed:", e);
             setCombinedRankings([]);
         } finally {
             setLoadingRankings(false);
@@ -84,10 +146,11 @@ export default function Dashboard() {
         }
     };
 
-    const handleSort = (key: 'qty_0y'|'qty_1y'|'qty_2y'|'trend'|'amt_0y'|'amt_1y'|'amt_2y') => {
+    const handleSort = (key: 'qty_0y' | 'qty_1y' | 'qty_2y' | 'trend' | 'amt_0y' | 'amt_1y' | 'amt_2y') => {
         if (sortKey === key) {
             setSortDesc(!sortDesc);
         } else {
+            setSortKey(key);
             setSortKey(key);
             setSortDesc(true);
         }
@@ -119,343 +182,169 @@ export default function Dashboard() {
         return data?.trends?.daily || [];
     }, [data, customTrendData]);
 
-    // Build ID for deployment tracking
-    const BUILD_ID = 'v2026.04.01-04';
-    useEffect(() => {
-        console.log(`%c[Coupang Analytics] Running Build: ${BUILD_ID}`, 'color: #386ed9; font-weight: bold; font-size: 14px;');
-    }, []);
-
-    const handleHardReset = () => {
-        if (window.confirm("브라우저 캐시 및 모든 세션 데이터를 초기화하고 페이지를 새로고침하시겠습니까? (반영 지연 해결용)")) {
-            sessionStorage.clear();
-            localStorage.clear();
-            // Cache busting URL param
-            window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
-        }
-    };
-
-    const totals = useMemo(() => {
-        return sortedRankings.reduce((acc, curr) => {
-            acc.qty_0y += curr.qty_0y || 0;
-            acc.qty_1y += curr.qty_1y || 0;
-            acc.qty_2y += curr.qty_2y || 0;
-            acc.amt_0y += (curr.qty_0y || 0) * (curr.cost || 0);
-            acc.amt_1y += (curr.qty_1y || 0) * (curr.cost || 0);
-            acc.amt_2y += (curr.qty_2y || 0) * (curr.cost || 0);
-            return acc;
-        }, { qty_0y: 0, qty_1y: 0, qty_2y: 0, amt_0y: 0, amt_1y: 0, amt_2y: 0 });
-    }, [sortedRankings]);
-
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <div className="relative">
-                    <Loader2 className="animate-spin text-indigo-500 relative z-10" size={64} strokeWidth={2.5}/>
-                    <div className="absolute inset-0 bg-indigo-400 blur-xl opacity-30 rounded-full animate-pulse"></div>
-                </div>
+                <Loader2 className="animate-spin text-primary" size={48} strokeWidth={2.5} />
             </div>
         );
     }
 
     if (!data) {
         return (
-            <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] text-slate-400">
-                <div className="bg-white/60 p-10 rounded-3xl border border-white/50 shadow-xl backdrop-blur-md flex flex-col items-center">
-                    <AlertCircle size={64} className="mb-6 text-rose-400 drop-shadow-sm" />
-                    <h3 className="text-xl font-bold text-slate-700 mb-2">데이터를 불러올 수 없습니다.</h3>
-                    <p className="text-sm font-medium">초기 엑셀 데이터를 먼저 업로드해 주세요.</p>
+            <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)] text-text-disabled">
+                <div className="p-12 flex flex-col items-center max-w-md text-center border border-slate-100 rounded-3xl">
+                    <AlertCircle size={48} className="mb-6 text-error/50" />
+                    <h3 className="text-section-title text-text-primary mb-2">데이터를 불러올 수 없습니다.</h3>
+                    <p className="text-sub text-text-secondary">초기 엑셀 데이터를 먼저 업로드해 주세요.</p>
                 </div>
             </div>
         );
     }
 
-    const { metrics, anchorDate } = data;
-
-    const StatCard = ({ title, value, amount, sub, icon: Icon, yoyValue }: any) => {
-        let yoyEl = null;
-        if (yoyValue !== undefined && yoyValue !== null) {
-            const diff = value - yoyValue;
-            const rate = yoyValue > 0 ? (diff / yoyValue) * 100 : (value > 0 ? 100 : 0);
-            const isUp = diff > 0;
-            const isDown = diff < 0;
-
-            yoyEl = (
-                <div className="mt-3 flex items-center text-sm">
-                    <span className="text-slate-400 font-medium">전년도 대비</span>
-                    <span className={`ml-2 flex items-center font-bold text-sm ${
-                        isUp ? 'text-emerald-500' : isDown ? 'text-rose-500' : 'text-slate-400'
-                    }`}>
-                        {isUp ? <ArrowUpRight size={16} className="mr-0.5" /> : isDown ? <ArrowDownRight size={16} className="mr-0.5" /> : null}
-                        {Math.abs(diff).toLocaleString()}건
-                        {rate !== 0 && ` (${isUp ? '+' : ''}${rate.toFixed(1)}%)`}
-                    </span>
-                </div>
-            );
-        }
-
-        const avgCost = data?.avgCost || 0;
-        const totalAmount = amount !== undefined ? amount : Math.round(value * avgCost);
-
-        return (
-            <div className="group bg-white/70 backdrop-blur-xl p-7 rounded-[24px] border border-slate-200 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="flex justify-between items-start relative z-10">
-                    <div className="flex-1">
-                        <h3 className="text-slate-400 text-[13px] font-medium uppercase tracking-wide mb-2">{title}</h3>
-                        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1">
-                            <span className="text-[28px] font-semibold text-slate-700 tracking-tight leading-none">{value.toLocaleString()}</span>
-                            <span className="text-sm font-medium text-slate-400">건</span>
-                        </div>
-                        {avgCost > 0 && (
-                            <div className="mt-2">
-                                <span className="text-[13px] font-medium text-slate-400">
-                                    약 {totalAmount.toLocaleString()}원
-                                </span>
-                            </div>
-                        )}
-                        {sub && <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100/50 inline-block px-2 py-1 rounded-md">{sub}</p>}
-                        {yoyEl}
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <Icon size={24} className="text-slate-400" strokeWidth={2}/>
-                    </div>
-                </div>
-            </div>
-        );
-    };
+    const { metrics } = data;
+    const avgCost = data?.avgCost || 0;
 
     return (
         <div className="space-y-8 pb-12">
             {/* Top Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="최신 일자 판매"
+                    title="전일 판매량"
                     value={metrics.yesterday}
                     amount={metrics.yesterdayAmount}
                     yoyValue={metrics.yesterdayPrevYear}
-                    sub={anchorDate ? `${anchorDate} (FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0})` : "데이터 없음"}
+                    sub={`FC: ${metrics.fcYesterday?.toLocaleString() || 0} / VF: ${metrics.vfYesterday?.toLocaleString() || 0}`}
                     icon={TrendingUp}
-                    colorTheme="blue"
+                    avgCost={avgCost}
                 />
                 <StatCard
-                    title="주간 판매 누적"
+                    title="주간 판매량"
                     value={metrics.weekly}
                     amount={metrics.weeklyAmount}
                     yoyValue={metrics.weeklyPrevYear}
                     sub={`FC: ${metrics.fcWeekly?.toLocaleString() || 0} / VF: ${metrics.vfWeekly?.toLocaleString() || 0}`}
                     icon={Calendar}
-                    colorTheme="green"
+                    avgCost={avgCost}
                 />
                 <StatCard
-                    title="2026 연간 스코어"
+                    title="누적 판매량"
                     value={metrics.yearly}
                     amount={metrics.yearlyAmount}
                     yoyValue={metrics.yearlyPrevYear}
-                    sub={`${anchorDate ? anchorDate.substring(0, 4) : '올해'}년 누적 실적`}
+                    sub={`FC: ${metrics.fcYearly?.toLocaleString() || 0} / VF: ${metrics.vfYearly?.toLocaleString() || 0}`}
                     icon={Trophy}
-                    colorTheme="yellow"
+                    avgCost={avgCost}
                 />
                 <StatCard
-                    title="전일 기준 총 재고"
+                    title="전일 재고"
                     value={metrics.totalStock || 0}
                     amount={metrics.totalStockAmount || 0}
+                    yoyValue={metrics.totalStockPrevDay}
+                    comparisonLabel="전일 대비"
                     sub={`FC: ${(metrics.totalFcStock || 0).toLocaleString()} / VF: ${(metrics.totalVfStock || 0).toLocaleString()}`}
                     icon={Archive}
-                    colorTheme="blue"
+                    avgCost={avgCost}
+                    type="inventory"
                 />
             </div>
 
-            {/* Daily Trend Chart (Glassmorphism) */}
-            <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[24px] border border-slate-200 transition-shadow duration-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-[17px] font-semibold text-slate-700 flex items-center">
-                        <Activity size={20} className="mr-2 text-sky-400 stroke-[2.5px]" />
-                        판매 다이내믹 뷰
-                    </h3>
-                    <div className="flex items-center bg-white/50 backdrop-blur-sm p-1.5 rounded-full border border-slate-200 gap-2 relative z-50">
-                        <CustomDatePicker value={trendStartDate} onChange={setTrendStartDate} disabled={loadingTrend} />
-                        <span className="text-slate-300 font-bold px-1">~</span>
-                        <CustomDatePicker value={trendEndDate} onChange={setTrendEndDate} disabled={loadingTrend} />
-                        <button 
-                            onClick={loadTrendData} 
-                            disabled={loadingTrend || !trendStartDate || !trendEndDate}
-                            className={`p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full transition-all ml-1 ${loadingTrend ? 'animate-spin' : 'hover:scale-105 active:scale-95'}`}
-                        >
-                            <RefreshCw size={16} strokeWidth={2.5}/>
+            {/* Daily Trend Chart */}
+            <div className="p-8 border border-slate-100 rounded-3xl bg-white">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                    <div>
+                        <h3 className="text-section-title text-text-primary flex items-center uppercase tracking-tighter">
+                            <Activity size={20} className="mr-3 text-primary" strokeWidth={3} />
+                            판매 추이 분석
+                        </h3>
+                        <p className="text-item-sub text-text-disabled mt-1 uppercase">3개년 판매량 비교 분석</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-transparent p-0 rounded-none border-none">
+                            <CustomDatePicker value={trendStartDate} onChange={setTrendStartDate} disabled={loadingTrend} />
+                            <span className="text-text-disabled font-black px-2">~</span>
+                            <CustomDatePicker value={trendEndDate} onChange={setTrendEndDate} disabled={loadingTrend} />
+                        </div>
+                        <button onClick={loadTrendData} disabled={loadingTrend} className="p-3 bg-transparent border-none rounded-xl text-text-secondary hover:text-primary transition-all">
+                            <Search size={16} className={loadingTrend ? 'animate-spin' : ''} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
-                <div className="relative h-[380px] w-full">
-                    {loadingTrend && (
-                        <div className="absolute inset-0 z-10 bg-white/40 backdrop-blur-[2px] rounded-xl flex justify-center items-center">
-                            <Loader2 className="animate-spin text-indigo-500" size={40} strokeWidth={2.5} />
-                        </div>
-                    )}
+                <div className="relative h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredDailyTrends} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
-                            <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                            <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" vertical={false} />
                             <XAxis
                                 dataKey="date"
-                                fontSize={11}
-                                fontWeight={600}
-                                tickLine={false}
                                 axisLine={false}
+                                tickLine={false}
                                 tick={({ x, y, payload }) => (
-                                    <text x={x} y={y} dy={20} textAnchor="middle" fill={isRedDay(payload.value) ? "#ef4444" : "#64748b"} fontSize={11}>
-                                        {payload.value}
+                                    <text x={x} y={y} dy={16} textAnchor="middle" fill={isRedDay(payload.value) ? "#EF4444" : "#94A3B8"} fontSize={10} fontWeight="bold">
+                                        {payload.value.substring(5)}
                                     </text>
                                 )}
                             />
-                            <YAxis fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
-                            <Tooltip 
-                                contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', fontWeight: 'bold' }} 
-                            />
-                            <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, fontSize: '13px' }} iconType="circle"/>
-                            <Line type="monotone" dataKey="quantity" name="2026 판매량" stroke="#386ed9" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                            <Line type="monotone" dataKey="prevYearQuantity" name="2025 판매량" stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.8} />
-                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024 판매량" stroke="#fbcfe8" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.6} />
+                            <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                            <Legend wrapperStyle={{ paddingTop: '24px', fontWeight: 800, fontSize: '11px', textTransform: 'uppercase' }} iconType="circle" />
+                            <Line type="monotone" dataKey="quantity" name="2026년 판매" stroke="#386ED9" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="prevYearQuantity" name="2025년 판매" stroke="#94A3B8" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.6} />
+                            <Line type="monotone" dataKey="prev2YearQuantity" name="2024년 판매" stroke="#CBD5E1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* Combined Rankings Row (Unified Best 10) */}
-            <div className="bg-white/70 backdrop-blur-xl rounded-[24px] border border-slate-200 flex flex-col h-auto overflow-hidden">
-                <div className="px-6 py-5 border-b border-white flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50">
-                    <div className="flex flex-col md:flex-row md:items-center gap-3">
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-sky-50 border border-sky-100 p-2 rounded-xl text-sky-500">
-                                <Trophy size={20} className="stroke-[2px]"/>
-                            </div>
-                            <h3 className="text-[17px] font-semibold text-slate-700">퍼포먼스 랭킹 보드</h3>
-                        </div>
-                        {/* VERSION BANNER */}
-                        <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 bg-rose-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-sm shadow-rose-200">
-                                BUILD: {BUILD_ID}
-                            </span>
-                            <button 
-                                onClick={handleHardReset}
-                                className="text-[10px] font-bold text-slate-400 hover:text-rose-500 underline underline-offset-2 transition-colors"
-                            >
-                                반영 안됨?(강제 초기화)
-                            </button>
-                        </div>
+            {/* Performance Ranking Board */}
+            <div className="p-0 overflow-hidden relative">
+                <div className="px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50">
+                    <div>
+                        <h3 className="text-section-title text-text-primary flex items-center uppercase tracking-tighter">
+                            <Trophy size={20} className="mr-3 text-primary" strokeWidth={3} />
+                            베스트 셀러 성과 랭킹
+                        </h3>
                     </div>
-                    <div className="flex items-center gap-2 mr-2">
-                        <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all ${
-                            sessionStorage.getItem(`RANKINGS_${startDate}_${endDate}`) 
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                : 'bg-slate-50 text-slate-400 border border-slate-100'
-                        }`}>
-                            <Clock size={12} />
-                            {loadingRankings ? '싱크 중...' : (sessionStorage.getItem(`RANKINGS_${startDate}_${endDate}`) ? '빠른 로딩 활성' : '서버 연결 중')}
-                        </div>
-                    </div>
-                    <div className="flex items-center bg-white/60 backdrop-blur-sm p-1.5 rounded-full gap-2 border border-slate-200 relative z-50">
+                    <div className="flex items-center bg-transparent p-0 rounded-none border-none">
                         <CustomDatePicker value={startDate} onChange={setStartDate} disabled={loadingRankings} />
-                        <span className="text-slate-300 font-bold px-1">~</span>
+                        <span className="text-text-disabled font-black px-2">~</span>
                         <CustomDatePicker value={endDate} onChange={setEndDate} disabled={loadingRankings} />
-                        <button 
-                            onClick={loadCombinedRankings} 
-                            disabled={loadingRankings || !startDate || !endDate}
-                            className={`p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all ml-1 ${loadingRankings ? 'animate-spin' : ''}`}
-                        >
-                            <RefreshCw size={14} strokeWidth={2.5}/>
+                        <button onClick={loadCombinedRankings} disabled={loadingRankings} className="ml-2 p-2.5 bg-transparent text-text-secondary rounded-lg hover:bg-primary hover:text-white transition-all border-none">
+                            <Search size={14} className={loadingRankings ? 'animate-spin' : ''} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
-                
-
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="text-[13px] font-medium text-slate-400 bg-white/50 border-b border-slate-50 sticky top-0 backdrop-blur-md">
-                            <tr>
-                                <th className="px-5 py-4 text-center w-14 tracking-wider uppercase">순위</th>
-                                <th className="px-5 py-4 tracking-wider uppercase">상품명</th>
-                                <th className="px-5 py-4 font-semibold text-center w-28 text-slate-400">추세</th>
-                                <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_2y')}>
-                                    '24년 판매량 {sortKey === 'qty_2y' && (sortDesc ? '▼' : '▲')}
-                                </th>
-                                <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('qty_1y')}>
-                                    '25년 판매량 {sortKey === 'qty_1y' && (sortDesc ? '▼' : '▲')}
-                                </th>
-                                <th className="px-5 py-4 text-right cursor-pointer text-slate-900 font-bold border-l border-slate-100 hover:text-black transition-colors bg-blue-50/30" onClick={() => handleSort('qty_0y')}>
-                                    '26년 판매량 {sortKey === 'qty_0y' && (sortDesc ? '▼' : '▲')}
-                                </th>
-                                <th className="px-5 py-4 font-bold text-center w-36 text-slate-700 bg-slate-50/80 border-l border-slate-100">올해 성장률 (YoY)</th>
+                    <table className="saas-table border-separate border-spacing-0">
+                        <thead>
+                            <tr className="bg-white">
+                                <th className="text-center w-20 px-4 py-4 text-table-header border-b border-slate-100">순위</th>
+                                <th className="px-6 py-4 text-table-header border-b border-slate-100">상품명</th>
+                                <th className="text-center w-32 px-4 py-4 text-table-header border-b border-slate-100">추세</th>
+                                <th className="text-right px-4 py-4 text-table-header border-b border-slate-100 cursor-pointer hover:text-primary transition-all" onClick={() => handleSort('qty_2y')}>'24 판매량</th>
+                                <th className="text-right px-4 py-4 text-table-header border-b border-slate-100 cursor-pointer hover:text-primary transition-all" onClick={() => handleSort('qty_1y')}>'25 판매량</th>
+                                <th className="text-right px-6 py-4 text-table-header text-primary border-b-2 border-primary cursor-pointer" onClick={() => handleSort('qty_0y')}>'26 판매량</th>
+                                <th className="text-center w-32 px-4 py-4 text-table-header border-b border-slate-100">성장률</th>
                                 {showAmountGroups && (
                                     <>
-                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors border-l border-slate-100" onClick={() => handleSort('amt_2y')}>
-                                            '24년 판매액
-                                        </th>
-                                        <th className="px-5 py-4 text-right cursor-pointer hover:text-slate-800 transition-colors" onClick={() => handleSort('amt_1y')}>
-                                            '25년 판매액
-                                        </th>
-                                        <th className="px-5 py-4 text-right cursor-pointer text-slate-900 border-l border-slate-100 hover:text-black transition-colors" onClick={() => handleSort('amt_0y')}>
-                                            '26년 판매액
-                                        </th>
+                                        <th className="text-right px-4 py-4 text-table-header border-b border-slate-100 cursor-pointer" onClick={() => handleSort('amt_0y')}>'26 매출액</th>
                                     </>
                                 )}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50/50">
-                            {(!loadingRankings && sortedRankings && sortedRankings.length > 0) && (
-                                <tr className="bg-slate-50/50 font-semibold border-b border-slate-100">
-                                    <td colSpan={3} className="px-5 py-3 text-center text-slate-600 border-r border-slate-100 tracking-wide text-xs">전체 합계</td>
-                                    <td className="px-5 py-3 text-right text-slate-500 text-[13px]">{totals.qty_2y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-slate-500 text-[13px]">{totals.qty_1y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-right text-slate-900 font-bold bg-blue-50/20 text-[13px]">{totals.qty_0y.toLocaleString()}건</td>
-                                    <td className="px-5 py-3 text-center text-slate-400 bg-slate-50/30 border-l border-slate-100 font-normal text-xs">-</td>
-                                    {showAmountGroups && (
-                                        <>
-                                            <td className="px-5 py-3 text-right text-slate-500 border-l border-slate-200">
-                                                {totals.amt_2y > 0 ? totals.amt_2y.toLocaleString() + '원' : '-'}
-                                            </td>
-                                            <td className="px-5 py-3 text-right text-slate-500">
-                                                {totals.amt_1y > 0 ? totals.amt_1y.toLocaleString() + '원' : '-'}
-                                            </td>
-                                            <td className="px-5 py-3 text-right text-slate-800 text-[14px]">
-                                                {totals.amt_0y > 0 ? totals.amt_0y.toLocaleString() + '원' : '-'}
-                                            </td>
-                                        </>
-                                    )}
-                                </tr>
-                            )}
-                            {loadingRankings ? (
-                                <tr>
-                                    <td colSpan={10} className="text-center py-24">
-                                        <div className="flex flex-col items-center justify-center space-y-4">
-                                            <Loader2 className="animate-spin text-indigo-500" size={48} strokeWidth={2.5}/>
-                                            <div className="flex flex-col items-center space-y-1">
-                                                <p className="text-sm font-bold text-slate-600">고속 데이터 분석 중...</p>
-                                                <p className="text-[11px] text-slate-400">약 2~5초 정도 소요될 수 있습니다. (진행버전: {BUILD_ID})</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : displayedRankings && displayedRankings.length > 0 ? displayedRankings.map((item: any, idx: number) => {
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                            {displayedRankings.map((item: any, idx: number) => {
                                 const qty_2y = item.qty_2y || 0;
                                 const qty_1y = item.qty_1y || 0;
                                 const qty_0y = item.qty_0y || 0;
-                                
-                                // Calculate Growth Rate
+
                                 let growth = 0;
-                                if (qty_1y === 0 && qty_0y > 0) growth = qty_0y <= 10 ? qty_0y * 10 : 500;
+                                if (qty_1y === 0 && qty_0y > 0) growth = 100;
                                 else if (qty_1y > 0) growth = ((qty_0y - qty_1y) / qty_1y) * 100;
 
-                                const isHighlight = growth >= 50 && qty_0y >= 10;
-                                const isNegative = growth < 0;
+                                const isUp = growth > 0;
+                                const isDown = growth < 0;
 
-                                let growthText = '-';
-                                if (qty_1y === 0 && qty_0y > 0) growthText = 'New';
-                                else if (growth > 0) growthText = `+${growth > 500 ? '500+' : growth.toFixed(1)}%`;
-                                else if (growth < 0) growthText = `${growth.toFixed(1)}%`;
-
-                                // Data bar width capped at 100% (absolute for UI width calc)
-                                const dataBarWidth = Math.min(Math.abs(growth), 100);
-
-                                // Sparkline calculation
                                 const maxSparkQty = Math.max(qty_2y, qty_1y, qty_0y, 1);
                                 const yMax = 20;
                                 const pts = [
@@ -463,114 +352,60 @@ export default function Dashboard() {
                                     `30,${yMax - (qty_1y / maxSparkQty * yMax)}`,
                                     `60,${yMax - (qty_0y / maxSparkQty * yMax)}`
                                 ].join(' ');
-                                const trendColor = qty_0y >= qty_1y ? '#386ed9' : '#f43f5e';
 
                                 return (
-                                <tr key={item.name} className={`group hover:bg-white transition-all duration-300 ${isHighlight ? 'bg-blue-600/5' : 'bg-slate-50/10'}`}>
-                                    <td className="px-5 py-6 text-center border-r border-slate-50">
-                                        {idx + 1 <= 3 ? (
-                                            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl text-sm font-bold ${
-                                                idx === 0 ? 'bg-[#386ed9] text-white shadow-lg shadow-blue-200' : 
-                                                idx === 1 ? 'bg-slate-200 text-slate-700' : 
-                                                'bg-slate-100 text-slate-600'
-                                            }`}>
+                                    <tr key={item.name} className="group hover:bg-slate-50 transition-colors">
+                                        <td className="text-center py-5">
+                                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-item-data ${idx === 0 ? 'bg-primary text-white' :
+                                                    idx === 1 ? 'bg-slate-200 text-text-primary font-bold' :
+                                                        idx === 2 ? 'bg-slate-100 text-text-secondary font-bold' : 'text-text-disabled'
+                                                }`}>
                                                 {idx + 1}
                                             </span>
-                                        ) : (
-                                            <span className="font-bold text-slate-300 text-base">{idx + 1}</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-6 border-r border-slate-50">
-                                        <div className="flex items-center space-x-5 min-w-[280px]">
-                                            {item.imageUrl ? (
-                                                <div className="relative flex-none group-hover:scale-105 transition-transform duration-500">
-                                                    <img src={item.imageUrl} alt="" className="w-20 h-20 rounded-2xl bg-white object-cover border border-slate-200 shadow-sm" />
-                                                    {isHighlight && (
-                                                        <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1 rounded-lg shadow-md">
-                                                            <Sparkles size={12} fill="currentColor" />
-                                                        </div>
-                                                    )}
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center space-x-4">
+                                                <div className="flex flex-col">
+                                                    <p className="text-item-main text-text-primary line-clamp-1 leading-tight">{item.name}</p>
+                                                    <span className="text-item-sub text-text-disabled uppercase tracking-widest mt-1">Catalog Item</span>
                                                 </div>
-                                            ) : (
-                                                <div className="w-20 h-20 rounded-2xl bg-slate-100 flex-none border border-slate-100" />
-                                            )}
-                                            <div className="flex flex-col space-y-1">
-                                                <p className="font-bold text-slate-800 text-[15px] break-words whitespace-normal leading-relaxed cursor-pointer group-hover:text-[#386ed9] transition-colors">{item.name}</p>
-                                                <span className="text-[10px] text-slate-400 font-medium tracking-tight uppercase">Coupang Selection</span>
                                             </div>
-                                        </div>
-                                    </td>
-
-                                    <td className="px-4 py-6 text-center">
-                                        <div className="flex justify-center items-center">
-                                            <svg width="60" height="20" className="overflow-visible">
-                                                <polyline points={pts} fill="none" stroke={trendColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                <circle cx="60" cy={yMax - (qty_0y / maxSparkQty * yMax)} r="2.5" fill={trendColor} />
+                                        </td>
+                                        <td className="text-center py-5">
+                                            <svg width="60" height="20" className="mx-auto overflow-visible">
+                                                <polyline points={pts} fill="none" stroke={isUp ? '#22C55E' : isDown ? '#EF4444' : '#94A3B8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                             </svg>
-                                        </div>
-                                    </td>
-
-                                    <td className="px-5 py-6 text-right text-slate-500 font-semibold text-[13px]">{qty_2y.toLocaleString()}</td>
-                                    <td className="px-5 py-6 text-right text-slate-500 font-semibold text-[13px]">{qty_1y.toLocaleString()}</td>
-                                    
-                                    <td className="px-5 py-6 text-right font-bold text-slate-900 text-[14px] bg-blue-50/10 border-l border-slate-50">
-                                        {qty_0y.toLocaleString()}
-                                    </td>
-
-                                    {/* Data Bar Cell for YoY % */}
-                                    <td className="px-5 py-6 relative bg-slate-50/50 border-l border-slate-50 overflow-hidden min-w-[130px]">
-                                        <div className="absolute inset-y-5 left-1/2 right-1/2 flex pointer-events-none opacity-20 z-0">
-                                            {!isNegative && growth > 0 && (
-                                                <div className="h-full bg-blue-600 rounded-r-xl transition-all duration-700 ml-[1px]" style={{ width: `${dataBarWidth}%` }}></div>
-                                            )}
-                                            {isNegative && (
-                                                <div className="absolute top-0 bottom-0 right-[1px] h-full bg-rose-600 rounded-l-xl transition-all duration-700" style={{ width: `${dataBarWidth}%` }}></div>
-                                            )}
-                                        </div>
-                                        <div className={`relative z-10 text-center font-bold text-[12px] tracking-tight ${isNegative ? 'text-rose-600' : growth > 0 ? 'text-[#386ed9]' : 'text-slate-400'}`}>
-                                            {growthText}
-                                        </div>
-                                    </td>
-                                    {showAmountGroups && (
-                                        <>
-                                            <td className="px-5 py-3.5 text-right text-slate-400 font-medium border-l border-slate-50">
-                                                {item.cost > 0 ? (qty_2y * item.cost).toLocaleString() : '-'}
+                                        </td>
+                                        <td className="text-right px-4 py-5 text-item-data text-text-disabled">{qty_2y.toLocaleString()}</td>
+                                        <td className="text-right px-4 py-5 text-item-data text-text-disabled">{qty_1y.toLocaleString()}</td>
+                                        <td className="text-right px-6 py-5 text-item-data text-text-primary bg-primary/[0.01]">{qty_0y.toLocaleString()}</td>
+                                        <td className="text-center px-4 py-5">
+                                            <span className={`growth-indicator ${isUp ? 'text-success' : isDown ? 'text-error' : 'text-text-disabled'}`}>
+                                                {isUp ? <ArrowUpRight size={14} /> : isDown ? <ArrowDownRight size={14} /> : null}
+                                                {isUp ? '+' : ''}{growth.toFixed(1)}%
+                                            </span>
+                                        </td>
+                                        {showAmountGroups && (
+                                            <td className="text-right px-4 py-5 text-item-data text-text-secondary">
+                                                {((item.cost || 0) * qty_0y).toLocaleString()}원
                                             </td>
-                                            <td className="px-5 py-3.5 text-right text-slate-400 font-medium">
-                                                {item.cost > 0 ? (qty_1y * item.cost).toLocaleString() : '-'}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-right text-slate-700 font-semibold border-l border-slate-50">
-                                                {item.cost > 0 ? (qty_0y * item.cost).toLocaleString() : '-'}
-                                            </td>
-                                        </>
-                                    )}
-                                </tr>
-                            )}) : (
-                                <tr><td colSpan={8} className="text-center py-16 text-slate-400 font-medium">데이터가 없습니다.</td></tr>
-                            )}
+                                        )}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
                 {displayLimit < sortedRankings.length && (
-                    <div className="flex justify-center p-4 bg-white/50 backdrop-blur-md border-t border-white rounded-b-[24px]">
-                        <button 
-                            onClick={() => setDisplayLimit(p => p + 10)} 
-                            className="group px-6 py-2.5 bg-white border border-slate-100 rounded-full text-sm font-medium text-sky-500 hover:bg-sky-50 hover:-translate-y-0.5 transition-all flex items-center gap-2"
-                        >
-                            더 보기 (+10) 
-                            <span className="text-slate-400 font-medium text-xs bg-slate-100 px-2 py-0.5 rounded-full group-hover:bg-slate-200 transition-colors">
-                                {displayLimit} / {sortedRankings.length}
-                            </span>
+                    <div className="flex justify-center py-10 bg-slate-50/50 border-t border-slate-100">
+                        <button onClick={() => setDisplayLimit(p => p + 10)} className="btn-secondary px-8 font-black uppercase tracking-widest">
+                            데이터 더보기 (+10)
+                            <span className="ml-3 text-[10px] opacity-40">{displayLimit} / {sortedRankings.length}</span>
                         </button>
                     </div>
                 )}
-                
-                {/* Build ID Footer */}
-                <div className="mt-8 flex flex-col items-center justify-center space-y-1 py-10 opacity-30 select-none">
-                    <p className="text-[10px] font-bold tracking-widest text-[#386ed9] uppercase">Coupang Analytics System</p>
-                    <p className="text-[9px] font-medium text-slate-400">Build: v2026.04.01-03 • Last Deploy: {new Date().toLocaleTimeString('ko-KR')}</p>
-                </div>
             </div>
+
         </div>
     );
 }

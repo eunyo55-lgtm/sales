@@ -806,10 +806,54 @@ ${sampleText}
             const metricsProm = supabase.rpc('get_dashboard_metrics', { anchor_date: anchorDateStr });
             const trendsProm = supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
 
+            // [NEW] Fetch previous day total stock
+            const prevDateObj = new Date(anchorDateStr);
+            prevDateObj.setDate(prevDateObj.getDate() - 1);
+            // [IMPROVED] Robust Historical Stock Calculation (Targeting 75,617 from 4/1 data)
+            // 1. Get the stock for the "Latest Report" (anchorDateStr, e.g., 4/1)
+            // [IMPROVED] Use _fetchAllParallel to ensure we get ALL rows for accurate aggregation (Target 75,617)
+            const latestReportStock = await this._fetchAllParallel<any>(
+                'daily_sales',
+                'stock, fc_quantity, vf_quantity',
+                'barcode',
+                (q) => q.eq('date', anchorDateStr)
+            );
+            
+            const reportTotalStock = latestReportStock?.reduce((a, b: any) => a + (b.stock || 0), 0) || 0;
+            const reportTotalFcStock = latestReportStock?.reduce((a, b: any) => a + (b.fc_quantity || 0), 0) || 0;
+            const reportTotalVfStock = latestReportStock?.reduce((a, b: any) => a + (b.vf_quantity || 0), 0) || 0;
+
+            // 2. Find the "Most Recent Prior Date" (e.g., 3/31) and its total stock for comparison
+            const { data: priorDateRes } = await supabase
+                .from('daily_sales')
+                .select('date')
+                .lt('date', anchorDateStr)
+                .order('date', { ascending: false })
+                .limit(1);
+            
+            let totalStockPrevDay = 0;
+            if (priorDateRes?.[0]?.date) {
+                const prevReportStock = await this._fetchAllParallel<any>(
+                    'daily_sales',
+                    'stock',
+                    'barcode',
+                    (q) => q.eq('date', priorDateRes[0].date)
+                );
+                totalStockPrevDay = prevReportStock?.reduce((a, b) => a + (b.stock || 0), 0) || 0;
+            }
+
+            console.log(`[Dashboard] Stock Logic Reset: Today(${anchorDateStr}) sum is ${reportTotalStock} (FC:${reportTotalFcStock}, VF:${reportTotalVfStock}), Previous sum is ${totalStockPrevDay}`);
+
+
+            // [NEW] Fetch Yearly FC/VF Sum (2026) - Keep as promise for parallel fetch
+            const yearlySalesProm = supabase.from('daily_sales').select('fc_quantity, vf_quantity').gte('date', '2026-01-01').lte('date', anchorDateStr);
+
             // 3. Fetch Product Metadata (for Rankings) - PAGINATED
             const productsProm = this._getRawProducts();
 
-            const [metricsRes, trendsRes, products_all] = await Promise.all([metricsProm, trendsProm, productsProm]);
+            const [metricsRes, trendsRes, products_all, yearlySalesRes] = await Promise.all([
+                metricsProm, trendsProm, productsProm, yearlySalesProm
+            ]);
 
             if (metricsRes.error) throw metricsRes.error;
             if (trendsRes.error) throw trendsRes.error;
@@ -984,8 +1028,20 @@ ${sampleText}
 
             console.log(`[Risk Alert] Final Risk Items: ${riskItems.length} `, riskItems.slice(0, 3));
 
-            // Sort by impact (Avg Daily Sales DESC)
-            riskItems.sort((a, b) => b.avgDailySales - a.avgDailySales);
+            // [IMPROVED] Calculated above using latest historical entries per barcode
+            // const totalStockPrevDay = ... 
+            
+            if (totalStockPrevDay < totalStock * 0.5) {
+                console.warn(`[Dashboard] Possible stock discrepancy: Calculated Prev Stock (${totalStockPrevDay}) is lower than Current Stock (${totalStock}). The user expects ~75,617.`);
+            }
+
+            // Calculate Yearly FC/VF Sum
+            let fcYearly = 0;
+            let vfYearly = 0;
+            yearlySalesRes.data?.forEach((row: any) => {
+                fcYearly += (row.fc_quantity || 0);
+                vfYearly += (row.vf_quantity || 0);
+            });
 
             const result = {
                 anchorDate: anchorDateStr,
@@ -1005,10 +1061,13 @@ ${sampleText}
                     monthlyPrevYear: metricsRes.data?.statMonthlyPrevYear || 0,
                     yearly: metricsRes.data?.statYearly || 0,
                     yearlyAmount: exactAmounts.yearly,
+                    fcYearly,
+                    vfYearly,
                     yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0,
                     totalStock,
                     totalFcStock,
                     totalVfStock,
+                    totalStockPrevDay,
                     totalStockAmount
                 },
                 trends: {
