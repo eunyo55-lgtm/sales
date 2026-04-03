@@ -88,10 +88,16 @@ export default function ProductStatus() {
 
   const groupedProducts: GroupedProduct[] = useMemo(() => {
     const groups = new Map<string, GroupedProduct>();
-    const VALID_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
+    const getCleanSeason = (season: string | null | undefined) => {
+      if (!season) return '기타';
+      const s = season.trim();
+      if (s === '봄가을' || s === '봄/가을') return '봄/가을';
+      if (['겨울', '사계절', '여름'].includes(s)) return s;
+      return '기타';
+    };
 
     products.forEach(p => {
-      if (!p.season || !VALID_SEASONS.includes(p.season.trim())) return;
+      const season = getCleanSeason(p.season);
 
       const existing = groups.get(p.name);
       if (existing) {
@@ -116,7 +122,7 @@ export default function ProductStatus() {
       } else {
         groups.set(p.name, {
           name: p.name,
-          season: p.season.trim(),
+          season: season,
           imageUrl: p.imageUrl,
           totalSales: p.totalSales,
           fcSales: p.fcSales,
@@ -241,15 +247,35 @@ export default function ProductStatus() {
 
   const seasonSales = useMemo(() => {
     const map = new Map<string, number>();
+    const VALID_MAIN_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
+    
     products.forEach(p => {
-      const s = p.season || '기타';
-      map.set(s, (map.get(s) || 0) + p.sales7Days);
+      let s = (p.season || '기타').trim();
+      if (s === '봄가을') s = '봄/가을';
+      const displaySeason = VALID_MAIN_SEASONS.includes(s) ? s : '기타';
+      map.set(displaySeason, (map.get(displaySeason) || 0) + p.sales7Days);
     });
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [products]);
 
-  const W_TOGGLE = "w-10 min-w-[2.5rem]";
-  const W_NAME = "w-72 min-w-[18rem]";
+  const W_SEASON = "w-32 min-w-[8rem]";
+  const W_NAME = "w-80 min-w-[20rem]";
+
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    if (percent < 0.05) return null;
+
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-item-main" style={{ fontFamily: 'Pretendard' }}>
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+
+    );
+  };
 
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)]">
@@ -272,11 +298,20 @@ export default function ProductStatus() {
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} stroke="none">
+                <Pie data={seasonSales} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} stroke="none" labelLine={false} label={renderCustomizedLabel}>
                   {seasonSales.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px', fontWeight: 'bold' }} />
-                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }} />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    fontSize: '13px', 
+                    fontWeight: 'bold',
+                    fontFamily: 'Pretendard',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                  }} 
+                />
+                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 13, fontWeight: 700, fontFamily: 'Pretendard', paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -345,36 +380,38 @@ export default function ProductStatus() {
           <table className="saas-table border-separate border-spacing-0">
             <thead className="sticky top-0 z-40 bg-white">
               <tr className="h-[52px]">
-                <th className={`sticky left-0 z-50 bg-slate-50 ${W_TOGGLE} border-b border-r border-slate-200`}></th>
-                <th className={`sticky left-[2.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-[10px] font-bold text-text-disabled uppercase tracking-widest px-4`} onClick={() => handleSort('season')}>구분</th>
-                <th className={`sticky left-[8.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-[10px] font-bold text-text-disabled uppercase tracking-widest px-6 border-r ${W_NAME}`} onClick={() => handleSort('name')}>상품명</th>
+                <th className={`sticky left-0 z-50 bg-slate-50 w-10 min-w-[2.5rem] border-b border-r border-slate-200`}></th>
+                <th className={`sticky left-[2.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-table-header text-text-disabled px-4 whitespace-nowrap ${W_SEASON}`} onClick={() => handleSort('season')}>시즌</th>
+                <th className={`sticky left-[10.5rem] z-50 bg-slate-50 border-b border-slate-200 cursor-pointer text-table-header text-text-disabled px-6 border-r whitespace-nowrap ${W_NAME}`} onClick={() => handleSort('name')}>상품명</th>
                 
-                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('hqStock')}>본사재고</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('currentStock')}>쿠팡재고</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-primary uppercase tracking-widest border-b-2 border-primary text-right cursor-pointer bg-primary/[0.02]" onClick={() => handleSort('totalSales')}>판매합계</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right">전담판매</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-text-disabled uppercase tracking-widest border-b border-slate-100 text-right">밀크판매</th>
+                <th className="px-4 py-4 text-table-header text-text-disabled text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사재고</th>
+                <th className="px-4 py-4 text-table-header text-text-disabled text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('currentStock')}>쿠팡재고</th>
+                <th className="px-4 py-4 text-table-header text-primary border-b-2 border-primary text-right cursor-pointer bg-primary/[0.02] whitespace-nowrap" onClick={() => handleSort('totalSales')}>판매합계</th>
+                <th className="px-4 py-4 text-table-header text-text-disabled text-right whitespace-nowrap">전담판매</th>
+                <th className="px-4 py-4 text-table-header text-text-disabled text-right whitespace-nowrap">밀크판매</th>
                 {uniqueDates.map(date => (
-                  <th key={date} className={`px-2 py-4 text-center border-b border-slate-100 min-w-[65px] ${isRedDay(date) ? 'text-error' : 'text-text-disabled'} text-[10px] font-bold uppercase tracking-tighter`} onClick={() => handleSort(date)}>
+                  <th key={date} className={`px-2 py-4 text-center border-b border-slate-100 min-w-[65px] ${isRedDay(date) ? 'text-error' : 'text-text-disabled'} text-table-header`} onClick={() => handleSort(date)}>
                     {date.substring(5).replace('-', '/')}
                   </th>
                 ))}
+
               </tr>
-              <tr className="bg-slate-50 font-bold text-[10px] text-text-primary uppercase tracking-widest">
+              <tr className="bg-slate-50 text-item-main text-text-primary uppercase tracking-widest h-[26px]">
                 <th className="sticky left-0 z-30 bg-slate-100 border-b border-slate-200"></th>
-                <th className="sticky left-8 z-30 bg-slate-100 border-b border-slate-200"></th>
-                 <th className="sticky left-[8.5rem] z-30 bg-slate-100 border-b border-slate-200 border-r text-center">합계</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : totalStats.currentStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200 text-primary">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.vfSales.toLocaleString() : totalStats.vfSalesValue.toLocaleString()}</th>
+                <th className="sticky left-[2.5rem] z-30 bg-slate-100 border-b border-slate-200"></th>
+                <th className="sticky left-[10.5rem] z-30 bg-slate-100 border-b border-slate-200 border-r text-center">합계</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)]">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)]">{viewMode === 'qty' ? totalStats.currentStock.toLocaleString() : totalStats.currentStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)]">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-disabled shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)]">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-disabled shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)]">{viewMode === 'qty' ? totalStats.fcSales.toLocaleString() : totalStats.fcSalesValue.toLocaleString()}</th>
                 {uniqueDates.map(date => (
                   <th key={date} className="text-center px-2 border-b border-slate-200">
                     {totalStats.dailySales[date] ? (viewMode === 'qty' ? totalStats.dailySales[date].toLocaleString() : totalStats.dailySalesValue[date].toLocaleString()) : '-'}
                   </th>
                 ))}
               </tr>
+
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredGroups.slice(0, visibleCount).map((group) => {
@@ -386,17 +423,25 @@ export default function ProductStatus() {
                       <td className={`sticky left-0 z-20 ${stickyBg} border-b border-r border-slate-100 text-center py-5`}>
                         {isExpanded ? <ChevronDown size={14} className="text-primary mx-auto" /> : <ChevronRight size={14} className="text-text-disabled mx-auto" />}
                       </td>
-                      <td className={`sticky left-[2.5rem] z-20 ${stickyBg} border-b border-slate-100 px-4 py-5 text-[11px] font-bold text-text-secondary uppercase tracking-widest`}>{group.season}</td>
-                      <td className={`sticky left-[8.5rem] z-20 ${stickyBg} border-b border-slate-100 border-r px-6 py-5`}>
-                        <div className="flex flex-col">
-                          <span className="text-item-main text-text-primary leading-tight group-hover/tr:text-primary transition-colors" onClick={(e) => openChartModal(group.name, e)}>{group.name}</span>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[11px] font-bold text-text-disabled uppercase">{(group.children[0]?.cost || 0).toLocaleString()} KRW</span>
-                            <span className={`text-[10px] font-bold uppercase tracking-tighter ${
-                              group.abcGrade === 'A' ? 'text-success' :
-                              group.abcGrade === 'B' ? 'text-warning' :
-                              group.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
-                            }`}>{group.abcGrade}</span>
+                      <td className={`sticky left-[2.5rem] z-20 ${stickyBg} border-b border-slate-100 px-4 py-5 text-item-main text-text-secondary uppercase tracking-widest whitespace-nowrap`}>{group.season}</td>
+                      <td className={`sticky left-[10.5rem] z-20 ${stickyBg} border-b border-slate-100 border-r px-6 py-5`}>
+                        <div className="flex items-center gap-4">
+                          {group.imageUrl ? (
+                            <img src={group.imageUrl} alt="" className="w-[60px] h-[60px] rounded-lg object-cover bg-slate-50 flex-shrink-0" />
+                          ) : (
+                            <div className="w-[60px] h-[60px] rounded-lg bg-slate-100 flex-shrink-0" />
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-item-main text-text-primary leading-tight group-hover/tr:text-primary transition-colors cursor-pointer truncate" onClick={(e) => openChartModal(group.name, e)}>{group.name}</span>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-item-sub font-bold text-text-disabled uppercase">{(group.children[0]?.cost || 0).toLocaleString()} KRW</span>
+                              <span className={`text-item-sub font-bold uppercase tracking-tighter ${
+                                group.abcGrade === 'A' ? 'text-success' :
+                                group.abcGrade === 'B' ? 'text-warning' :
+                                group.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
+                              }`}>{group.abcGrade}</span>
+                            </div>
+
                           </div>
                         </div>
                       </td>
@@ -415,7 +460,7 @@ export default function ProductStatus() {
                       <tr key={child.barcode} className="bg-slate-50/50 text-item-sub group/sub transition-colors hover:bg-slate-100/50">
                         <td className="sticky left-0 bg-slate-50/50 border-b border-slate-100"></td>
                         <td className="sticky left-[2.5rem] bg-slate-50/50 border-b border-slate-100"></td>
-                        <td className="sticky left-[8.5rem] bg-slate-50/50 border-b border-slate-100 border-r px-8 py-3">
+                        <td className="sticky left-[10.5rem] bg-slate-50/50 border-b border-slate-100 border-r px-8 py-3">
                           <div className="flex flex-col">
                             <span className="text-text-disabled font-mono tracking-tighter mb-0.5">{child.barcode}</span>
                             <span className="text-text-secondary uppercase">{child.option || '-'}</span>

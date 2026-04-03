@@ -50,13 +50,19 @@ export default function Insights() {
         setExpandedGroups(newExpanded);
     };
 
+    const getCleanSeason = (season: string | null | undefined) => {
+        if (!season) return '기타';
+        const s = season.trim();
+        if (s === '봄가을' || s === '봄/가을') return '봄/가을';
+        if (['겨울', '사계절', '여름'].includes(s)) return s;
+        return '기타';
+    };
+
     // Extract unique seasons
     const availableSeasons = useMemo(() => {
         const seasons = new Set<string>();
         products.forEach(p => {
-            if (p.season && p.season.trim() !== '') {
-                seasons.add(p.season.trim());
-            }
+            seasons.add(getCleanSeason(p.season));
         });
         return Array.from(seasons).sort();
     }, [products]);
@@ -74,11 +80,12 @@ export default function Insights() {
         });
 
         deadItems.forEach(p => {
+            const season = getCleanSeason(p.season);
             if (!groups.has(p.name)) {
                 groups.set(p.name, {
                     name: p.name,
                     imageUrl: p.imageUrl,
-                    season: p.season || '기타',
+                    season: season,
                     totalStock: 0,
                     sales30Days: 0,
                     sales7Days: 0,
@@ -180,12 +187,12 @@ export default function Insights() {
                     </div>
                 ) : (
                     <table className="w-full whitespace-nowrap min-w-max relative text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
-                            <tr>
+                        <thead className="text-[10px] text-text-disabled uppercase font-bold bg-slate-50 sticky top-0 z-10 border-b border-slate-200">
+                            <tr className="h-[52px]">
                                 <th className="px-5 py-3 w-8"></th>
-                                <th className="px-5 py-3 font-medium cursor-pointer hover:bg-slate-50" onClick={() => handleSort('name')}>상품명 / 시즌 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-slate-50" onClick={() => handleSort('totalStock')}>쿠팡 재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
-                                <th className="px-5 py-3 font-medium text-right cursor-pointer hover:bg-slate-50" onClick={() => handleSort('sales30Days')}>최근 30일 판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 cursor-pointer hover:bg-slate-100 whitespace-nowrap" onClick={() => handleSort('name')}>시즌 / 상품명 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 text-right cursor-pointer hover:bg-slate-100 whitespace-nowrap" onClick={() => handleSort('totalStock')}>쿠팡 재고 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
+                                <th className="px-5 py-3 text-right cursor-pointer hover:bg-slate-100 whitespace-nowrap" onClick={() => handleSort('sales30Days')}>최근 30일 판매량 <ArrowUpDown size={12} className="inline ml-1 opacity-50" /></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -203,31 +210,31 @@ export default function Insights() {
                                                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="flex items-center">
+                                                <div className="flex items-center gap-4">
                                                     {group.imageUrl ? (
-                                                        <img src={group.imageUrl} alt="" className="w-10 h-10 rounded object-cover mr-3 bg-slate-50" />
+                                                        <img src={group.imageUrl} alt="" className="w-[60px] h-[60px] rounded-lg object-cover bg-slate-50 flex-shrink-0" />
                                                     ) : (
-                                                        <div className="w-10 h-10 rounded bg-slate-50 mr-3"></div>
+                                                        <div className="w-[60px] h-[60px] rounded-lg bg-slate-100 flex-shrink-0"></div>
                                                     )}
-                                                    <div>
-                                                        <div className="font-medium text-slate-700">{group.name}</div>
-                                                        <div className="flex items-center mt-1 space-x-2">
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-500 border-gray-200">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <div className="text-item-main text-text-primary leading-tight truncate">{group.name}</div>
+                                                        <div className="flex items-center mt-1.5 space-x-2">
+                                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-text-disabled border-slate-200 uppercase tracking-widest">
                                                                 {group.season}
                                                             </span>
-                                                            <span className="text-xs text-gray-400">{group.children.length} 옵션</span>
+                                                            <span className="text-[10px] font-bold text-text-disabled uppercase">{group.children.length} 옵션</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4 text-right">
-                                                <span className="font-medium text-slate-700 text-lg">{group.totalStock.toLocaleString()}</span>
-                                                <span className="text-xs text-gray-500 ml-1">개</span>
+                                                <span className="text-item-data text-text-primary text-lg">{group.totalStock.toLocaleString()}</span>
+                                                <span className="text-item-sub font-bold text-text-disabled ml-1 uppercase">개</span>
                                             </td>
                                             <td className="px-5 py-4 text-right">
-                                                <span className="font-mono text-gray-600">{group.sales30Days.toLocaleString()}</span> 개
+                                                <span className="text-item-data text-text-secondary">{group.sales30Days.toLocaleString()}</span> <span className="text-item-sub font-bold text-text-disabled uppercase">개</span>
                                                 {group.sales7Days === 0 && (
-                                                    <div className="text-[10px] text-red-500 mt-1">※ 최근 7일 판매 0건</div>
+                                                    <div className="text-[10px] text-error font-bold mt-1 uppercase">※ 최근 7일 판매 0건</div>
                                                 )}
                                             </td>
                                         </tr>

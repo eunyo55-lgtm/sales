@@ -95,10 +95,16 @@ export default function InventoryStatus() {
 
   const groupedData = useMemo(() => {
     const groups = new Map<string, InventoryGroup>();
-    const VALID_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
+    const getCleanSeason = (season: string | null | undefined) => {
+      if (!season) return '기타';
+      const s = season.trim();
+      if (s === '봄가을' || s === '봄/가을') return '봄/가을';
+      if (['겨울', '사계절', '여름'].includes(s)) return s;
+      return '기타';
+    };
 
     products.forEach(p => {
-      if (!p.season || !VALID_SEASONS.includes(p.season.trim())) return;
+      const season = getCleanSeason(p.season);
 
       const prevSales7Days = p.sales14Days - p.sales7Days;
       let trend: 'up' | 'down' | 'flat' = 'flat';
@@ -111,11 +117,11 @@ export default function InventoryStatus() {
       else if (p.daysOfInventory < 7) { status = '위험'; statusColor = 'text-rose-600 font-bold underline underline-offset-4'; }
       else if (p.daysOfInventory < 14) { status = '부족'; statusColor = 'text-yellow-600 font-bold'; }
 
-      const processedItem = { ...p, prevSales7Days, trend, status, statusColor, season: p.season.trim() };
+      const processedItem = { ...p, prevSales7Days, trend, status, statusColor, season: season };
 
       if (!groups.has(p.name)) {
         groups.set(p.name, {
-          name: p.name, season: p.season.trim(), abcGrade: p.abcGrade, imageUrl: p.imageUrl,
+          name: p.name, season: season, abcGrade: p.abcGrade, imageUrl: p.imageUrl,
           hqStock: 0, coupangStock: 0, fcStock: 0, vfStock: 0, sales14Days: 0, sales7Days: 0,
           prevSales7Days: 0, totalSales: 0, dailyStock: {}, trend: 'flat', minDaysOfInventory: 9999,
           children: []
@@ -218,9 +224,13 @@ export default function InventoryStatus() {
 
   const seasonStock = useMemo(() => {
     const map = new Map<string, number>();
+    const VALID_MAIN_SEASONS = ['겨울', '봄/가을', '사계절', '여름'];
+    
     products.forEach(p => {
-      const s = p.season || '기타';
-      map.set(s, (map.get(s) || 0) + (p.coupangStock || 0));
+      let s = (p.season || '기타').trim();
+      if (s === '봄가을') s = '봄/가을';
+      const displaySeason = VALID_MAIN_SEASONS.includes(s) ? s : '기타';
+      map.set(displaySeason, (map.get(displaySeason) || 0) + (p.coupangStock || 0));
     });
     return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [products]);
@@ -259,8 +269,22 @@ export default function InventoryStatus() {
     return stats;
   }, [filteredGroups]);
 
-  const W_TOGGLE = "w-12 min-w-[3rem]";
-  const W_NAME = "w-72 min-w-[18rem]";
+  const W_SEASON_NAME = "w-80 min-w-[20rem]";
+
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    if (percent < 0.05) return null;
+
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-[11px] font-bold" style={{ fontFamily: 'Pretendard' }}>
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[calc(100vh-100px)]">
@@ -283,11 +307,20 @@ export default function InventoryStatus() {
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={seasonStock} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} stroke="none">
+                <Pie data={seasonStock} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} stroke="none" labelLine={false} label={renderCustomizedLabel}>
                   {seasonStock.map((_: any, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '11px', fontWeight: 'bold' }} />
-                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }} />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    fontSize: '13px', 
+                    fontWeight: 'bold',
+                    fontFamily: 'Pretendard',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                  }} 
+                />
+                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 13, fontWeight: 700, fontFamily: 'Pretendard', paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -359,35 +392,35 @@ export default function InventoryStatus() {
           <table className="saas-table border-separate border-spacing-0">
             <thead className="sticky top-0 z-40 bg-white">
               <tr className="h-[52px]">
-                <th className={`sticky left-0 z-50 bg-slate-50 ${W_TOGGLE} border-b border-r border-slate-200`}></th>
-                <th className={`sticky left-[3rem] z-50 bg-slate-50 border-b border-slate-200 px-6 border-r ${W_NAME} text-[10px] font-bold text-text-disabled uppercase tracking-widest cursor-pointer hover:text-primary`} onClick={() => handleSort('name')}>
+                <th className={`sticky left-0 z-50 bg-slate-50 w-10 min-w-[2.5rem] border-b border-r border-slate-200`}></th>
+                <th className={`sticky left-[2.5rem] z-50 bg-slate-50 border-b border-slate-200 px-6 border-r ${W_SEASON_NAME} text-table-header text-text-disabled cursor-pointer hover:text-primary whitespace-nowrap`} onClick={() => handleSort('name')}>
                   <div className="flex items-center justify-between">
-                    <span>상품명</span>
+                    <span>시즌 / 상품명</span>
                     <Copy size={13} className="text-text-disabled opacity-30 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); handleCopyColumn('name', '상품명'); }} />
                   </div>
                 </th>
-                <th className="px-4 py-4 text-table-header text-primary border-b-2 border-primary text-right cursor-pointer bg-primary/[0.02]" onClick={() => handleSort('totalSales')}>판매량</th>
-                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('hqStock')}>본사</th>
-                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('coupangStock')}>쿠팡합계</th>
-                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right">전담재고</th>
-                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right">밀크재고</th>
-                <th className="px-4 py-4 text-table-header text-success border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('sales7Days')}>7일 판매</th>
-                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer" onClick={() => handleSort('minDaysOfInventory')}>소진 예측</th>
+                <th className="px-4 py-4 text-table-header text-primary border-b-2 border-primary text-right cursor-pointer bg-primary/[0.02] whitespace-nowrap" onClick={() => handleSort('totalSales')}>판매량</th>
+                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('hqStock')}>본사</th>
+                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('coupangStock')}>쿠팡합계</th>
+                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right whitespace-nowrap">전담재고</th>
+                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right whitespace-nowrap">밀크재고</th>
+                <th className="px-4 py-4 text-table-header text-success border-b border-slate-100 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('sales7Days')}>7일 판매</th>
+                <th className="px-4 py-4 text-table-header border-b border-slate-100 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('minDaysOfInventory')}>소진 예측</th>
                 {uniqueDates.map(date => (
                   <th key={date} className={`px-2 py-4 text-center border-b border-slate-100 min-w-[65px] ${isRedDay(date) ? 'text-error' : 'text-text-disabled'} text-table-header tracking-tighter`} onClick={() => handleSort(date)}>
                     {date.substring(5).replace('-', '/')}
                   </th>
                 ))}
               </tr>
-              <tr className="bg-slate-50 font-bold text-[10px] text-text-primary uppercase tracking-widest">
+              <tr className="bg-slate-50 text-item-main text-text-primary uppercase tracking-widest h-[26px]">
                 <th className="sticky left-0 z-30 bg-slate-100 border-b border-slate-200"></th>
-                <th className="sticky left-[3rem] z-30 bg-slate-100 border-b border-slate-200 border-r text-center">합계</th>
-                <th className="text-right px-4 border-b border-slate-200 text-primary">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.coupangStock.toLocaleString() : totalStats.coupangStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
-                <th className="text-right px-4 border-b border-slate-200 text-success">{viewMode === 'qty' ? filteredGroups.reduce((acc, g) => acc + g.sales7Days, 0).toLocaleString() : '-'}</th>
+                <th className="sticky left-[2.5rem] z-30 bg-slate-100 border-b border-slate-200 border-r text-center text-table-header">합계</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? totalStats.totalSales.toLocaleString() : totalStats.totalSalesValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? totalStats.hqStock.toLocaleString() : totalStats.hqStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-primary shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? totalStats.coupangStock.toLocaleString() : totalStats.coupangStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-disabled shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? totalStats.fcStock.toLocaleString() : totalStats.fcStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-text-disabled shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? totalStats.vfStock.toLocaleString() : totalStats.vfStockValue.toLocaleString()}</th>
+                <th className="text-right px-4 border-b border-slate-200 font-bold text-success shadow-[inset_0_-1px_0_rgba(0,0,0,0.05)] text-item-data">{viewMode === 'qty' ? filteredGroups.reduce((acc, g) => acc + g.sales7Days, 0).toLocaleString() : '-'}</th>
                 <th className="border-b border-slate-200"></th>
                 {uniqueDates.map(date => (
                   <th key={date} className="text-center px-2 border-b border-slate-200">
@@ -395,16 +428,18 @@ export default function InventoryStatus() {
                   </th>
                 ))}
               </tr>
+
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredGroups.slice(0, visibleCount).map((g) => {
                 const isExpanded = expandedGroups.has(g.name);
                 const stickyBg = isExpanded ? 'bg-primary/[0.03]' : 'bg-white group-hover/tr:bg-slate-50';
                 
-                let BurnBadge = <span className="text-[9px] font-bold text-text-disabled uppercase">보통</span>;
-                if (g.minDaysOfInventory <= 7) BurnBadge = <span className="text-[9px] font-bold text-error uppercase animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
-                else if (g.minDaysOfInventory <= 14) BurnBadge = <span className="text-[9px] font-bold text-warning uppercase">D-{Math.floor(g.minDaysOfInventory)}</span>;
-                else if (g.minDaysOfInventory <= 30) BurnBadge = <span className="text-[9px] font-bold text-primary uppercase">D-{Math.floor(g.minDaysOfInventory)}</span>;
+                let BurnBadge = <span className="text-item-sub font-bold text-text-disabled uppercase">보통</span>;
+                if (g.minDaysOfInventory <= 7) BurnBadge = <span className="text-item-sub font-bold text-error uppercase animate-pulse">D-{Math.floor(g.minDaysOfInventory)}</span>;
+                else if (g.minDaysOfInventory <= 14) BurnBadge = <span className="text-item-sub font-bold text-warning uppercase">D-{Math.floor(g.minDaysOfInventory)}</span>;
+                else if (g.minDaysOfInventory <= 30) BurnBadge = <span className="text-item-sub font-bold text-primary uppercase">D-{Math.floor(g.minDaysOfInventory)}</span>;
+
 
                 return (
                   <React.Fragment key={g.name}>
@@ -412,16 +447,24 @@ export default function InventoryStatus() {
                       <td className={`sticky left-0 z-20 ${stickyBg} border-b border-r border-slate-100 text-center py-5`}>
                         {isExpanded ? <ChevronDown size={14} className="text-primary mx-auto" /> : <ChevronRight size={14} className="text-text-disabled mx-auto" />}
                       </td>
-                      <td className={`sticky left-[3rem] z-20 ${stickyBg} border-b border-slate-100 border-r px-6 py-5`}>
-                        <div className="flex flex-col">
-                          <span className="text-item-main text-text-primary leading-tight group-hover/tr:text-primary transition-colors" onClick={(e) => openChartModal(g.name, e)}>{g.name}</span>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[11px] font-bold text-text-disabled uppercase tracking-widest">{g.season || 'SAAS CORE'}</span>
-                            <span className={`text-[10px] font-bold uppercase tracking-tighter ${
-                              g.abcGrade === 'A' ? 'text-success' :
-                              g.abcGrade === 'B' ? 'text-warning' :
-                              g.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
-                            }`}>{g.abcGrade}</span>
+                      <td className={`sticky left-[2.5rem] z-20 ${stickyBg} border-b border-slate-100 border-r px-6 py-5`}>
+                        <div className="flex items-center gap-4">
+                          {g.imageUrl ? (
+                            <img src={g.imageUrl} alt="" className="w-[60px] h-[60px] rounded-lg object-cover bg-slate-50 flex-shrink-0" />
+                          ) : (
+                            <div className="w-[60px] h-[60px] rounded-lg bg-slate-100 flex-shrink-0" />
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-item-main text-text-primary leading-tight group-hover/tr:text-primary transition-colors cursor-pointer truncate" onClick={(e) => openChartModal(g.name, e)}>{g.name}</span>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-item-sub font-bold text-text-disabled uppercase tracking-widest">{g.season || 'SAAS CORE'}</span>
+                              <span className={`text-item-sub font-bold uppercase tracking-tighter ${
+                                g.abcGrade === 'A' ? 'text-success' :
+                                g.abcGrade === 'B' ? 'text-warning' :
+                                g.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
+                              }`}>{g.abcGrade}</span>
+                            </div>
+
                           </div>
                         </div>
                       </td>
@@ -441,7 +484,7 @@ export default function InventoryStatus() {
                     {isExpanded && g.children.map(child => (
                       <tr key={child.barcode} className="bg-slate-50/50 text-item-sub group/sub transition-colors hover:bg-slate-100/50">
                         <td className="sticky left-0 bg-slate-50/50 border-b border-slate-100"></td>
-                        <td className="sticky left-[3rem] bg-slate-50/50 border-b border-slate-100 border-r px-8 py-3">
+                        <td className="sticky left-[2.5rem] bg-slate-50/50 border-b border-slate-100 border-r px-8 py-3">
                           <div className="flex flex-col">
                             <span className="text-item-sub text-text-disabled font-mono tracking-tighter mb-0.5">{child.barcode}</span>
                             <span className="text-item-sub text-text-secondary font-bold uppercase">{child.option || '-'}</span>

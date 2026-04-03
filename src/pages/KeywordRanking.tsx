@@ -531,33 +531,34 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                             <table className="saas-table border-separate border-spacing-0 relative text-[13px] w-full">
                                 <thead className="sticky top-0 z-50 !bg-white opacity-100 z-50">
                                     <tr className="h-[52px]">
-                                        <th style={{ left: 0, width: 70, minWidth: 70, zIndex: 50 }} className="px-2 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b">
+                                        <th style={{ left: 0, width: 100, minWidth: 100, zIndex: 50 }} className="px-2 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b">
                                             <div className="flex items-center space-x-1"><span>분류</span><SortIcon currentSort={sortConfig} targetKey="category" /></div>
                                         </th>
-                                        <th style={{ left: 70, width: 110, minWidth: 110, zIndex: 50 }} className="px-2 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('keyword')}>
+                                        <th style={{ left: 100, width: 140, minWidth: 140, zIndex: 50 }} className="px-3 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('keyword')}>
                                             <div className="flex items-center space-x-1"><span>추적키워드</span><SortIcon currentSort={sortConfig} targetKey="keyword" /></div>
                                         </th>
-                                        <th style={{ left: 180, width: 150, minWidth: 150, zIndex: 50 }} className="px-2 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('product')}>
+                                        <th style={{ left: 240, width: 180, minWidth: 180, zIndex: 50 }} className="px-3 text-table-header text-text-secondary cursor-pointer hover:text-primary sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('product')}>
                                             <div className="flex items-center space-x-1"><span>상품명</span><SortIcon currentSort={sortConfig} targetKey="product" /></div>
                                         </th>
-                                        <th style={{ left: 330, width: 85, minWidth: 85, zIndex: 50 }} className="px-2 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesLastWeek')}>
+                                        <th style={{ left: 420, width: 90, minWidth: 90, zIndex: 50 }} className="px-2 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesLastWeek')}>
                                             <div className="flex flex-col items-center justify-center leading-none"><span>판매량</span><span className="text-[10px] opacity-50 font-bold mt-0.5">지난주</span><SortIcon currentSort={sortConfig} targetKey="salesLastWeek" /></div>
                                         </th>
-                                        <th style={{ left: 415, width: 85, minWidth: 85, zIndex: 50 }} className="px-2 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesThisWeek')}>
+                                        <th style={{ left: 510, width: 90, minWidth: 90, zIndex: 50 }} className="px-2 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesThisWeek')}>
                                             <div className="flex flex-col items-center justify-center leading-none"><span>판매량</span><span className="text-[10px] text-primary font-bold mt-0.5">이번주</span><SortIcon currentSort={sortConfig} targetKey="salesThisWeek" /></div>
                                         </th>
-                                        <th style={{ left: 500, width: 65, minWidth: 65, zIndex: 50 }} className="px-1 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesWoW')}>
+                                        <th style={{ left: 600, width: 70, minWidth: 70, zIndex: 50 }} className="px-1 text-table-header text-text-secondary text-center cursor-pointer sticky !bg-slate-50 border-r border-slate-200 border-b" onClick={() => handleSort('salesWoW')}>
                                             <div className="flex items-center justify-center"><span>WoW</span><SortIcon currentSort={sortConfig} targetKey="salesWoW" /></div>
                                         </th>
-                                        <th style={{ left: 565, width: 85, minWidth: 85, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-2 text-table-header text-success text-center cursor-pointer sticky border-r border-success/10 border-b" onClick={() => handleSort('views_prev')}>
+                                        <th style={{ left: 670, width: 90, minWidth: 90, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-2 text-table-header text-success text-center cursor-pointer sticky border-r border-success/10 border-b" onClick={() => handleSort('views_prev')}>
                                             <div className="flex flex-col items-center justify-center leading-none"><span>검색량</span><span className="text-[10px] opacity-60 font-bold mt-0.5">지난주</span><SortIcon currentSort={sortConfig} targetKey="views_prev" /></div>
                                         </th>
-                                        <th style={{ left: 650, width: 85, minWidth: 85, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-2 text-table-header text-success text-center cursor-pointer sticky border-r border-success/10 border-b" onClick={() => handleSort('views_latest')}>
+                                        <th style={{ left: 760, width: 90, minWidth: 90, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-2 text-table-header text-success text-center cursor-pointer sticky border-r border-success/10 border-b" onClick={() => handleSort('views_latest')}>
                                             <div className="flex flex-col items-center justify-center leading-none"><span>검색량</span><span className="text-[10px] font-bold mt-0.5">이번주</span><SortIcon currentSort={sortConfig} targetKey="views_latest" /></div>
                                         </th>
-                                        <th style={{ left: 735, width: 55, minWidth: 55, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-1 text-table-header text-success text-center cursor-pointer sticky border-r border-slate-200 border-b" onClick={() => handleSort('trend')}>
+                                        <th style={{ left: 850, width: 60, minWidth: 60, zIndex: 50, backgroundColor: '#F0FDF4' }} className="px-1 text-table-header text-success text-center cursor-pointer sticky border-r border-slate-200 border-b" onClick={() => handleSort('trend')}>
                                             <div className="flex items-center justify-center"><span>추세</span><SortIcon currentSort={sortConfig} targetKey="trend" /></div>
                                         </th>
+
                                         {displayDates.map((date, idx) => {
                                             const [, m, d] = date.split('-');
                                             const isLatest = idx === displayDates.length - 1;
@@ -612,7 +613,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                         return (
                                             <tr key={kw.id} className={`hover:!bg-slate-50 transition-all h-[64px] group/tr ${selectedKeywordId === kw.id ? 'bg-primary/5' : ''}`} onClick={() => setSelectedKeywordId(kw.id)}>
-                                                <td style={{ left: 0, width: 70, zIndex: 30, backgroundColor: '#F8FAFC' }} className="px-2 text-item-data text-text-secondary sticky border-r border-slate-200 cursor-pointer overflow-hidden" onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}>
+                                                <td style={{ left: 0, width: 100, zIndex: 30, backgroundColor: '#F8FAFC' }} className="px-2 text-item-data text-text-secondary sticky border-r border-slate-200 cursor-pointer overflow-hidden" onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}>
                                                     {editingCategory?.id === kw.id ? (
                                                         <input
                                                             autoFocus
@@ -620,48 +621,49 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                             onChange={(e) => setEditingCategory(prev => prev ? { ...prev, value: e.target.value } : null)}
                                                             onBlur={() => editingCategory && handleUpdateCategory(kw.id, editingCategory.value)}
                                                             onKeyDown={(e) => e.key === 'Enter' && editingCategory && handleUpdateCategory(kw.id, editingCategory.value)}
-                                                            className="w-full text-[13px] border border-primary rounded p-1 outline-none"
+                                                            className="w-full text-item-sub border border-primary rounded p-1 outline-none"
                                                             onClick={e => e.stopPropagation()}
                                                         />
                                                     ) : (
-                                                        <div className="truncate w-full px-1 py-1 rounded bg-slate-200/50 group-hover/tr:bg-primary/10">{kw.category || '+ 분류 추가'}</div>
+                                                        <div className="truncate w-full px-1 py-1 rounded bg-slate-200/50 group-hover/tr:bg-primary/10 transition-colors uppercase tracking-tighter font-bold">{kw.category || '+ 분류 추가'}</div>
                                                     )}
                                                 </td>
-                                                <td style={{ left: 70, width: 110, zIndex: 30, backgroundColor: 'white' }} className="px-2 text-item-main text-text-primary sticky border-r border-slate-200 group-hover/tr:!bg-slate-50 transition-colors">
-                                                    <div className="truncate w-full" title={kw.keyword}>{kw.keyword}</div>
+                                                <td style={{ left: 100, width: 140, zIndex: 30, backgroundColor: 'white' }} className="px-3 text-item-main text-text-primary sticky border-r border-slate-200 group-hover/tr:!bg-slate-50 transition-colors">
+                                                    <div className="truncate w-full font-bold" title={kw.keyword}>{kw.keyword}</div>
                                                 </td>
-                                                <td style={{ left: 180, width: 150, zIndex: 30, backgroundColor: 'white' }} className="px-2 text-item-main text-text-secondary cursor-pointer hover:text-primary transition-all sticky border-r border-slate-200 group-hover/tr:!bg-slate-50" onClick={(e) => { e.stopPropagation(); openChartModal(kw); }}>
-                                                    <div className="flex items-center space-x-2 !bg-white">
-                                                        <div className="w-7 h-7 rounded border border-slate-200 overflow-hidden bg-slate-50">
-                                                            {kw.products?.image_url ? <img src={kw.products.image_url} className="w-full h-full object-cover" alt={kw.products.name} /> : <Activity size={12} className="m-auto" />}
+                                                <td style={{ left: 240, width: 180, zIndex: 30, backgroundColor: 'white' }} className="px-3 text-item-main text-text-secondary cursor-pointer hover:text-primary transition-all sticky border-r border-slate-200 group-hover/tr:!bg-slate-50" onClick={(e) => { e.stopPropagation(); openChartModal(kw); }}>
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-8 h-8 rounded border border-slate-200 overflow-hidden bg-slate-50 flex-shrink-0">
+                                                            {kw.products?.image_url ? <img src={kw.products.image_url} className="w-full h-full object-cover" alt={kw.products.name} /> : <Activity size={14} className="m-auto opacity-20" />}
                                                         </div>
-                                                        <span className="truncate">{kw.products?.name || '-'}</span>
+                                                        <span className="truncate leading-tight font-bold text-text-secondary group-hover/tr:text-primary transition-colors">{kw.products?.name || '-'}</span>
                                                     </div>
                                                 </td>
-                                                <td style={{ left: 330, width: 85, zIndex: 10, backgroundColor: 'white' }} className="px-2 text-center border-r border-slate-100 text-text-disabled text-item-data sticky group-hover/tr:!bg-slate-50">
+                                                <td style={{ left: 420, width: 90, zIndex: 10, backgroundColor: 'white' }} className="px-2 text-center border-r border-slate-100 text-text-disabled text-item-data sticky group-hover/tr:!bg-slate-50">
                                                     {loadingStats ? <Loader2 size={12} className="animate-spin mx-auto" /> : (hasProduct ? salesLastWeek.toLocaleString() : '-')}
                                                 </td>
-                                                <td style={{ left: 415, width: 85, zIndex: 10, backgroundColor: 'white' }} className="px-2 text-center border-r border-slate-100 text-text-primary text-item-data sticky group-hover/tr:!bg-slate-50 font-bold">
+                                                <td style={{ left: 510, width: 90, zIndex: 10, backgroundColor: 'white' }} className="px-2 text-center border-r border-slate-100 text-text-primary text-item-data sticky group-hover/tr:!bg-slate-50 font-bold">
                                                     {loadingStats ? <Loader2 size={12} className="animate-spin mx-auto" /> : (hasProduct ? salesThisWeek.toLocaleString() : '-')}
                                                 </td>
-                                                <td style={{ left: 500, width: 65, zIndex: 10, backgroundColor: 'white' }} className={`px-1 text-center border-r border-slate-100 text-item-data sticky group-hover/tr:!bg-slate-50 ${wow > 0 ? 'text-error font-bold' : wow < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
+                                                <td style={{ left: 600, width: 70, zIndex: 10, backgroundColor: 'white' }} className={`px-1 text-center border-r border-slate-100 text-item-data sticky group-hover/tr:!bg-slate-50 ${wow > 0 ? 'text-error font-bold' : wow < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
                                                     <div className="flex items-center justify-center space-x-0.5">
                                                         {wow > 0 ? <TrendingUp size={10} /> : wow < 0 ? <TrendingDown size={10} /> : null}
                                                         <span>{hasProduct ? Math.abs(wow).toLocaleString() : '-'}</span>
                                                     </div>
                                                 </td>
-                                                <td style={{ left: 565, width: 85, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-text-disabled text-item-data font-bold sticky group-hover/tr:!bg-success/5">
+                                                <td style={{ left: 670, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-text-disabled text-item-data font-bold sticky group-hover/tr:!bg-success/5">
                                                     {prevVol > 0 ? prevVol.toLocaleString() : '-'}
                                                 </td>
-                                                <td style={{ left: 650, width: 85, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-success text-item-data font-bold sticky group-hover/tr:!bg-success/5">
+                                                <td style={{ left: 760, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-success text-item-data font-bold sticky group-hover/tr:!bg-success/5">
                                                     <div className="flex flex-col items-center">
                                                         {latestVol > 0 ? latestVol.toLocaleString() : '-'}
                                                         {latestVol >= 5000 && <Flame size={12} className="text-error" />}
                                                     </div>
                                                 </td>
-                                                <td style={{ left: 735, width: 55, zIndex: 10, backgroundColor: '#F0F9F4' }} className={`px-1 text-center sticky border-r border-slate-200 text-item-data group-hover/tr:!bg-success/5 ${trend > 0 ? 'text-error font-bold' : trend < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
+                                                <td style={{ left: 850, width: 60, zIndex: 10, backgroundColor: '#F0F9F4' }} className={`px-1 text-center sticky border-r border-slate-200 text-item-data group-hover/tr:!bg-success/5 ${trend > 0 ? 'text-error font-bold' : trend < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
                                                     {trend !== 0 ? `${trend > 0 ? '+' : ''}${trend.toLocaleString()}` : (latestVol > 0 ? '-' : '')}
                                                 </td>
+
                                                 {displayDates.map((date, idx) => {
                                                     const r = kwRankings.find(rank => rank.date === date);
                                                     const pos = r ? r.rank_position : 0;

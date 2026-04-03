@@ -277,28 +277,35 @@ export default function SupplyStatus() {
                             <tr className="h-[52px] bg-white">
                                 <th className="px-8 text-table-header cursor-pointer hover:text-primary transition-colors" onClick={() => handleSortSummary('key')}><div className="flex items-center gap-2">기간 <SortIcon currentSort={summarySort} targetKey="key" /></div></th>
                                 <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('orderQty')}><div className="flex items-center justify-end gap-2">발주량 <SortIcon currentSort={summarySort} targetKey="orderQty" /></div></th>
-                                <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('confirmedQty')}><div className="flex items-center justify-end gap-2">수주량 <SortIcon currentSort={summarySort} targetKey="confirmedQty" /></div></th>
+                                <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('confirmedQty')}><div className="flex items-center justify-end gap-2">확정량 <SortIcon currentSort={summarySort} targetKey="confirmedQty" /></div></th>
                                 <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('receivedQty')}><div className="flex items-center justify-end gap-2">입고량 <SortIcon currentSort={summarySort} targetKey="receivedQty" /></div></th>
                                 <th className="px-4 text-table-header text-primary text-right cursor-pointer bg-primary/[0.02]" onClick={() => handleSortSummary('unpaidQty')}><div className="flex items-center justify-end gap-2">미입고 <SortIcon currentSort={summarySort} targetKey="unpaidQty" /></div></th>
                                 <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('orderAmount')}><div className="flex items-center justify-end gap-2">발주금액 <SortIcon currentSort={summarySort} targetKey="orderAmount" /></div></th>
-                                <th className="px-8 text-table-header text-center">이행상태</th>
+                                <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('confirmedAmount')}><div className="flex items-center justify-end gap-2">확정금액 <SortIcon currentSort={summarySort} targetKey="confirmedAmount" /></div></th>
+                                <th className="px-4 text-table-header text-right cursor-pointer hover:text-primary" onClick={() => handleSortSummary('receivedAmount')}><div className="flex items-center justify-end gap-2">입고금액 <SortIcon currentSort={summarySort} targetKey="receivedAmount" /></div></th>
+                                <th className="px-4 text-table-header text-center">공급률</th>
+                                <th className="px-4 text-table-header text-center">입고율</th>
+
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
                             {tableData.map((item) => (
                                 <tr key={item.key} className="hover:bg-slate-50 transition-all duration-200 group">
-                                    <td className="px-8 py-5 text-item-data text-text-primary tracking-tighter">{item.key}</td>
-                                    <td className="px-4 py-5 text-right text-item-data text-text-secondary">{item.orderQty.toLocaleString()}</td>
-                                    <td className="px-4 py-5 text-right text-item-data text-text-secondary">{item.confirmedQty.toLocaleString()}</td>
-                                    <td className="px-4 py-5 text-right text-item-data text-success">{item.receivedQty.toLocaleString()}</td>
-                                    <td className="px-4 py-5 text-right text-item-data text-primary bg-primary/[0.01]">{item.unpaidQty.toLocaleString()}</td>
-                                    <td className="px-4 py-5 text-right text-item-data text-text-secondary tracking-tighter">{Math.round(item.orderAmount / 10000).toLocaleString()}만</td>
-                                    <td className="px-8 py-5 text-center">
-                                        <div className="flex flex-col items-center gap-1">
-                                            <span className={`text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded-full ${item.supplyRate >= 90 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>수주 {item.supplyRate.toFixed(0)}%</span>
-                                            <span className={`text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded-full ${item.receiveRate >= 95 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-disabled'}`}>입고 {item.receiveRate.toFixed(0)}%</span>
-                                        </div>
+                                    <td className="px-8 py-3 text-item-data text-text-primary tracking-tighter">{item.key}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-text-secondary">{item.orderQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-text-secondary">{item.confirmedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-success">{item.receivedQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-primary bg-primary/[0.01]">{item.unpaidQty.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-text-secondary tracking-tighter">{Math.round(item.orderAmount).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-text-secondary tracking-tighter">{Math.round(item.confirmedAmount).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right text-item-data text-text-secondary tracking-tighter">{Math.round(item.receivedAmount).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`text-item-sub font-bold uppercase tracking-tighter px-2 py-0.5 rounded-full ${item.supplyRate >= 90 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>{item.supplyRate.toFixed(0)}%</span>
                                     </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`text-item-sub font-bold uppercase tracking-tighter px-2 py-0.5 rounded-full ${item.receiveRate >= 95 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-text-disabled'}`}>{item.receiveRate.toFixed(0)}%</span>
+                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>
@@ -455,72 +462,54 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
     if (timelineData.length === 0) return null;
 
     return (
-        <div className="bg-slate-900 p-12 rounded-[3.5rem] relative my-16 overflow-hidden group/container border-4 border-white/5">
+        <>
+            <div className="bg-slate-900 p-10 rounded-[2.5rem] relative my-12 overflow-hidden border-4 border-white/5 shadow-2xl">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(56,110,217,0.1),transparent)] pointer-events-none"></div>
-            <div className="flex items-center justify-between mb-12 relative z-10">
-                <h3 className="text-2xl font-bold text-white flex items-center tracking-tighter uppercase">
-                    <div className="w-16 h-16 rounded-[2rem] bg-primary/20 flex items-center justify-center mr-6 border border-white/10">
-                        <Truck size={32} className="text-primary animate-[pulse_2s_infinite]" strokeWidth={2.5} />
-                    </div>
-                    물류 <span className="text-primary mx-3">입고 예정</span> 파이프라인
+            <div className="flex items-center justify-between mb-8 relative z-10">
+                <h3 className="text-xl font-bold text-white flex items-center tracking-tighter uppercase">
+                    <Truck size={24} className="mr-4 text-primary animate-pulse" strokeWidth={2.5} />
+                    물류 <span className="text-primary mx-2">입고 예정</span> 파이프라인
                 </h3>
             </div>
 
-            <div className="space-y-8 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                 {timelineData.map((group) => (
-                    <div key={group.date} className="flex flex-col lg:flex-row lg:items-center gap-10 bg-white/5 backdrop-blur-3xl p-6 rounded-[3rem] border border-white/5 transition-all hover:bg-white/10 hover:border-primary/30 group/row">
-                        <div className="lg:w-40 flex-shrink-0 flex lg:flex-col items-center justify-center px-4 py-6 bg-white/5 border border-white/10 rounded-[2.5rem]">
-                           <p className="text-[10px] text-white/30 font-bold mb-2">도착 예정</p>
-                           <p className="text-3xl font-bold text-white tracking-tighter">{group.date.substring(5, 10).replace('-', '/')}</p>
-                           <p className="text-[11px] text-primary font-bold mt-3 uppercase px-4 py-1 bg-primary/20 rounded-full">{new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})}</p>
-                        </div>
-                        <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar-horizontal flex items-center min-h-[160px]">
-                            <div className="flex space-x-8 px-2">
-                                {group.items.map((item, idx) => (
-                                    <div key={`${item.name}-${idx}`} className="group/card relative flex-shrink-0 bg-white/5 border border-white/5 p-6 rounded-[2.5rem] flex items-center space-x-6 min-w-[320px] max-w-[360px] hover:border-primary/50 transition-all cursor-crosshair">
-                                        <div className="w-20 h-20 bg-slate-800 rounded-3xl overflow-hidden flex-shrink-0 border border-white/10 p-1 flex items-center justify-center">
-                                            <Package size={32} className="text-white/20" strokeWidth={2.5} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[15px] font-bold text-white uppercase tracking-tighter truncate mb-2">{item.name}</p>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                   <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                                                </div>
-                                                <span className="text-[18px] font-bold text-primary bg-primary/10 px-4 py-1 rounded-[1.2rem] border border-primary/20 tracking-tighter">
-                                                    +{item.confirmed_qty.toLocaleString()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="invisible group-hover/card:visible absolute bottom-full left-0 mb-8 z-[100] bg-white text-slate-900 p-8 rounded-[3rem] min-w-[320px] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none border border-slate-100">
-                                            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-                                                <p className="text-[11px] font-bold text-primary uppercase tracking-[0.3em] flex items-center"><Truck size={14} className="mr-3" strokeWidth={3} /> 화물 상세 정보</p>
-                                                <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.details.length}개 옵션</div>
-                                            </div>
-                                            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                                                {item.details.map((d: any, dIdx: number) => (
-                                                    <div key={dIdx} className="flex justify-between items-center text-[12px] py-1">
-                                                        <span className="text-slate-500 font-bold uppercase tracking-tight truncate max-w-[180px]">{d.option}</span>
-                                                        <span className="font-bold text-slate-900 ml-4 tracking-tighter">+{d.qty.toLocaleString()}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="mt-6 pt-6 border-t border-slate-100 flex justify-between items-baseline">
-                                                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">전체 합계</span>
-                                                <span className="text-3xl font-bold text-slate-900 tracking-tighter">{item.confirmed_qty.toLocaleString()}<span className="text-[12px] ml-1 opacity-20 uppercase">개</span></span>
-                                            </div>
-                                            <div className="absolute top-full left-14 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[15px] border-t-white"></div>
-                                        </div>
-                                    </div>
-                                ))}
+                    <div key={group.date} className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/5 hover:border-primary/30 transition-all group/row">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                            <div>
+                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">도착 예정</p>
+                                <p className="text-xl font-bold text-white tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
                             </div>
+                            <div className="bg-primary/20 px-3 py-1 rounded-full border border-primary/30">
+                                <span className="text-item-sub font-bold text-primary">{group.items.length} 품목</span>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            {group.items.map((item, idx) => (
+                                <div key={`${item.name}-${idx}`} className="group/card flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-default">
+                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-white/10 flex-shrink-0">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center opacity-20">
+                                                <Package size={20} className="text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-item-main text-white truncate">{item.name}</p>
+                                        <p className="text-[11px] font-bold text-primary mt-1">+{item.confirmed_qty.toLocaleString()} <span className="text-white/20 ml-1">PCS</span></p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 ))}
             </div>
-            <div className="mt-16 pt-8 flex flex-col items-center opacity-10">
-                <p className="text-[10px] font-bold tracking-[1em] text-white uppercase">자동화된 물류 관리 매트릭스</p>
-            </div>
         </div>
+        <div className="mt-16 pt-8 flex flex-col items-center opacity-10">
+            <p className="text-[10px] font-bold tracking-[1em] text-white uppercase">자동화된 물류 관리 매트릭스</p>
+        </div>
+        </>
     );
 }

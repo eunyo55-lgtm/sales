@@ -317,15 +317,23 @@ export default function SmartOrder() {
                                                     {isExpanded ? <ChevronDown size={14} className="mx-auto text-primary" strokeWidth={3} /> : <ChevronRight size={14} className="mx-auto text-text-disabled" strokeWidth={3} />}
                                                 </td>
                                                 <td className="px-8 py-6 border-b border-slate-100">
+                                                <div className="flex items-center gap-4">
+                                                    {group.imageUrl ? (
+                                                        <img src={group.imageUrl} alt="" className="w-[60px] h-[60px] rounded-lg object-cover bg-slate-50 flex-shrink-0" />
+                                                    ) : (
+                                                        <div className="w-[60px] h-[60px] rounded-lg bg-slate-100 flex-shrink-0"></div>
+                                                    )}
                                                     <div className="flex flex-col">
-                                                    <span className="text-item-main text-text-primary uppercase tracking-tighter line-clamp-1 group-hover/tr:text-primary transition-colors font-bold">{group.name}</span>
+                                                        <span className="text-item-main text-text-primary uppercase tracking-tighter line-clamp-1 group-hover/tr:text-primary transition-colors font-bold">{group.name}</span>
                                                         <div className="flex items-center mt-2 gap-3">
-                                                            <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                                                            <span className={`text-item-sub font-bold uppercase tracking-widest ${
                                                                 group.abcGrade === 'A' ? 'text-error' :
                                                                 group.abcGrade === 'B' ? 'text-success' :
                                                                 group.abcGrade === 'C' ? 'text-primary' : 'text-text-disabled'
                                                             }`}>{group.abcGrade} 등급</span>
-                                                            <span className="text-[10px] font-bold text-text-disabled uppercase tracking-widest opacity-40">{group.children.length}개 옵션</span>
+                                                            <span className="text-item-sub font-bold text-text-disabled uppercase tracking-widest opacity-40">{group.children.length}개 옵션</span>
+
+                                                        </div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -338,10 +346,11 @@ export default function SmartOrder() {
                                                 </td>
                                                 <td className="px-8 py-6 text-center border-b border-slate-100">
                                                     {group.isUrgent ? (
-                                                        <span className="inline-flex items-center font-bold text-[9px] text-error uppercase tracking-widest animate-pulse">위험</span>
+                                                        <span className="inline-flex items-center font-bold text-item-sub text-error uppercase tracking-widest animate-pulse">위험</span>
                                                     ) : (
-                                                        <span className="inline-flex items-center font-bold text-[9px] text-warning uppercase tracking-widest">주의</span>
+                                                        <span className="inline-flex items-center font-bold text-item-sub text-warning uppercase tracking-widest">주의</span>
                                                     )}
+
                                                 </td>
                                             </tr>
 

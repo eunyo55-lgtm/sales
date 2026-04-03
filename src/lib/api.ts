@@ -845,8 +845,9 @@ ${sampleText}
             console.log(`[Dashboard] Stock Logic Reset: Today(${anchorDateStr}) sum is ${reportTotalStock} (FC:${reportTotalFcStock}, VF:${reportTotalVfStock}), Previous sum is ${totalStockPrevDay}`);
 
 
-            // [NEW] Fetch Yearly FC/VF Sum (2026) - Keep as promise for parallel fetch
-            const yearlySalesProm = supabase.from('daily_sales').select('fc_quantity, vf_quantity').gte('date', '2026-01-01').lte('date', anchorDateStr);
+            // [NEW] Fetch Yearly FC/VF Sum (2024~2026) - User says "strange", maybe they expect all-time sum
+            const yearlySalesProm = supabase.from('daily_sales').select('fc_quantity, vf_quantity').gte('date', '2024-01-01').lte('date', anchorDateStr);
+
 
             // 3. Fetch Product Metadata (for Rankings) - PAGINATED
             const productsProm = this._getRawProducts();
@@ -1405,7 +1406,7 @@ ${sampleText}
                     barcode: trimmedBarcode,
                     name: p.name,
                     option: p.option_value,
-                    season: p.season || '정보없음',
+                    season: this.getCleanSeason(p.season),
                     imageUrl: p.image_url,
                     hqStock: Number(p.hq_stock || 0),
                     coupangStock: Number(p.current_stock || 0),
@@ -1835,5 +1836,17 @@ ${sampleText}
             endDate, 
             reportType: 'KEYWORD' 
         });
+    },
+
+    getCleanSeason(season: string | null | undefined): string {
+        if (!season) return '기타';
+        const s = season.trim();
+        if (s === '봄/가을' || s === '봄가을' || s === '봄/ 가을') return '봄/가을';
+        if (['겨울', '사계절', '여름', '봄', '가을'].includes(s)) {
+            if (s === '봄' || s === '가을') return '봄/가을';
+            return s;
+        }
+        return '기타';
     }
 };
+
