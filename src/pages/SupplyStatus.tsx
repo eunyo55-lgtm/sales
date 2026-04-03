@@ -341,7 +341,7 @@ export default function SupplyStatus() {
                                 <th className="px-8 py-3 text-table-header w-16 border-b border-slate-100"></th>
                                 <th className="px-4 py-3 text-table-header border-b border-slate-100 min-w-[300px] cursor-pointer hover:text-primary transition-colors" onClick={() => handleSortProduct('name')}><div className="flex items-center gap-2">상품명 <SortIcon currentSort={productSort} targetKey="name" /></div></th>
                                 <th className="px-4 py-3 text-table-header text-right border-b border-slate-100 cursor-pointer" onClick={() => handleSortProduct('orderQty')}><div className="flex items-center justify-end gap-2">발주수량 <SortIcon currentSort={productSort} targetKey="orderQty" /></div></th>
-                                <th className="px-4 py-3 text-table-header text-right border-b border-slate-100 cursor-pointer" onClick={() => handleSortProduct('confirmedQty')}><div className="flex items-center justify-end gap-2">수주수량 <SortIcon currentSort={productSort} targetKey="confirmedQty" /></div></th>
+                                <th className="px-4 py-3 text-table-header text-right border-b border-slate-100 cursor-pointer" onClick={() => handleSortProduct('confirmedQty')}><div className="flex items-center justify-end gap-2">확정수량 <SortIcon currentSort={productSort} targetKey="confirmedQty" /></div></th>
                                 <th className="px-4 py-3 text-table-header text-primary text-right border-b-2 border-primary/20 bg-primary/[0.01] cursor-pointer" onClick={() => handleSortProduct('unpaidQty')}><div className="flex items-center justify-end gap-2">미입고 <SortIcon currentSort={productSort} targetKey="unpaidQty" /></div></th>
                                 <th className="px-8 py-3 text-table-header text-center border-b border-slate-100">공급 효율</th>
                             </tr>
@@ -456,7 +456,14 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 }
             }
         });
-        return Object.entries(groups).map(([date, items]) => ({ date, items })).sort((a, b) => a.date.localeCompare(b.date));
+        return Object.entries(groups).map(([date, items]) => {
+            const groupQty = items.reduce((sum, item) => sum + Number(item.confirmed_qty || 0), 0);
+            const groupCost = items.reduce((sum, item) => {
+                const meta = barcodeMap.get(item.barcode);
+                return sum + (Number(item.confirmed_qty || 0) * (meta?.cost || 0));
+            }, 0);
+            return { date, items, groupQty, groupCost };
+        }).sort((a, b) => a.date.localeCompare(b.date));
     }, [orders, barcodeMap]);
 
     const summary = useMemo(() => {
@@ -513,13 +520,26 @@ function IncomingUnifiedWidget({ orders, barcodeMap }: { orders: any[], barcodeM
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                     {timelineData.map((group) => (
                         <div key={group.date} className="bg-slate-50/50 backdrop-blur-xl p-6 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white transition-all group/row">
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                                <div>
-                                    <p className="text-[10px] text-text-disabled font-bold uppercase tracking-widest">도착 예정</p>
-                                    <p className="text-xl font-bold text-text-primary tracking-tighter mt-1">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
+                            <div className="flex flex-col mb-6 pb-4 border-b border-slate-100 gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[10px] text-text-disabled font-bold uppercase tracking-widest leading-none mb-1">도착 예정</p>
+                                        <p className="text-xl font-bold text-text-primary tracking-tighter">{group.date.substring(5, 10).replace('-', '/')} ({new Date(group.date).toLocaleDateString('ko-KR', {weekday: 'short'})})</p>
+                                    </div>
+                                    <div className="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                                        <span className="text-[11px] font-bold text-primary">{group.items.length} SKU</span>
+                                    </div>
                                 </div>
-                                <div className="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                                    <span className="text-item-sub font-bold text-primary">{group.items.length} 품목</span>
+                                <div className="flex items-center gap-4 bg-white/50 p-2.5 rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] font-bold text-text-disabled uppercase tracking-widest leading-none mb-1">수량</span>
+                                        <span className="text-[11px] font-bold text-primary leading-none">{group.groupQty.toLocaleString()} <span className="text-[9px] opacity-40">PCS</span></span>
+                                    </div>
+                                    <div className="w-px h-5 bg-slate-200"></div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] font-bold text-text-disabled uppercase tracking-widest leading-none mb-1">원가액</span>
+                                        <span className="text-[11px] font-bold text-text-primary leading-none">₩{group.groupCost.toLocaleString()}</span>
+                                    </div>
                                 </div>
                             </div>
                             <div className="space-y-4">

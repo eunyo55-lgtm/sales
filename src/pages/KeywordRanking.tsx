@@ -613,7 +613,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
 
                                         return (
                                             <tr key={kw.id} className={`hover:!bg-slate-50 transition-all h-[64px] group/tr ${selectedKeywordId === kw.id ? 'bg-primary/5' : ''}`} onClick={() => setSelectedKeywordId(kw.id)}>
-                                                <td style={{ left: 0, width: 100, zIndex: 30, backgroundColor: '#F8FAFC' }} className="px-2 text-item-data text-text-secondary sticky border-r border-slate-200 cursor-pointer overflow-hidden" onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}>
+                                                <td style={{ left: 0, width: 100, zIndex: 30, backgroundColor: '#F8FAFC' }} className="px-2 text-item-data text-text-secondary sticky border-r border-slate-200 cursor-pointer overflow-hidden group-hover/tr:!bg-slate-100" onClick={() => setEditingCategory({ id: kw.id, value: kw.category || '' })}>
                                                     {editingCategory?.id === kw.id ? (
                                                         <input
                                                             autoFocus
@@ -651,16 +651,16 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                                         <span>{hasProduct ? Math.abs(wow).toLocaleString() : '-'}</span>
                                                     </div>
                                                 </td>
-                                                <td style={{ left: 670, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-text-disabled text-item-data font-bold sticky group-hover/tr:!bg-success/5">
+                                                <td style={{ left: 670, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-text-disabled text-item-data font-bold sticky group-hover/tr:!bg-[#E7F5EC]">
                                                     {prevVol > 0 ? prevVol.toLocaleString() : '-'}
                                                 </td>
-                                                <td style={{ left: 760, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-success text-item-data font-bold sticky group-hover/tr:!bg-success/5">
+                                                <td style={{ left: 760, width: 90, zIndex: 10, backgroundColor: '#F0F9F4' }} className="px-2 text-center border-r border-success/10 text-success text-item-data font-bold sticky group-hover/tr:!bg-[#E7F5EC]">
                                                     <div className="flex flex-col items-center">
                                                         {latestVol > 0 ? latestVol.toLocaleString() : '-'}
                                                         {latestVol >= 5000 && <Flame size={12} className="text-error" />}
                                                     </div>
                                                 </td>
-                                                <td style={{ left: 850, width: 60, zIndex: 10, backgroundColor: '#F0F9F4' }} className={`px-1 text-center sticky border-r border-slate-200 text-item-data group-hover/tr:!bg-success/5 ${trend > 0 ? 'text-error font-bold' : trend < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
+                                                <td style={{ left: 850, width: 60, zIndex: 10, backgroundColor: '#F0F9F4' }} className={`px-1 text-center sticky border-r border-slate-200 text-item-data group-hover/tr:!bg-[#E7F5EC] ${trend > 0 ? 'text-error font-bold' : trend < 0 ? 'text-primary font-bold' : 'text-text-disabled font-bold'}`}>
                                                     {trend !== 0 ? `${trend > 0 ? '+' : ''}${trend.toLocaleString()}` : (latestVol > 0 ? '-' : '')}
                                                 </td>
 
