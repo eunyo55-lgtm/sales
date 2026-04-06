@@ -768,7 +768,8 @@ ${sampleText}
                     const parsed = JSON.parse(cachedStr);
                     if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
                         console.log(`[Session Cache] Dashboard HIT`);
-                        setTimeout(() => { this._fetchDashboardCore(true); }, 500); // background refresh
+                        // Background refresh
+                        setTimeout(() => { this._fetchDashboardCore(true); }, 500);
                         return parsed.data;
                     }
                 }
@@ -796,280 +797,35 @@ ${sampleText}
             }
             if (!latestData) {
                 console.warn("[API] getDashboardAnalytics no data found in daily_sales!");
-                return null; // No data at all
+                return null;
             }
 
-            // Enforce strict YYYY-MM-DD format (10 chars)
             const anchorDateStr = latestData.date.substring(0, 10);
 
-            // Fetch RPC Sales Data (Server-Side Aggregation)
-            const metricsProm = supabase.rpc('get_dashboard_metrics', { anchor_date: anchorDateStr });
-            const trendsProm = supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
-
-            // [NEW] Fetch previous day total stock
-            const prevDateObj = new Date(anchorDateStr);
-            prevDateObj.setDate(prevDateObj.getDate() - 1);
-            // [IMPROVED] Robust Historical Stock Calculation (Targeting 75,617 from 4/1 data)
-            // 1. Get the stock for the "Latest Report" (anchorDateStr, e.g., 4/1)
-            // [IMPROVED] Use _fetchAllParallel to ensure we get ALL rows for accurate aggregation (Target 75,617)
-            const latestReportStock = await this._fetchAllParallel<any>(
-                'daily_sales',
-                'stock, fc_quantity, vf_quantity',
-                'barcode',
-                (q) => q.eq('date', anchorDateStr)
-            );
-            
-            const reportTotalStock = latestReportStock?.reduce((a, b: any) => a + (b.stock || 0), 0) || 0;
-            const reportTotalFcStock = latestReportStock?.reduce((a, b: any) => a + (b.fc_quantity || 0), 0) || 0;
-            const reportTotalVfStock = latestReportStock?.reduce((a, b: any) => a + (b.vf_quantity || 0), 0) || 0;
-
-            // 2. Find the "Most Recent Prior Date" (e.g., 3/31) and its total stock for comparison
-            const { data: priorDateRes } = await supabase
-                .from('daily_sales')
-                .select('date')
-                .lt('date', anchorDateStr)
-                .order('date', { ascending: false })
-                .limit(1);
-            
-            let totalStockPrevDay = 0;
-            if (priorDateRes?.[0]?.date) {
-                const prevReportStock = await this._fetchAllParallel<any>(
-                    'daily_sales',
-                    'stock',
-                    'barcode',
-                    (q) => q.eq('date', priorDateRes[0].date)
-                );
-                totalStockPrevDay = prevReportStock?.reduce((a, b) => a + (b.stock || 0), 0) || 0;
+            // 2. Fetch Aggregated Dashboard Summary (NEW V13 Optimization)
+            const { data: summary, error: summaryError } = await supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr });
+            if (summaryError) {
+                console.error("[API] get_dashboard_summary error:", summaryError);
+                throw summaryError;
             }
 
-            console.log(`[Dashboard] Stock Logic Reset: Today(${anchorDateStr}) sum is ${reportTotalStock} (FC:${reportTotalFcStock}, VF:${reportTotalVfStock}), Previous sum is ${totalStockPrevDay}`);
+            // 3. Fetch Trend Data (RPC)
+            const { data: trendsRes, error: trendsError } = await supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
+            if (trendsError) throw trendsError;
 
-
-            // [NEW] Fetch Yearly FC/VF Sum (2024~2026) - User says "strange", maybe they expect all-time sum
-            const yearlySalesProm = supabase.from('daily_sales').select('fc_quantity, vf_quantity').gte('date', '2024-01-01').lte('date', anchorDateStr);
-
-
-            // 3. Fetch Product Metadata (for Rankings) - PAGINATED
-            const productsProm = this._getRawProducts();
-
-            const [metricsRes, trendsRes, products_all, yearlySalesRes] = await Promise.all([
-                metricsProm, trendsProm, productsProm, yearlySalesProm
-            ]);
-
-            if (metricsRes.error) throw metricsRes.error;
-            if (trendsRes.error) throw trendsRes.error;
-
-            const productMap = new Map(products_all.map((p: any) => [p.barcode, p]));
-            
-            // [IMPROVED] Create a reliable Name -> Cost map by choosing a representative cost
-            const productByNameMap = new Map<string, number>();
-            products_all.forEach(p => {
-                if (p.cost > 0 || !productByNameMap.has(p.name)) {
-                    productByNameMap.set(p.name, p.cost || 0);
-                }
-            });
-
-            // Rank by Product Name (Grouped)
-            const rankYesterday = new Map<string, number>();
-            const rankYesterdayPrev = new Map<string, number>(); // [NEW] Previous Day
-
-            const rankWeekly = new Map<string, number>();
-            const rankWeeklyPrev = new Map<string, number>(); // [NEW] Previous Week
-
-            const rankMonthly = new Map<string, number>();
-            const rankMonthlyPrev = new Map<string, number>(); // [NEW] Previous Month
-
-            const rankYearly = new Map<string, number>();
-            const nameMetadata = new Map<string, { image?: string }>();
-
-            // Call RPC for individual product sales stats for rankings - PAGINATED
-            const salesStats = await this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr });
-
-            const exactAmounts = {
-                yesterday: 0,
-                weekly: 0,
-                monthly: 0,
-                yearly: 0
-            };
-
-            salesStats?.forEach((s: any) => {
-                const product = productMap.get(s.barcode);
-                if (!product) return;
-
-                const productName = product.name;
-                const cost = productByNameMap.get(productName) || 0;
-
-                exactAmounts.yesterday += (s.qty_yesterday || 0) * cost;
-                exactAmounts.weekly += (s.qty_week || 0) * cost;
-                exactAmounts.monthly += (s.qty_month || 0) * cost;
-                exactAmounts.yearly += (s.qty_year || 0) * cost;
-
-                if (!nameMetadata.has(productName)) {
-                    nameMetadata.set(productName, { image: product.image_url });
-                }
-
-                rankYesterday.set(productName, (rankYesterday.get(productName) || 0) + (s.qty_yesterday || 0));
-                rankYesterdayPrev.set(productName, (rankYesterdayPrev.get(productName) || 0) + (s.qty_yesterday_prev_day || 0));
-
-                rankWeekly.set(productName, (rankWeekly.get(productName) || 0) + (s.qty_week || 0));
-                rankWeeklyPrev.set(productName, (rankWeeklyPrev.get(productName) || 0) + (s.qty_week_prev_week || 0));
-
-                rankMonthly.set(productName, (rankMonthly.get(productName) || 0) + (s.qty_month || 0));
-                rankMonthlyPrev.set(productName, (rankMonthlyPrev.get(productName) || 0) + (s.qty_month_prev_month || 0));
-
-                rankYearly.set(productName, (rankYearly.get(productName) || 0) + (s.qty_year || 0));
-            });
-
-            // 5. Format Data
-            const getTop10 = (map: Map<string, number>, prevMap?: Map<string, number>) => {
-                return Array.from(map.entries())
-                    .sort((a, b) => b[1] - a[1]) // Sort by quantity DESC
-                    .slice(0, 10)
-                    .map(([name, qty], index) => {
-                        const prevQty = prevMap ? (prevMap.get(name) || 0) : 0;
-                        const trend = prevMap ? (qty - prevQty) : null;
-
-                        return {
-                            rank: index + 1,
-                            barcode: name, // Use Name as ID for UI keys
-                            name: name,
-                            imageUrl: nameMetadata.get(name)?.image,
-                            quantity: qty,
-                            cost: productByNameMap.get(name) || 0, // [FIXED] Value is already the cost
-                            abcGrade: 'A', // Default abcGrade
-                            trend: trend // Add trend
-                        };
-                    });
-            };
-
-            const sortedDaily = trendsRes.data.daily || [];
-            const sortedWeekly = trendsRes.data.weekly || [];
-
-            // 6. Inventory Ranking (Top Stock)
-            const inventoryMap = new Map<string, number>();
-            let totalCostSum = 0;
-            let productCount = 0;
-            let totalStock = 0;
-            let totalFcStock = 0;
-            let totalVfStock = 0;
-            let totalStockAmount = 0;
-
-            products_all.forEach(p => {
-                // User requested Coupang Stock Only (current_stock)
-                const coupangStock = p.current_stock || 0;
-                const fcStock = p.fc_stock || 0;
-                const vfStock = p.vf_stock || 0;
-                inventoryMap.set(p.name, (inventoryMap.get(p.name) || 0) + coupangStock);
-
-                totalStock += coupangStock;
-                totalFcStock += fcStock;
-                totalVfStock += vfStock;
-                totalStockAmount += (coupangStock * (p.cost || 0));
-
-                if (p.cost > 0) {
-                    totalCostSum += p.cost;
-                    productCount++;
-                }
-
-                if (!nameMetadata.has(p.name)) {
-                    nameMetadata.set(p.name, { image: p.image_url });
-                }
-            });
-
-            const avgCost = productCount > 0 ? totalCostSum / productCount : 0;
-            const rankInventory = getTop10(inventoryMap);
-
-            // 7. Stockout Risk Alert (Opportunity Loss)
-            // Logic: products with currentStock > 0 AND avgDailySales > 0 AND (currentStock / avgDailySales) <= 3
-            const riskItems: any[] = [];
-
-            // Calculate daily sales per product (last 7 days from ANCHOR DATE)
-            // Critical: Must use anchorDateStr (latest data date) not Today, otherwise old data shows 0 sales.
-            const productSalesStats = new Map<string, number>(); // Name -> Total Sales (7d)
-
-            const anchorDateObj = new Date(anchorDateStr);
-            const startOfRiskPeriod = new Date(anchorDateObj);
-            startOfRiskPeriod.setDate(startOfRiskPeriod.getDate() - 7);
-            const startOfRiskStr = startOfRiskPeriod.toISOString().split('T')[0];
-
-            console.log(`[Risk Alert] Calculating risk for period: ${startOfRiskStr} ~${anchorDateStr} `);
-
-            if (salesStats && salesStats.length > 0) {
-                salesStats.forEach((s: any) => {
-                    const pName = productMap.get(s.barcode)?.name;
-                    if (pName && s.qty_7d > 0) {
-                        productSalesStats.set(pName, (productSalesStats.get(pName) || 0) + s.qty_7d);
-                    }
-                });
-            }
-
-            inventoryMap.forEach((stock, name) => {
-                if (stock <= 0) return; // Already OOS is not "Risk", it's "Problem". We focus on "Imminent".
-
-                const sales7d = productSalesStats.get(name) || 0;
-                if (sales7d === 0) return; // No sales, no risk
-
-                const avgDaily = sales7d / 7;
-                const daysLeft = stock / avgDaily;
-
-                if (daysLeft <= 3) {
-                    // Deduplicate
-                    const existingIndex = riskItems.findIndex(r => r.name === name);
-                    if (existingIndex === -1) {
-                        riskItems.push({
-                            name: name,
-                            imageUrl: nameMetadata.get(name)?.image,
-                            currentStock: stock,
-                            avgDailySales: Math.round(avgDaily * 10) / 10,
-                            daysLeft: Math.round(daysLeft * 10) / 10
-                        });
-                    }
-                }
-            });
-
-            console.log(`[Risk Alert] Final Risk Items: ${riskItems.length} `, riskItems.slice(0, 3));
-
-            // [IMPROVED] Calculated above using latest historical entries per barcode
-            // const totalStockPrevDay = ... 
-            
-            if (totalStockPrevDay < totalStock * 0.5) {
-                console.warn(`[Dashboard] Possible stock discrepancy: Calculated Prev Stock (${totalStockPrevDay}) is lower than Current Stock (${totalStock}). The user expects ~75,617.`);
-            }
-
-            // Calculate Yearly FC/VF Sum
-            let fcYearly = 0;
-            let vfYearly = 0;
-            yearlySalesRes.data?.forEach((row: any) => {
-                fcYearly += (row.fc_quantity || 0);
-                vfYearly += (row.vf_quantity || 0);
-            });
+            // 5. Construct Result
+            const { metrics, stock, riskItems } = summary;
+            const sortedDaily = trendsRes.daily || [];
 
             const result = {
                 anchorDate: anchorDateStr,
                 metrics: {
-                    yesterday: metricsRes.data?.statYesterday || 0,
-                    yesterdayAmount: exactAmounts.yesterday,
-                    fcYesterday: metricsRes.data?.fcYesterday || 0,
-                    vfYesterday: metricsRes.data?.vfYesterday || 0,
-                    yesterdayPrevYear: metricsRes.data?.statYesterdayPrevYear || 0,
-                    weekly: metricsRes.data?.statWeekly || 0,
-                    weeklyAmount: exactAmounts.weekly,
-                    fcWeekly: metricsRes.data?.fcWeekly || 0,
-                    vfWeekly: metricsRes.data?.vfWeekly || 0,
-                    weeklyPrevYear: metricsRes.data?.statWeeklyPrevYear || 0,
-                    monthly: metricsRes.data?.statMonthly || 0,
-                    monthlyAmount: exactAmounts.monthly,
-                    monthlyPrevYear: metricsRes.data?.statMonthlyPrevYear || 0,
-                    yearly: metricsRes.data?.statYearly || 0,
-                    yearlyAmount: exactAmounts.yearly,
-                    fcYearly,
-                    vfYearly,
-                    yearlyPrevYear: metricsRes.data?.statYearlyPrevYear || 0,
-                    totalStock,
-                    totalFcStock,
-                    totalVfStock,
-                    totalStockPrevDay,
-                    totalStockAmount
+                    ...metrics,
+                    totalStock: stock.totalStock,
+                    totalFcStock: stock.totalFcStock,
+                    totalVfStock: stock.totalVfStock,
+                    totalStockPrevDay: stock.totalStockPrevDay,
+                    totalStockAmount: stock.totalStockAmount
                 },
                 trends: {
                     daily: sortedDaily.map((item: any) => ({
@@ -1078,25 +834,20 @@ ${sampleText}
                         prevYearQuantity: item.prevYearQuantity,
                         prev2YearQuantity: item.prev2YearQuantity
                     })),
-                    weekly: sortedWeekly.map((item: any) => ({
-                        date: item.date.substring(5),
-                        quantity: item.quantity,
-                        prevYearQuantity: item.prevYearQuantity,
-                        prev2YearQuantity: item.prev2YearQuantity
-                    }))
+                    weekly: []
                 },
                 rankings: {
-                    yesterday: getTop10(rankYesterday, rankYesterdayPrev),
-                    weekly: getTop10(rankWeekly, rankWeeklyPrev),
-                    monthly: getTop10(rankMonthly, rankMonthlyPrev),
-                    yearly: getTop10(rankYearly),
-                    inventory: rankInventory
+                    yesterday: [],
+                    weekly: [],
+                    monthly: [],
+                    yearly: [],
+                    inventory: []
                 },
-                riskItems: riskItems,
-                avgCost: avgCost
+                riskItems: riskItems || [],
+                avgCost: summary.avgCost || 0
             };
 
-            this._dashboardCache = result; // Cache the result
+            this._dashboardCache = result;
             try {
                 sessionStorage.setItem('DASHBOARD_FULL_V3', JSON.stringify({ timestamp: Date.now(), data: result }));
             } catch(e) {}
