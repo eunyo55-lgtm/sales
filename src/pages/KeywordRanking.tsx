@@ -748,7 +748,7 @@ export default function KeywordRanking({ showKeywordManager, setShowKeywordManag
                                         <LineChart data={finalData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                                            <YAxis tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} reversed />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
                                             <Line type="monotone" dataKey="rank" stroke="#386ED9" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} connectNulls />
                                         </LineChart>
