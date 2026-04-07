@@ -285,7 +285,8 @@ export default function Dashboard() {
                                 )}
                             />
                             <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} labelFormatter={(label) => typeof label === 'string' ? label.substring(5) : label} />
+
                             <Legend wrapperStyle={{ paddingTop: '24px', fontWeight: 800, fontSize: '11px', textTransform: 'uppercase' }} iconType="circle" />
                             <Line type="monotone" dataKey="quantity" name="2026년 판매" stroke="#386ED9" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0 }} />
                             <Line type="monotone" dataKey="prevYearQuantity" name="2025년 판매" stroke="#94A3B8" strokeWidth={2} strokeDasharray="5 5" dot={false} opacity={0.6} />

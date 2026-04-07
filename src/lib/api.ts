@@ -829,7 +829,7 @@ ${sampleText}
                 },
                 trends: {
                     daily: sortedDaily.map((item: any) => ({
-                        date: item.date.substring(5),
+                        date: item.date,
                         quantity: item.quantity,
                         prevYearQuantity: item.prevYearQuantity,
                         prev2YearQuantity: item.prev2YearQuantity
@@ -1014,7 +1014,7 @@ ${sampleText}
             const mmdd = dStr.substring(5, 10);
             
             result.push({
-                date: mmdd,
+                date: dStr,
                 fullDate: dStr,
                 quantity: m0.get(dStr) || 0,
                 prevYearQuantity: m1.get(mmdd) || 0,
