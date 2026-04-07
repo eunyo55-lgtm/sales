@@ -99,7 +99,8 @@ export const api = {
         // Optional: First get the count if no filterBuilder to determine exact bounds? 
         // Or just fire parallel batches. We'll use a dynamic parallel approach: 
         // Fire 5 requests at a time until we hit a batch < BATCH_SIZE.
-        const CONCURRENCY = 6;
+        // Fire 3 requests at a time until we hit a batch < BATCH_SIZE (Safely avoiding timeouts)
+        const CONCURRENCY = 3;
         let isDone = false;
 
         while (!isDone) {
@@ -1057,17 +1058,24 @@ ${sampleText}
             if (cachedStr) {
                 const parsed = JSON.parse(cachedStr);
                 if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
-                    console.log(`[Session Cache] ProductStats HIT for ${cacheKey}`);
-                    
-                    // Background refresh
-                    setTimeout(() => {
-                        this._fetchProductStatsCore(historyDays, cacheKey, true);
-                    }, 500);
+                    // CRITICAL: Skip cache if data is empty or malformed
+                    if (!parsed.data || (Array.isArray(parsed.data) && parsed.data.length === 0)) {
+                        console.log(`[Session Cache] Skipping EMPTY cache for ${cacheKey}`);
+                    } else {
+                        console.log(`[Session Cache] ProductStats HIT for ${cacheKey}`);
+                        
+                        // Background refresh
+                        setTimeout(() => {
+                            this._fetchProductStatsCore(historyDays, cacheKey, true);
+                        }, 500);
 
-                    return parsed.data;
+                        return parsed.data;
+                    }
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.warn("[Session Cache] Parse error, skipping...", e);
+        }
 
         return this._fetchProductStatsCore(historyDays, cacheKey, false);
     },
