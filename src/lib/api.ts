@@ -44,6 +44,8 @@ export const api = {
     _rawProductsPromise: null as Promise<any[]> | null,
     _rawDailySalesPromise: null as Promise<any[]> | null,
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
+    _summaryPromise: null as Promise<any> | null,
+    _trendsPromise: null as Promise<any> | null,
     _excludedKeywords: ["부자재", "사은품", "우일신", "일상화보", "매장", "수선 재발송"],
 
     async _fetchRPCParallel<T>(rpcName: string, params: object) {
@@ -753,126 +755,105 @@ ${sampleText}
     },
 
     async getDashboardAnalytics(forceRefresh = false) {
-        if (!forceRefresh && this._dashboardCache) {
-            console.log("[Cache] Dashboard HIT");
-            return this._dashboardCache;
-        }
-        if (!forceRefresh && this._dashboardPromise) {
-            console.log("[Promise Cache] Dashboard HIT");
-            return this._dashboardPromise;
-        }
-
-        if (!forceRefresh) {
-            try {
-                const cachedStr = sessionStorage.getItem('DASHBOARD_FULL_V3');
-                if (cachedStr) {
-                    const parsed = JSON.parse(cachedStr);
-                    if (Date.now() - parsed.timestamp < 10 * 60 * 1000) { // 10 mins
-                        console.log(`[Session Cache] Dashboard HIT`);
-                        // Background refresh if older than 5 mins
-                        if (Date.now() - parsed.timestamp > 5 * 60 * 1000) {
-                            setTimeout(() => { this._fetchDashboardCore(true); }, 1000);
-                        }
-                        return parsed.data;
-                    }
-                }
-            } catch(e) {}
-        }
-
-        return this._fetchDashboardCore(false);
+        // This is a legacy wrapper. Progressive loading should use getDashboardSummary and getDashboardTrends.
+        const summary = await this.getDashboardSummary(forceRefresh);
+        const trends = await this.getDashboardTrends(forceRefresh);
+        return { ...summary, trends };
     },
 
-    async _fetchDashboardCore(isBackground: boolean) {
-        if (this._dashboardPromise) return this._dashboardPromise;
+    async getDashboardSummary(forceRefresh = false) {
+        if (!forceRefresh && this._dashboardCache && this._dashboardCache.metrics) return this._dashboardCache;
+        if (this._summaryPromise) return this._summaryPromise;
 
         const promise = (async () => {
-            if (!isBackground) console.time("getDashboardAnalytics");
+            try {
+                // 1. Get Latest Date (Anchor)
+                const { data: latestData } = await supabase
+                    .from('daily_sales')
+                    .select('date')
+                    .order('date', { ascending: false })
+                    .limit(1)
+                    .single();
 
-            // 1. Get Latest Date (Anchor)
-            const { data: latestData, error: latestError } = await supabase
-                .from('daily_sales')
-                .select('date')
-                .order('date', { ascending: false })
-                .limit(1)
-                .single();
+                if (!latestData) return null;
+                const anchorDateStr = latestData.date.substring(0, 10);
 
-            if (latestError && latestError.code !== 'PGRST116') {
-                console.error("[API] getDashboardAnalytics latestData error:", latestError);
-                throw latestError;
+                // 2. Fetch Aggregated Dashboard Summary
+                const { data: summary, error: summaryError } = await supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr });
+                if (summaryError) throw summaryError;
+
+                const { metrics, stock, riskItems } = summary;
+                const result = {
+                    anchorDate: anchorDateStr,
+                    metrics: {
+                        ...metrics,
+                        totalStock: stock.totalStock,
+                        totalFcStock: stock.totalFcStock,
+                        totalVfStock: stock.totalVfStock,
+                        totalStockPrevDay: stock.totalStockPrevDay,
+                        totalStockAmount: stock.totalStockAmount
+                    },
+                    riskItems: riskItems || [],
+                    avgCost: summary.avgCost || 0
+                };
+                
+                // Partial cache update
+                this._dashboardCache = { ...(this._dashboardCache || {}), ...result };
+                return result;
+            } finally {
+                this._summaryPromise = null;
             }
-            if (!latestData) {
-                console.warn("[API] getDashboardAnalytics no data found in daily_sales!");
-                return null;
-            }
+        })();
+        
+        this._summaryPromise = promise;
+        return promise;
+    },
 
-            const anchorDateStr = latestData.date.substring(0, 10);
+    async getDashboardTrends(forceRefresh = false) {
+        if (!forceRefresh && this._dashboardCache?.trends) return this._dashboardCache.trends;
+        if (this._trendsPromise) return this._trendsPromise;
 
-            // 2 & 3. Fetch Summary and Trends IN PARALLEL (Optimization)
-            const [summaryRes, trendsResObj] = await Promise.all([
-                supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr }),
-                supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr })
-            ]);
+        const promise = (async () => {
+            try {
+                const { data: latestData } = await supabase
+                    .from('daily_sales')
+                    .select('date')
+                    .order('date', { ascending: false })
+                    .limit(1)
+                    .single();
 
-            if (summaryRes.error) {
-                console.error("[API] get_dashboard_summary error:", summaryRes.error);
-                throw summaryRes.error;
-            }
-            if (trendsResObj.error) {
-                console.error("[API] get_dashboard_trends error:", trendsResObj.error);
-                throw trendsResObj.error;
-            }
+                if (!latestData) return { daily: [], weekly: [] };
+                const anchorDateStr = latestData.date.substring(0, 10);
 
-            const summary = summaryRes.data;
-            const trendsRes = trendsResObj.data;
+                const { data: trendsRes, error: trendsError } = await supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
+                if (trendsError) throw trendsError;
 
-            // 5. Construct Result
-            const { metrics, stock, riskItems } = summary;
-            const sortedDaily = trendsRes.daily || [];
-
-            const result = {
-                anchorDate: anchorDateStr,
-                metrics: {
-                    ...metrics,
-                    totalStock: stock.totalStock,
-                    totalFcStock: stock.totalFcStock,
-                    totalVfStock: stock.totalVfStock,
-                    totalStockPrevDay: stock.totalStockPrevDay,
-                    totalStockAmount: stock.totalStockAmount
-                },
-                trends: {
-                    daily: sortedDaily.map((item: any) => ({
+                const trends = {
+                    daily: (trendsRes.daily || []).map((item: any) => ({
                         date: item.date,
                         quantity: item.quantity,
                         prevYearQuantity: item.prevYearQuantity,
                         prev2YearQuantity: item.prev2YearQuantity
                     })),
-                    weekly: []
-                },
-                rankings: {
-                    yesterday: [],
-                    weekly: [],
-                    monthly: [],
-                    yearly: [],
-                    inventory: []
-                },
-                riskItems: riskItems || [],
-                avgCost: summary.avgCost || 0
-            };
+                    weekly: trendsRes.weekly || []
+                };
 
-            this._dashboardCache = result;
-            try {
-                sessionStorage.setItem('DASHBOARD_FULL_V3', JSON.stringify({ timestamp: Date.now(), data: result }));
-            } catch(e) {}
-            if (!isBackground) console.timeEnd("getDashboardAnalytics");
-            return result;
+                // Partial cache update
+                this._dashboardCache = { ...(this._dashboardCache || {}), trends };
+                return trends;
+            } finally {
+                this._trendsPromise = null;
+            }
         })();
 
-        this._dashboardPromise = promise;
-        try {
-            return await promise;
-        } finally {
-            this._dashboardPromise = null;
-        }
+        this._trendsPromise = promise;
+        return promise;
+    },
+
+    async _fetchDashboardCore(_isBackground: boolean) {
+        const summary = await this.getDashboardSummary(true);
+        const trends = await this.getDashboardTrends(true);
+        return { ...summary, trends };
     },
 
     /**
