@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { TrendingUp, Trophy, Activity, AlertCircle, Loader2, Search, Calendar, ArrowUpRight, ArrowDownRight, Archive } from 'lucide-react';
+import { TrendingUp, Trophy, Activity, AlertCircle, Search, Calendar, ArrowUpRight, ArrowDownRight, Archive } from 'lucide-react';
 import { isRedDay } from '../lib/dateUtils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 
@@ -68,6 +68,27 @@ const StatCard = ({ title, value, amount, sub, icon: Icon, yoyValue, comparisonL
         </div>
     );
 };
+
+const SkeletonStatCard = () => (
+    <div className="p-8 border border-slate-100 rounded-3xl bg-white animate-pulse">
+        <div className="flex justify-between items-start mb-6">
+            <div className="w-1/2 h-4 bg-slate-100 rounded-full"></div>
+            <div className="p-3 bg-slate-50 rounded-xl w-10 h-10"></div>
+        </div>
+        <div className="space-y-4">
+            <div className="w-3/4 h-8 bg-slate-100 rounded-lg"></div>
+            <div className="w-2/3 h-5 bg-slate-50 rounded-lg"></div>
+            <div className="w-full h-8 bg-slate-50 mt-4 rounded-lg"></div>
+        </div>
+    </div>
+);
+
+const SkeletonChart = () => (
+    <div className="p-8 border border-slate-100 rounded-3xl bg-white animate-pulse h-[400px]">
+        <div className="w-1/4 h-5 bg-slate-100 rounded-full mb-8"></div>
+        <div className="w-full h-[280px] bg-slate-50 rounded-2xl"></div>
+    </div>
+);
 
 export default function Dashboard() {
     const [data, setData] = useState<any>(null);
@@ -184,8 +205,21 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <Loader2 className="animate-spin text-primary" size={48} strokeWidth={2.5} />
+            <div className="space-y-8 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <SkeletonStatCard />
+                    <SkeletonStatCard />
+                    <SkeletonStatCard />
+                    <SkeletonStatCard />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                        <SkeletonChart />
+                    </div>
+                    <div>
+                        <SkeletonChart />
+                    </div>
+                </div>
             </div>
         );
     }

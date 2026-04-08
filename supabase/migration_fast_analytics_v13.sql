@@ -14,6 +14,11 @@ DECLARE
     start_of_month DATE := date_trunc('month', anchor_date)::DATE;
     start_of_year DATE := date_trunc('year', anchor_date)::DATE;
     
+    start_of_week_prev DATE := start_of_week - integer '364';
+    start_of_month_prev DATE := start_of_month - integer '364';
+    start_of_year_prev DATE := start_of_year - integer '364';
+    anchor_date_prev DATE := anchor_date - integer '364';
+
     -- Prior Date for stock comparison
     prior_date DATE;
     
@@ -29,14 +34,12 @@ DECLARE
     risk_items_json json;
     avg_cost_val NUMERIC;
 BEGIN
-    -- 1. Find Prior Date
-    SELECT date INTO prior_date
+    -- 1. Find Prior Date (Optimized)
+    SELECT MAX(date) INTO prior_date
     FROM daily_sales
-    WHERE date < anchor_date
-    ORDER BY date DESC
-    LIMIT 1;
+    WHERE date < anchor_date;
 
-    -- 2. Calculate Stock Metrics (Current) & Avg Cost
+    -- 2. Calculate Stock Metrics (Current) & Avg Cost (Targeted)
     SELECT 
         SUM(ds.stock),
         SUM(ds.fc_quantity), 
@@ -57,41 +60,55 @@ BEGIN
         total_stock_prev_day := 0;
     END IF;
 
-    -- 4. Calculate Sales Metrics with Cost Join
-    WITH daily_aggs AS (
+    -- 4. Calculate Sales Metrics (Merged & Optimized)
+    WITH sales_union AS (
+        -- This Year Target Dates
+        SELECT date, quantity as qty, fc_quantity as fc_qty, vf_quantity as vf_qty, barcode
+        FROM daily_sales
+        WHERE date >= start_of_year_prev AND date <= anchor_date
+        AND (
+            date = anchor_date OR date = anchor_date_prev OR
+            (date >= start_of_week AND date <= anchor_date) OR
+            (date >= start_of_week_prev AND date <= anchor_date_prev) OR
+            (date >= start_of_month AND date <= anchor_date) OR
+            (date >= start_of_month_prev AND date <= anchor_date_prev) OR
+            (date >= start_of_year AND date <= anchor_date) OR
+            (date >= start_of_year_prev AND date <= anchor_date_prev)
+        )
+    ),
+    daily_aggs AS (
         SELECT 
-            ds.date,
-            SUM(ds.quantity) as qty,
-            SUM(ds.fc_quantity) as fc_qty,
-            SUM(ds.vf_quantity) as vf_qty,
-            SUM(ds.quantity * COALESCE(p.cost, 0)) as amt
-        FROM daily_sales ds
-        LEFT JOIN products p ON ds.barcode = p.barcode
-        WHERE ds.date >= start_of_year - integer '366' AND ds.date <= anchor_date
-        GROUP BY ds.date
+            su.date,
+            SUM(su.qty) as qty,
+            SUM(su.fc_qty) as fc_qty,
+            SUM(su.vf_qty) as vf_qty,
+            SUM(su.qty * COALESCE(p.cost, 0)) as amt
+        FROM sales_union su
+        LEFT JOIN products p ON su.barcode = p.barcode
+        GROUP BY su.date
     )
     SELECT json_build_object(
         'yesterday', COALESCE(SUM(qty) FILTER (WHERE date = anchor_date), 0),
         'yesterdayAmount', COALESCE(SUM(amt) FILTER (WHERE date = anchor_date), 0),
         'fcYesterday', COALESCE(SUM(fc_qty) FILTER (WHERE date = anchor_date), 0),
         'vfYesterday', COALESCE(SUM(vf_qty) FILTER (WHERE date = anchor_date), 0),
-        'yesterdayPrevYear', COALESCE(SUM(qty) FILTER (WHERE date = anchor_date - integer '364'), 0),
+        'yesterdayPrevYear', COALESCE(SUM(qty) FILTER (WHERE date = anchor_date_prev), 0),
         
         'weekly', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_week AND date <= anchor_date), 0),
         'weeklyAmount', COALESCE(SUM(amt) FILTER (WHERE date >= start_of_week AND date <= anchor_date), 0),
         'fcWeekly', COALESCE(SUM(fc_qty) FILTER (WHERE date >= start_of_week AND date <= anchor_date), 0),
         'vfWeekly', COALESCE(SUM(vf_qty) FILTER (WHERE date >= start_of_week AND date <= anchor_date), 0),
-        'weeklyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_week - integer '364' AND date <= anchor_date - integer '364'), 0),
+        'weeklyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_week_prev AND date <= anchor_date_prev), 0),
         
         'monthly', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_month AND date <= anchor_date), 0),
         'monthlyAmount', COALESCE(SUM(amt) FILTER (WHERE date >= start_of_month AND date <= anchor_date), 0),
-        'monthlyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_month - integer '364' AND date <= anchor_date - integer '364'), 0),
+        'monthlyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_month_prev AND date <= anchor_date_prev), 0),
         
         'yearly', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_year AND date <= anchor_date), 0),
         'yearlyAmount', COALESCE(SUM(amt) FILTER (WHERE date >= start_of_year AND date <= anchor_date), 0),
         'fcYearly', COALESCE(SUM(fc_qty) FILTER (WHERE date >= start_of_year AND date <= anchor_date), 0),
         'vfYearly', COALESCE(SUM(vf_qty) FILTER (WHERE date >= start_of_year AND date <= anchor_date), 0),
-        'yearlyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_year - integer '364' AND date <= anchor_date - integer '364'), 0)
+        'yearlyPrevYear', COALESCE(SUM(qty) FILTER (WHERE date >= start_of_year_prev AND date <= anchor_date_prev), 0)
     ) INTO metrics_json
     FROM daily_aggs;
 

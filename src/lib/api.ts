@@ -767,10 +767,12 @@ ${sampleText}
                 const cachedStr = sessionStorage.getItem('DASHBOARD_FULL_V3');
                 if (cachedStr) {
                     const parsed = JSON.parse(cachedStr);
-                    if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
+                    if (Date.now() - parsed.timestamp < 10 * 60 * 1000) { // 10 mins
                         console.log(`[Session Cache] Dashboard HIT`);
-                        // Background refresh
-                        setTimeout(() => { this._fetchDashboardCore(true); }, 500);
+                        // Background refresh if older than 5 mins
+                        if (Date.now() - parsed.timestamp > 5 * 60 * 1000) {
+                            setTimeout(() => { this._fetchDashboardCore(true); }, 1000);
+                        }
                         return parsed.data;
                     }
                 }
@@ -781,6 +783,8 @@ ${sampleText}
     },
 
     async _fetchDashboardCore(isBackground: boolean) {
+        if (this._dashboardPromise) return this._dashboardPromise;
+
         const promise = (async () => {
             if (!isBackground) console.time("getDashboardAnalytics");
 
@@ -803,16 +807,23 @@ ${sampleText}
 
             const anchorDateStr = latestData.date.substring(0, 10);
 
-            // 2. Fetch Aggregated Dashboard Summary (NEW V13 Optimization)
-            const { data: summary, error: summaryError } = await supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr });
-            if (summaryError) {
-                console.error("[API] get_dashboard_summary error:", summaryError);
-                throw summaryError;
+            // 2 & 3. Fetch Summary and Trends IN PARALLEL (Optimization)
+            const [summaryRes, trendsResObj] = await Promise.all([
+                supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr }),
+                supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr })
+            ]);
+
+            if (summaryRes.error) {
+                console.error("[API] get_dashboard_summary error:", summaryRes.error);
+                throw summaryRes.error;
+            }
+            if (trendsResObj.error) {
+                console.error("[API] get_dashboard_trends error:", trendsResObj.error);
+                throw trendsResObj.error;
             }
 
-            // 3. Fetch Trend Data (RPC)
-            const { data: trendsRes, error: trendsError } = await supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
-            if (trendsError) throw trendsError;
+            const summary = summaryRes.data;
+            const trendsRes = trendsResObj.data;
 
             // 5. Construct Result
             const { metrics, stock, riskItems } = summary;
@@ -1541,9 +1552,9 @@ ${sampleText}
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[AdAPI] Proxy error for ${path}:`, response.status, errorText);
-            throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+            const errorText = await response.text().catch(() => "Unknown error");
+            console.warn(`[AdAPI] Proxy unavailable (${response.status}) at ${path}`);
+            return { error: 'PROXY_UNAVAILABLE', status: response.status, message: errorText };
         }
 
         const data = await response.json();
