@@ -137,6 +137,18 @@ export const api = {
         return allData;
     },
 
+    async _getLatestDateCore() {
+        try {
+            const { data, error } = await supabase.rpc('get_latest_data_date');
+            if (error) throw error;
+            return data || new Date().toISOString().split('T')[0];
+        } catch (e) {
+            console.error("[API] get_latest_data_date failed, falling back to manual fetch", e);
+            const { data } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
+            return data?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
+        }
+    },
+
     async _getRawProducts() {
         if (this._rawProductsPromise) return this._rawProductsPromise;
         const promise = this._fetchAllParallel<any>(
@@ -221,6 +233,17 @@ export const api = {
         }
 
         console.log(`[API] Registering ${missing.length} missing barcodes...`);
+
+        /* 
+    async syncMissingBarcodes() {
+        // [DEPRECATED] This function fetches ~116k rows and causes massive latency.
+        // It's not currently used in the main flow.
+        const latestData = await this._getLatestDateCore();
+        const dateStr = latestData;
+        const salesData = await this._fetchRPCParallel<{ barcode: string }>('daily_sales', 'barcode', 'barcode', (q) => q.gte('date', dateStr));
+        // ... rest removed for performance
+    },
+    */
 
         const CHUNK_SIZE = 500;
         for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
@@ -783,39 +806,30 @@ ${sampleText}
         const promise = (async () => {
             if (!isBackground) console.time("getDashboardAnalytics");
 
-            // 1. Get Latest Date (Anchor)
-            const { data: latestData, error: latestError } = await supabase
-                .from('daily_sales')
-                .select('date')
-                .order('date', { ascending: false })
-                .limit(1)
-                .single();
+            // 1. Get Latest Date (Anchor) - Optimized via RPC
+            const anchorDateStr = await this._getLatestDateCore();
 
-            if (latestError && latestError.code !== 'PGRST116') {
-                console.error("[API] getDashboardAnalytics latestData error:", latestError);
-                throw latestError;
+            // 2. Fetch Aggregated Data in Parallel (V13 Optimization)
+            const [summaryRes, trendsRes] = await Promise.all([
+                supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr }),
+                supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr })
+            ]);
+
+            if (summaryRes.error) {
+                console.error("[API] get_dashboard_summary error:", summaryRes.error);
+                throw summaryRes.error;
             }
-            if (!latestData) {
-                console.warn("[API] getDashboardAnalytics no data found in daily_sales!");
-                return null;
-            }
-
-            const anchorDateStr = latestData.date.substring(0, 10);
-
-            // 2. Fetch Aggregated Dashboard Summary (NEW V13 Optimization)
-            const { data: summary, error: summaryError } = await supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr });
-            if (summaryError) {
-                console.error("[API] get_dashboard_summary error:", summaryError);
-                throw summaryError;
+            if (trendsRes.error) {
+                console.error("[API] get_dashboard_trends error:", trendsRes.error);
+                throw trendsRes.error;
             }
 
-            // 3. Fetch Trend Data (RPC)
-            const { data: trendsRes, error: trendsError } = await supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr });
-            if (trendsError) throw trendsError;
+            const summary = summaryRes.data;
+            const trends = trendsRes.data || {};
+            const sortedDaily = trends.daily || [];
 
             // 5. Construct Result
             const { metrics, stock, riskItems } = summary;
-            const sortedDaily = trendsRes.daily || [];
 
             const result = {
                 anchorDate: anchorDateStr,
@@ -880,8 +894,7 @@ ${sampleText}
         const barcodes = products.map(p => p.barcode?.trim()).filter(b => !!b);
 
         // 2. Fetch recent sales for these barcodes only
-        const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
-        const anchorDateStr = latestData?.date.substring(0, 10) || new Date().toISOString().split('T')[0];
+        const anchorDateStr = await this._getLatestDateCore();
         
         const startD = new Date(anchorDateStr);
         startD.setDate(startD.getDate() - historyDays);
@@ -1076,149 +1089,55 @@ ${sampleText}
         const promise = (async () => {
             if (!isBackground) console.time(`getProductStats(${historyDays || 'ALL'})`);
 
-            const { data: latestData } = await supabase.from('daily_sales').select('date').order('date', { ascending: false }).limit(1).single();
-            const anchorDateStr = latestData ? latestData.date.substring(0, 10) : new Date().toISOString().split('T')[0];
+            const anchorDateStr = await this._getLatestDateCore();
 
-            // 0. Proactively sync missing barcodes to ensure all sales are visible in the UI
-            // [DISABLED] User requested to stop adding unknown items to the master.
-            // await this.syncMissingBarcodes();
-
-            const historyD = new Date(anchorDateStr);
-            historyD.setDate(historyD.getDate() - 14);
-            const historyStartStr = historyD.toISOString().split('T')[0];
-
-            // 1. Fetch Products, RPC Stats, and Daily Sales in PARALLEL
-            const [products, salesStats, rawDailySales] = await Promise.all([
-                this._getRawProducts(),
-                this._fetchRPCParallel<any>('get_product_sales_stats', { anchor_date: anchorDateStr }),
-                this._getRawDailySales(historyStartStr)
-            ]);
-
-            if (!products) return []; // Ensure products is an array for subsequent operations
-
-            const statsMap = new Map();
-            salesStats?.forEach((s: any) => {
-                if (s.barcode) statsMap.set(s.barcode.trim(), s);
-            });
-
-            const rawDailyMap = new Map<string, { sales: Record<string, number>, stock: Record<string, number> }>();
-            rawDailySales.forEach((row: any) => {
-                const b = (row.barcode || '').trim();
-                if (!b) return;
-                if (!rawDailyMap.has(b)) rawDailyMap.set(b, { sales: {}, stock: {} });
-                const d = rawDailyMap.get(b)!;
-                const dStr = row.date.substring(0, 10);
-                d.sales[dStr] = row.quantity;
-                d.stock[dStr] = row.stock;
-            });
+            // 1. Call Optimized RPC (V16)
+            const { data: stats, error } = await supabase.rpc('get_product_stats_v16', { anchor_date: anchorDateStr });
             
-            // 5. Merge
-            const result = products.map(p => {
-                const trimmedBarcode = p.barcode.trim();
-                const st = statsMap.get(trimmedBarcode) || {};
-                const recentD = rawDailyMap.get(trimmedBarcode) || { sales: {}, stock: {} };
-                
-                // Use Number() for BIGINT fields from RPC
-                const qty7d = Number(st.qty_7d || 0);
-                const qty14d = Number(st.qty_14d || 0);
-                const qty30d = Number(st.qty_30d || 0);
-                const qty60d = Number(st.qty_60d || 0);
-                const qtyYear = Number(st.qty_year || 0);
-                const qtyYesterday = Number(st.qty_yesterday || 0);
-                const qtyYesterdayPrev = Number(st.qty_yesterday_prev_day || 0);
-                const fcQtyYear = Number(st.fc_qty_year || 0);
-                const vfQtyYear = Number(st.vf_qty_year || 0);
+            if (error) {
+                console.error("[API] get_product_stats_v16 error:", error);
+                throw error;
+            }
 
-                // Derived metrics
-                const avgDailySales = qty7d / 7;
-                const totalStock = (p.fc_stock || 0) + (p.vf_stock || 0);
-                const daysOfInventory = avgDailySales > 0 ? totalStock / avgDailySales : (totalStock > 0 ? 999 : 0);
-
-                // Trend Calculation
-                const prevSales7Days = qty14d - qty7d;
-                const trendYesterday = qtyYesterday - qtyYesterdayPrev;
-                const trendWeek = qty7d - prevSales7Days;
-                const trendMonth = qty30d - (qty60d - qty30d);
-                
-                const qtyWeek = Number(st.qty_week || 0);
-                const qtyWeekPrev = Number(st.qty_week_prev_week || 0);
-
-                let trend: 'hot' | 'cold' | 'up' | 'down' | 'flat' = 'flat';
-
-                const diff = qty7d - prevSales7Days;
-                const rate = prevSales7Days > 0 ? diff / prevSales7Days : 0; // Growth rate
-
-                if (rate >= 0.5 && qty7d >= 10) trend = 'hot';
-                else if (rate <= -0.5 && prevSales7Days >= 10) trend = 'cold';
-                else if (diff > 0) trend = 'up';
-                else if (diff < 0) trend = 'down';
-
-                return {
-                    barcode: trimmedBarcode,
-                    name: p.name,
-                    option: p.option_value,
-                    season: this.getCleanSeason(p.season),
-                    imageUrl: p.image_url,
-                    hqStock: Number(p.hq_stock || 0),
-                    coupangStock: Number(p.current_stock || 0),
-                    fcStock: Number(p.fc_stock || 0),
-                    vfStock: Number(p.vf_stock || 0),
-                    incomingStock: Number(p.incoming_stock || 0),
-                    safetyStock: Number(p.safety_stock || 10),
-                    totalSales: qtyYear,
-                    fcSales: fcQtyYear,
-                    vfSales: vfQtyYear,
-                    sales14Days: qty14d,
-                    sales7Days: qty7d,
-                    salesYesterday: qtyYesterday,
-                    sales30Days: qty30d,
-                    salesWeekly: qtyWeek, 
-                    salesWeeklyPrev: qtyWeekPrev, 
-                    trends: {
-                        yesterday: trendYesterday,
-                        week: trendWeek,
-                        month: trendMonth
-                    },
-                    avgDailySales: parseFloat(avgDailySales.toFixed(1)),
-                    daysOfInventory,
-                    cost: Number(p.cost || 0), 
-                    dailySales: recentD.sales, 
-                    dailyStock: recentD.stock,
-                    abcGrade: 'D' as 'A' | 'B' | 'C' | 'D',
-                    prevSales7Days,
-                    trend
-                };
-            });
-
-            // 5. ABC Analysis (Based on sales7Days)
-            // Sort by sales7Days DESC
-            result.sort((a, b) => b.sales7Days - a.sales7Days);
-
-            const totalSales7Days = result.reduce((sum, p) => sum + p.sales7Days, 0);
-            let cumulativeSales = 0;
-
-            result.forEach(p => {
-                if (p.sales7Days <= 0) {
-                    p.abcGrade = 'D';
-                    return;
+            const result: ProductStats[] = (stats || []).map((s: any) => ({
+                barcode: s.barcode,
+                name: s.name,
+                option: s.option_value,
+                season: s.season,
+                imageUrl: s.image_url,
+                hqStock: Number(s.hq_stock),
+                coupangStock: Number(s.current_stock),
+                fcStock: Number(s.fc_stock),
+                vfStock: Number(s.vf_stock),
+                incomingStock: Number(s.incoming_stock),
+                safetyStock: 10,
+                totalSales: Number(s.qty_year),
+                fcSales: 0,
+                vfSales: 0,
+                sales14Days: Number(s.qty_14d),
+                sales7Days: Number(s.qty_7d),
+                salesYesterday: Number(s.qty_yesterday),
+                avgDailySales: Number(s.avg_daily_sales),
+                daysOfInventory: Number(s.avg_daily_sales) > 0 ? (Number(s.current_stock) / Number(s.avg_daily_sales)) : 0,
+                cost: Number(s.cost),
+                dailySales: s.daily_sales_json || {}, 
+                dailyStock: {},
+                abcGrade: s.abc_grade as 'A' | 'B' | 'C' | 'D',
+                prevSales7Days: Number(s.qty_14d) - Number(s.qty_7d),
+                trend: s.trend as any,
+                sales30Days: Number(s.qty_30d),
+                trends: {
+                    yesterday: 0,
+                    week: 0,
+                    month: 0
                 }
-
-                cumulativeSales += p.sales7Days;
-                const percentage = (cumulativeSales / totalSales7Days) * 100;
-
-                if (percentage <= 20) {
-                    p.abcGrade = 'A';
-                } else if (percentage <= 50) {
-                    p.abcGrade = 'B';
-                } else {
-                    p.abcGrade = 'C';
-                }
-            });
+            }));
 
             this._productStatsCache_Map.set(cacheKey, result);
-            console.timeEnd(`getProductStats(${historyDays || 'ALL'})`);
+            if (!isBackground) console.timeEnd(`getProductStats(${historyDays || 'ALL'})`);
             return result;
         })();
+
 
         this._productStatsPromise_Map.set(cacheKey, promise);
         try {
@@ -1227,6 +1146,19 @@ ${sampleText}
             this._productStatsPromise_Map.delete(cacheKey);
         }
     },
+
+    /**
+     * Get Supply Chain Analytics (Grouped by Week/Month + Upcoming Orders)
+     */
+    async getSupplyAnalytics(historyMonths: number = 24) {
+        const { data, error } = await supabase.rpc('get_supply_analytics_v15', { history_months: historyMonths });
+        if (error) {
+            console.error("[API] get_supply_analytics_v15 error:", error);
+            throw error;
+        }
+        return data as { timeline: any[], performance: any[], upcoming: any[] };
+    },
+
     /**
      * Reset Data (Clear Sales & Stock)
      * Used to clean up bad data (e.g. impossible dates)
