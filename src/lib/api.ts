@@ -44,6 +44,8 @@ export const api = {
     _rawProductsPromise: null as Promise<any[]> | null,
     _rawDailySalesPromise: null as Promise<any[]> | null,
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
+    _summaryPromise: null as Promise<any> | null,
+    _trendsPromise: null as Promise<any> | null,
     _excludedKeywords: ["부자재", "사은품", "우일신", "일상화보", "매장", "수선 재발송"],
 
     // Analytics Materialized View Refresh Trigger
@@ -110,7 +112,8 @@ export const api = {
         // Optional: First get the count if no filterBuilder to determine exact bounds? 
         // Or just fire parallel batches. We'll use a dynamic parallel approach: 
         // Fire 5 requests at a time until we hit a batch < BATCH_SIZE.
-        const CONCURRENCY = 6;
+        // Fire 3 requests at a time until we hit a batch < BATCH_SIZE (Safely avoiding timeouts)
+        const CONCURRENCY = 3;
         let isDone = false;
 
         while (!isDone) {
@@ -792,36 +795,25 @@ ${sampleText}
     },
 
     async getDashboardAnalytics(forceRefresh = false) {
-        if (!forceRefresh && this._dashboardCache) {
-            console.log("[Cache] Dashboard HIT");
-            return this._dashboardCache;
-        }
-        if (!forceRefresh && this._dashboardPromise) {
-            console.log("[Promise Cache] Dashboard HIT");
-            return this._dashboardPromise;
-        }
-
-        if (!forceRefresh) {
-            try {
-                const cachedStr = sessionStorage.getItem('DASHBOARD_FULL_V3');
-                if (cachedStr) {
-                    const parsed = JSON.parse(cachedStr);
-                    if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
-                        console.log(`[Session Cache] Dashboard HIT`);
-                        // Background refresh
-                        setTimeout(() => { this._fetchDashboardCore(true); }, 500);
-                        return parsed.data;
-                    }
-                }
-            } catch(e) {}
-        }
-
-        return this._fetchDashboardCore(false);
+        // This is a legacy wrapper. Progressive loading should use getDashboardSummary and getDashboardTrends.
+        const summary = await this.getDashboardSummary(forceRefresh);
+        const trends = await this.getDashboardTrends(forceRefresh);
+        return { ...summary, trends };
     },
 
-    async _fetchDashboardCore(isBackground: boolean) {
+    async getDashboardSummary(forceRefresh = false) {
+        if (!forceRefresh && this._dashboardCache && this._dashboardCache.metrics) return this._dashboardCache;
+        if (this._summaryPromise) return this._summaryPromise;
+
         const promise = (async () => {
-            if (!isBackground) console.time("getDashboardAnalytics");
+            try {
+                // 1. Get Latest Date (Anchor)
+                const { data: latestData } = await supabase
+                    .from('daily_sales')
+                    .select('date')
+                    .order('date', { ascending: false })
+                    .limit(1)
+                    .single();
 
             // 1. Get Latest Date (Anchor) - Optimized via RPC
             const anchorDateStr = await this._getLatestDateCore();
@@ -840,6 +832,11 @@ ${sampleText}
                 console.error("[API] get_dashboard_trends error:", trendsRes.error);
                 throw trendsRes.error;
             }
+        })();
+        
+        this._summaryPromise = promise;
+        return promise;
+    },
 
             const summary = summaryRes.data;
             const trends = trendsRes.data || {};
@@ -848,50 +845,32 @@ ${sampleText}
             // 5. Construct Result
             const { metrics, stock, riskItems } = summary;
 
-            const result = {
-                anchorDate: anchorDateStr,
-                metrics: {
-                    ...metrics,
-                    totalStock: stock.totalStock,
-                    totalFcStock: stock.totalFcStock,
-                    totalVfStock: stock.totalVfStock,
-                    totalStockPrevDay: stock.totalStockPrevDay,
-                    totalStockAmount: stock.totalStockAmount
-                },
-                trends: {
-                    daily: sortedDaily.map((item: any) => ({
-                        date: item.date.substring(5),
+                const trends = {
+                    daily: (trendsRes.daily || []).map((item: any) => ({
+                        date: item.date,
                         quantity: item.quantity,
                         prevYearQuantity: item.prevYearQuantity,
                         prev2YearQuantity: item.prev2YearQuantity
                     })),
-                    weekly: []
-                },
-                rankings: {
-                    yesterday: [],
-                    weekly: [],
-                    monthly: [],
-                    yearly: [],
-                    inventory: []
-                },
-                riskItems: riskItems || [],
-                avgCost: summary.avgCost || 0
-            };
+                    weekly: trendsRes.weekly || []
+                };
 
-            this._dashboardCache = result;
-            try {
-                sessionStorage.setItem('DASHBOARD_FULL_V3', JSON.stringify({ timestamp: Date.now(), data: result }));
-            } catch(e) {}
-            if (!isBackground) console.timeEnd("getDashboardAnalytics");
-            return result;
+                // Partial cache update
+                this._dashboardCache = { ...(this._dashboardCache || {}), trends };
+                return trends;
+            } finally {
+                this._trendsPromise = null;
+            }
         })();
 
-        this._dashboardPromise = promise;
-        try {
-            return await promise;
-        } finally {
-            this._dashboardPromise = null;
-        }
+        this._trendsPromise = promise;
+        return promise;
+    },
+
+    async _fetchDashboardCore(_isBackground: boolean) {
+        const summary = await this.getDashboardSummary(true);
+        const trends = await this.getDashboardTrends(true);
+        return { ...summary, trends };
     },
 
     /**
@@ -1044,7 +1023,7 @@ ${sampleText}
             const mmdd = dStr.substring(5, 10);
             
             result.push({
-                date: mmdd,
+                date: dStr,
                 fullDate: dStr,
                 quantity: m0.get(dStr) || 0,
                 prevYearQuantity: m1.get(mmdd) || 0,
@@ -1087,17 +1066,24 @@ ${sampleText}
             if (cachedStr) {
                 const parsed = JSON.parse(cachedStr);
                 if (Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 mins
-                    console.log(`[Session Cache] ProductStats HIT for ${cacheKey}`);
-                    
-                    // Background refresh
-                    setTimeout(() => {
-                        this._fetchProductStatsCore(historyDays, cacheKey, true);
-                    }, 500);
+                    // CRITICAL: Skip cache if data is empty or malformed
+                    if (!parsed.data || (Array.isArray(parsed.data) && parsed.data.length === 0)) {
+                        console.log(`[Session Cache] Skipping EMPTY cache for ${cacheKey}`);
+                    } else {
+                        console.log(`[Session Cache] ProductStats HIT for ${cacheKey}`);
+                        
+                        // Background refresh
+                        setTimeout(() => {
+                            this._fetchProductStatsCore(historyDays, cacheKey, true);
+                        }, 500);
 
-                    return parsed.data;
+                        return parsed.data;
+                    }
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.warn("[Session Cache] Parse error, skipping...", e);
+        }
 
         return this._fetchProductStatsCore(historyDays, cacheKey, false);
     },
@@ -1482,9 +1468,9 @@ ${sampleText}
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[AdAPI] Proxy error for ${path}:`, response.status, errorText);
-            throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+            const errorText = await response.text().catch(() => "Unknown error");
+            console.warn(`[AdAPI] Proxy unavailable (${response.status}) at ${path}`);
+            return { error: 'PROXY_UNAVAILABLE', status: response.status, message: errorText };
         }
 
         const data = await response.json();

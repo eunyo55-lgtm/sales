@@ -14,7 +14,10 @@ import {
   XCircle,
   Save,
   Activity,
-  Zap
+  Zap,
+  FileSpreadsheet,
+  Upload,
+  Info
 } from 'lucide-react';
 import { 
   Bar, 
@@ -26,6 +29,7 @@ import {
   ComposedChart, 
   Line
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
@@ -134,6 +138,78 @@ const AdManagement = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = (evt: any) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) throw new Error("파일에 데이터가 없습니다.");
+
+        // Map Coupang Ad Report columns to our internal state
+        // Look for common headers in Coupang reports
+        const items = data.map((row: any) => {
+          const name = row['광고상품명'] || row['상품명'] || row['캠페인명'] || '이름 없음';
+          const spend = Number(row['광고비(VAT 미포함)'] || row['광고비'] || 0);
+          const revenue = Number(row['총매출액(VAT 미포함)'] || row['매출액'] || row['직접전환금액'] || 0);
+          const roas = Number(row['ROAS(%)'] || row['ROAS'] || (spend > 0 ? (revenue / spend) * 100 : 0));
+          const clicks = Number(row['클릭수'] || 0);
+          const impressions = Number(row['노출수'] || 0);
+          const purchases = Number(row['전환수'] || row['직접전환수'] || 0);
+
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            name,
+            spend,
+            revenue,
+            roas: parseFloat(roas.toFixed(2)),
+            clicks,
+            impressions,
+            cvr: clicks > 0 ? parseFloat(((purchases / clicks) * 100).toFixed(2)) : 0,
+            rank: 0, // Manual upload doesn't have live ranking
+            status: 'off',
+            bid: 0
+          };
+        });
+
+        setProducts(items);
+        
+        // Update summary
+        const totalSpend = items.reduce((acc, i) => acc + i.spend, 0);
+        const totalRevenue = items.reduce((acc, i) => acc + i.revenue, 0);
+        setSummary({
+          totalSpend,
+          totalRevenue,
+          roas: totalSpend > 0 ? parseFloat(((totalRevenue / totalSpend) * 100).toFixed(0)) : 0,
+          roasDiff: null // No comparison for manual upload
+        });
+
+        // Update low eff keywords
+        const lowEff = items
+          .filter(i => i.clicks > 50 && i.revenue === 0)
+          .map(i => ({ keyword: i.name, clicks: i.clicks, purchases: 0 }))
+          .sort((a, b) => b.clicks - a.clicks);
+        setKeywords(lowEff);
+
+        setError(null);
+        alert('데이터 업로드 완료! ' + items.length + '개의 항목을 분석했습니다.');
+      } catch (err: any) {
+        alert('파일 파싱 중 오류 발생: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const handleBidUpdate = async (adId: string, bid: number) => {
     try {
       await api.updateAdBid(adId, bid);
@@ -171,13 +247,39 @@ const AdManagement = () => {
           </h3>
           <p className="text-caption text-text-disabled font-medium mt-1">최근 동기화: {new Date().toLocaleString()}</p>
         </div>
-        <button 
-          onClick={() => setShowSettings(!showSettings)}
-          className="btn-secondary px-6 font-bold tracking-widest text-[11px] flex items-center gap-2"
-        >
-          <Settings size={14} strokeWidth={2} />
-          광고 API 설정
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input 
+              type="file" 
+              id="ad-report-upload" 
+              className="hidden" 
+              accept=".xlsx,.xls,.csv" 
+              onChange={handleFileUpload}
+            />
+            <label 
+              htmlFor="ad-report-upload"
+              className="btn-primary px-6 font-black tracking-widest text-[11px] flex items-center gap-2 cursor-pointer bg-success border-success"
+            >
+              <Upload size={14} strokeWidth={2.5} />
+              엑셀 업로드 (수동)
+            </label>
+          </div>
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="btn-secondary px-6 font-bold tracking-widest text-[11px] flex items-center gap-2"
+          >
+            <Settings size={14} strokeWidth={2} />
+            광고 API 설정
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8 overflow-hidden group hover:border-primary/30 transition-all">
+        <Info size={16} className="text-primary flex-shrink-0" />
+        <p className="text-[11px] font-bold text-text-secondary leading-relaxed">
+          <span className="text-primary mr-1 uppercase">[도움말]</span>
+          API 연동이 어려우신가요? 쿠팡 광고 센터의 <span className="underline decoration-primary/30 underline-offset-2">보고서 관리 → 상품별/키워드별 보고서</span>에서 다운로드한 엑셀 파일을 '엑셀 업로드' 버튼으로 직접 등록하여 분석할 수 있습니다.
+        </p>
       </div>
 
       {showSettings && (
