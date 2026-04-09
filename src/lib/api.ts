@@ -822,8 +822,8 @@ ${sampleText}
                 const { metrics, stock, riskItems } = summary;
 
                 // Partial cache update
-                this._dashboardCache = { ...(this._dashboardCache || {}), metrics, stock, riskItems };
-                return summary;
+                this._dashboardCache = { ...(this._dashboardCache || {}), metrics, stock, riskItems, anchorDate: anchorDateStr };
+                return { ...summary, anchorDate: anchorDateStr };
             } finally {
                 this._summaryPromise = null;
             }

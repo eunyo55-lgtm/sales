@@ -115,16 +115,26 @@ export default function Dashboard() {
     }, []);
 
     useEffect(() => {
-        if (!loadingSummary && data && data.anchorDate) {
-            // Simplified: Use anchor date for initial range
-            const d = new Date(data.anchorDate);
+        if (!loadingSummary && data && data.metrics) { // data.metrics implies data successfully loaded
+            // Use _getLatestDateCore if anchorDate is missing but we'll just use today minus 30 days as a safe default anchor
+            const anchorDate = data.anchorDate || new Date().toISOString().split('T')[0];
+            const d = new Date(anchorDate);
             const start = new Date(d);
             start.setDate(d.getDate() - 30);
             const startStr = start.toISOString().split('T')[0];
             
-            // Only set if not already set by UI interaction
+            // 1. Initial Load for Best Seller Rankings
             if (!combinedRankings.length && !loadingRankings) {
-                api.getDashboardCombinedRankings(startStr, data.anchorDate).then(setCombinedRankings);
+                setStartDate(startStr);
+                setEndDate(anchorDate);
+                api.getDashboardCombinedRankings(startStr, anchorDate).then(setCombinedRankings).catch(e => console.error(e));
+            }
+
+            // 2. Initial Load for Sales Trend Chart
+            if (!customTrendData.length && !loadingTrend) {
+                setTrendStartDate(startStr);
+                setTrendEndDate(anchorDate);
+                api.getCustomDailySalesTrend(startStr, anchorDate).then(setCustomTrendData).catch(e => console.error(e));
             }
         }
     }, [loadingSummary, data]);
