@@ -46,6 +46,17 @@ export const api = {
     _rawDailySalesPromiseMap: new Map<string, Promise<any>>(),
     _excludedKeywords: ["부자재", "사은품", "우일신", "일상화보", "매장", "수선 재발송"],
 
+    // Analytics Materialized View Refresh Trigger
+    async refreshAnalyticsCache() {
+        try {
+            console.log("[API] Refreshing Materialized Views...");
+            await supabase.rpc('refresh_analytics_mvs');
+            console.log("[API] MV Cache Refreshed Successfully.");
+        } catch (e) {
+            console.error("[API] Failed to refresh MV cache:", e);
+        }
+    },
+
     async _fetchRPCParallel<T>(rpcName: string, params: object) {
         const BATCH_SIZE = 1000;
         const allData: T[] = [];
@@ -577,6 +588,9 @@ ${sampleText}
                 if (onProgress) onProgress(60 + Math.round((stockUpdateProcessed / totalUpdates) * 40));
             }
 
+            // TRIGGER MV REFRESH
+            await this.refreshAnalyticsCache();
+
             if (typeof window !== 'undefined') {
                 if (errorCount > 0) {
                     alert(`⚠️ 저장 중 일부 오류 발생(${errorCount}건 실패) \n마지막 오류: ${lastError} `);
@@ -737,6 +751,9 @@ ${sampleText}
             // Small delay to prevent overwhelming the DB connection pool
             await new Promise(resolve => setTimeout(resolve, 50));
         }
+        
+        // TRIGGER MV REFRESH
+        await this.refreshAnalyticsCache();
     },
 
     /**
