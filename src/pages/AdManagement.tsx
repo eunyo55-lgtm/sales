@@ -15,7 +15,6 @@ import {
   Save,
   Activity,
   Zap,
-  FileSpreadsheet,
   Upload,
   Info
 } from 'lucide-react';

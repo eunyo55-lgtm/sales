@@ -807,30 +807,25 @@ ${sampleText}
 
         const promise = (async () => {
             try {
-                // 1. Get Latest Date (Anchor)
-                const { data: latestData } = await supabase
-                    .from('daily_sales')
-                    .select('date')
-                    .order('date', { ascending: false })
-                    .limit(1)
-                    .single();
+                // 1. Get Latest Date (Anchor) - Optimized via RPC
+                const anchorDateStr = await this._getLatestDateCore();
 
-            // 1. Get Latest Date (Anchor) - Optimized via RPC
-            const anchorDateStr = await this._getLatestDateCore();
+                // 2. Fetch Aggregated Data
+                const summaryRes = await supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr });
 
-            // 2. Fetch Aggregated Data in Parallel (V13 Optimization)
-            const [summaryRes, trendsRes] = await Promise.all([
-                supabase.rpc('get_dashboard_summary', { anchor_date: anchorDateStr }),
-                supabase.rpc('get_dashboard_trends', { anchor_date: anchorDateStr })
-            ]);
+                if (summaryRes.error) {
+                    console.error("[API] get_dashboard_summary error:", summaryRes.error);
+                    throw summaryRes.error;
+                }
 
-            if (summaryRes.error) {
-                console.error("[API] get_dashboard_summary error:", summaryRes.error);
-                throw summaryRes.error;
-            }
-            if (trendsRes.error) {
-                console.error("[API] get_dashboard_trends error:", trendsRes.error);
-                throw trendsRes.error;
+                const summary = summaryRes.data;
+                const { metrics, stock, riskItems } = summary;
+
+                // Partial cache update
+                this._dashboardCache = { ...(this._dashboardCache || {}), metrics, stock, riskItems };
+                return summary;
+            } finally {
+                this._summaryPromise = null;
             }
         })();
         
@@ -838,39 +833,15 @@ ${sampleText}
         return promise;
     },
 
-            const summary = summaryRes.data;
-            const trends = trendsRes.data || {};
-            const sortedDaily = trends.daily || [];
-
-            // 5. Construct Result
-            const { metrics, stock, riskItems } = summary;
-
-                const trends = {
-                    daily: (trendsRes.daily || []).map((item: any) => ({
-                        date: item.date,
-                        quantity: item.quantity,
-                        prevYearQuantity: item.prevYearQuantity,
-                        prev2YearQuantity: item.prev2YearQuantity
-                    })),
-                    weekly: trendsRes.weekly || []
-                };
-
-                // Partial cache update
-                this._dashboardCache = { ...(this._dashboardCache || {}), trends };
-                return trends;
-            } finally {
-                this._trendsPromise = null;
-            }
-        })();
-
-        this._trendsPromise = promise;
-        return promise;
+    async getDashboardTrends(_forceRefresh = false) {
+        // Return an empty object or basic structure since we now use getCustomDailySalesTrend
+        return { daily: [], weekly: [] };
     },
 
     async _fetchDashboardCore(_isBackground: boolean) {
         const summary = await this.getDashboardSummary(true);
         const trends = await this.getDashboardTrends(true);
-        return { ...summary, trends };
+        return { ...summary, ...trends };
     },
 
     /**
@@ -959,80 +930,23 @@ ${sampleText}
     },
 
     async getCustomDailySalesTrend(startDate: string, endDate: string) {
-        const fetchRange = async (s: string, e: string) => {
-            let allData: any[] = [];
-            let i = 0;
-            const BATCH = 1000;
-            let isDone = false;
-            while (!isDone) {
-                const { data, error } = await supabase.from('daily_sales')
-                    .select('date, quantity')
-                    .gte('date', s)
-                    .lte('date', e)
-                    .order('date', { ascending: true })
-                    .order('barcode', { ascending: true })
-                    .range(i, i + BATCH - 1);
-                if (error) throw error;
-                if (data && data.length > 0) allData.push(...data);
-                if (!data || data.length < BATCH) isDone = true;
-                i += BATCH;
-            }
-            return allData;
-        };
-
-        const currentData = await fetchRange(startDate, endDate);
-        
-        const m0 = new Map<string, number>();
-        currentData.forEach(r => {
-            const d = r.date.substring(0, 10);
-            m0.set(d, (m0.get(d) || 0) + r.quantity);
+        const { data, error } = await supabase.rpc('get_custom_daily_sales_trend', {
+            start_date: startDate,
+            end_date: endDate
         });
 
-        // Use Date objects for iterating but avoid direct toISOString() for display mapping
-        const sParts = startDate.split('-').map(Number);
-        const eParts = endDate.split('-').map(Number);
-        const sDateInput = new Date(sParts[0], sParts[1] - 1, sParts[2]);
-        const eDateInput = new Date(eParts[0], eParts[1] - 1, eParts[2]);
-
-        const fetchYearOffsetMap = async (offset: number) => {
-            const s = new Date(sDateInput); s.setFullYear(s.getFullYear() - offset);
-            const e = new Date(eDateInput); e.setFullYear(e.getFullYear() - offset);
-            
-            const sStr = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`;
-            const eStr = `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`;
-            
-            const data = await fetchRange(sStr, eStr);
-            const m = new Map<string, number>();
-            data.forEach(r => {
-                const mmdd = r.date.substring(5, 10);
-                m.set(mmdd, (m.get(mmdd) || 0) + r.quantity);
-            });
-            return m;
-        };
-
-        const m1 = await fetchYearOffsetMap(1);
-        const m2 = await fetchYearOffsetMap(2);
-
-        const result: any[] = [];
-        const curr = new Date(sDateInput);
-        while (curr <= eDateInput) {
-            const y = curr.getFullYear();
-            const m = curr.getMonth() + 1;
-            const d = curr.getDate();
-            const dStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const mmdd = dStr.substring(5, 10);
-            
-            result.push({
-                date: dStr,
-                fullDate: dStr,
-                quantity: m0.get(dStr) || 0,
-                prevYearQuantity: m1.get(mmdd) || 0,
-                prev2YearQuantity: m2.get(mmdd) || 0
-            });
-            curr.setDate(curr.getDate() + 1);
+        if (error) {
+            console.error("[API] get_custom_daily_sales_trend error:", error);
+            throw error;
         }
-        
-        return result;
+
+        return (data || []).map((row: any) => ({
+            date: row.date,
+            fullDate: row.date,
+            quantity: Number(row.quantity),
+            prevYearQuantity: Number(row.prevyearquantity),
+            prev2YearQuantity: Number(row.prev2yearquantity)
+        }));
     },
 
     /**

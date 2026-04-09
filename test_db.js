@@ -1,0 +1,1 @@
+fetch("https://vzyfygmzqqiwgrcuydti.supabase.co/rest/v1/daily_sales?select=date&limit=1", {headers:{apikey:"sb_publishable_gGEtueZfB9Knlci_vOSQcg_1sE7WXqh"}}).then(r=>r.text()).then(t=>console.log("DB RESPONSE: "+t)).catch(e=>console.log("ERR: "+e));
